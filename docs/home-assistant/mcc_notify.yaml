@@ -1,0 +1,66 @@
+blueprint:
+  name: Monsieur Cuisine notifications
+  description: >
+    Phone notifications from mcc-app's event entity: recipe finished, the recipe needs you, a weighed ingredient
+    reached its target, a manual run ended, an unexpected stop or a board error.
+  domain: automation
+  input:
+    event_entity:
+      name: Machine event entity
+      selector:
+        entity:
+          filter:
+            - domain: event
+              integration: mqtt
+    notify_device:
+      name: Phone (Home Assistant Companion app)
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+    send_weighed:
+      name: Also notify when a weighed ingredient is complete
+      default: false
+      selector:
+        boolean: {}
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    entity_id: !input event_entity
+    id: event
+
+variables:
+  send_weighed: !input send_weighed
+  kind: "{{ trigger.to_state.attributes.event_type }}"
+  a: "{{ trigger.to_state.attributes }}"
+
+conditions:
+  - condition: template
+    value_template: >
+      {{ trigger.from_state is not none and trigger.from_state.state != 'unavailable'
+         and trigger.to_state.state not in ['unavailable', 'unknown']
+         and (kind in ['finished', 'needs_you', 'run_done', 'stopped', 'error'] or (kind == 'weighed' and send_weighed)) }}
+
+actions:
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: >
+      {{ {'finished': 'Ready!', 'needs_you': 'The recipe needs you', 'run_done': 'Done',
+          'weighed': 'Weighed', 'stopped': 'Stopped', 'error': 'Machine error'}[kind] }}
+    message: >
+      {% if kind == 'finished' %}{{ a.recipe or 'Recipe' }} is finished.
+      {% elif kind == 'needs_you' %}{{ a.text or ('Step ' ~ a.step) }}
+      {% elif kind == 'run_done' %}The manual run has ended.
+      {% elif kind == 'weighed' %}{{ a.grams }} g reached.
+      {% elif kind == 'stopped' %}Stopped: {{ (a.reason or '') | replace('_', ' ') }}.
+      {% else %}{{ a.error | replace('_', ' ') }}{% endif %}
+    data:
+      tag: monsieur-cuisine
+      channel: Monsieur Cuisine
+      importance: high
+      ttl: 0
+      priority: high

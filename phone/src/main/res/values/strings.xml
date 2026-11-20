@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Monsieur Cuisine</string>
+    <string name="sc_machine">Machine</string>
+    <string name="sc_recipes">Recipes</string>
+    <string name="sc_list">Shopping list</string>
+    <string name="tile_label">Monsieur Cuisine</string>
+    <string name="widget_desc">Machine status, time left and Stop</string>
+</resources>

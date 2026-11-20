@@ -1,0 +1,13 @@
+.gradle/
+build/
+*/build/
+local.properties
+.idea/
+*.iml
+__pycache__/
+*.jks
+*.keystore
+# the PUBLIC AOSP platform test key is needed to build (see signing/README.txt)
+!signing/aosp-platform-test.keystore
+common/src/main/assets/programs-pixabay/
+*.hprof

@@ -1,0 +1,145 @@
+{
+ "format": "mcc-recipe/1",
+ "id": "sample-vegetable-soup-en",
+ "title": "Simple vegetable soup",
+ "language": "en",
+ "servings": "4 portions",
+ "activeMinutes": 15,
+ "totalMinutes": 45,
+ "difficulty": "easy",
+ "tags": [
+  "Soups",
+  "Vegetarian and vegan",
+  "Sample"
+ ],
+ "image": null,
+ "source": {
+  "kind": "original",
+  "ref": null,
+  "url": null
+ },
+ "ingredients": [
+  {
+   "group": null,
+   "items": [
+    {
+     "text": "1 onion (100 g)"
+    },
+    {
+     "text": "2 garlic cloves"
+    },
+    {
+     "text": "30 ml olive oil"
+    },
+    {
+     "text": "2 carrots (200 g)"
+    },
+    {
+     "text": "1 potato (200 g)"
+    },
+    {
+     "text": "1 courgette (200 g)"
+    },
+    {
+     "text": "700 g water"
+    },
+    {
+     "text": "1 tsp salt"
+    }
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "type": "instruction",
+   "text": "Peel the onion, garlic, carrots and potato. Cut the carrots, potato and courgette into rough pieces."
+  },
+  {
+   "type": "weigh",
+   "text": "Put the onion and the garlic in the bowl.",
+   "grams": 120
+  },
+  {
+   "type": "machine",
+   "text": "Chop the onion and garlic.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 5,
+     "speed": 5,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Scrape the sides down with the spatula. Add the olive oil, carrots, potato and courgette."
+  },
+  {
+   "type": "machine",
+   "text": "Soften the vegetables.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 300,
+     "speed": 1,
+     "tempC": 100,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "weigh",
+   "text": "Add the water.",
+   "grams": 700
+  },
+  {
+   "type": "machine",
+   "text": "Cook the soup.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 1200,
+     "speed": 1,
+     "tempC": 100,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Put the measuring cup in the lid."
+  },
+  {
+   "type": "machine",
+   "text": "Blend gradually until smooth.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 10,
+     "speed": 4,
+     "tempC": 0,
+     "reverse": false
+    },
+    {
+     "seconds": 10,
+     "speed": 6,
+     "tempC": 0,
+     "reverse": false
+    },
+    {
+     "seconds": 30,
+     "speed": 8,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Season with salt and serve hot."
+  }
+ ],
+ "notes": []
+}

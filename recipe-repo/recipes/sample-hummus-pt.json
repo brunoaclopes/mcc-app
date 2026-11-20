@@ -1,0 +1,101 @@
+{
+ "format": "mcc-recipe/1",
+ "id": "sample-hummus-pt",
+ "title": "Húmus",
+ "language": "pt",
+ "servings": "6 porções",
+ "activeMinutes": 10,
+ "totalMinutes": 10,
+ "difficulty": "easy",
+ "tags": [
+  "Patês e pastas",
+  "Vegetariano e vegano",
+  "Exemplo"
+ ],
+ "image": null,
+ "source": {
+  "kind": "original",
+  "ref": null,
+  "url": null
+ },
+ "ingredients": [
+  {
+   "group": null,
+   "items": [
+    {
+     "text": "400 g de grão-de-bico cozido e escorrido"
+    },
+    {
+     "text": "60 g de tahini"
+    },
+    {
+     "text": "40 ml de sumo de limão"
+    },
+    {
+     "text": "1 dente de alho"
+    },
+    {
+     "text": "30 ml de azeite"
+    },
+    {
+     "text": "50 ml de água fria"
+    },
+    {
+     "text": "½ c. de chá de sal"
+    }
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "type": "weigh",
+   "text": "Coloque o grão-de-bico no copo.",
+   "grams": 400
+  },
+  {
+   "type": "instruction",
+   "text": "Junte o tahini, o sumo de limão, o alho, o azeite, a água e o sal."
+  },
+  {
+   "type": "machine",
+   "text": "Triture.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 30,
+     "speed": 5,
+     "tempC": 0,
+     "reverse": false
+    },
+    {
+     "seconds": 30,
+     "speed": 7,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Raspe as paredes do copo com a espátula."
+  },
+  {
+   "type": "machine",
+   "text": "Triture de novo até ficar cremoso.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 20,
+     "speed": 7,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Sirva com um fio de azeite e um pouco de colorau."
+  }
+ ],
+ "notes": []
+}

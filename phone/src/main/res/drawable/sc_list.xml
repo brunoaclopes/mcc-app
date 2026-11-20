@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/icon_bg" />
+    <foreground>
+        <vector android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <group android:translateX="36" android:translateY="36" android:scaleX="1.5" android:scaleY="1.5">
+                <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M8,6 L20,6 M8,12 L20,12 M8,18 L20,18 M4,6 L4.01,6 M4,12 L4.01,12 M4,18 L4.01,18" />
+            </group>
+        </vector>
+    </foreground>
+</adaptive-icon>

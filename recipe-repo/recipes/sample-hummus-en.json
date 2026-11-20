@@ -1,0 +1,101 @@
+{
+ "format": "mcc-recipe/1",
+ "id": "sample-hummus-en",
+ "title": "Hummus",
+ "language": "en",
+ "servings": "6 portions",
+ "activeMinutes": 10,
+ "totalMinutes": 10,
+ "difficulty": "easy",
+ "tags": [
+  "Dips and spreads",
+  "Vegetarian and vegan",
+  "Sample"
+ ],
+ "image": null,
+ "source": {
+  "kind": "original",
+  "ref": null,
+  "url": null
+ },
+ "ingredients": [
+  {
+   "group": null,
+   "items": [
+    {
+     "text": "400 g cooked chickpeas, drained"
+    },
+    {
+     "text": "60 g tahini"
+    },
+    {
+     "text": "40 ml lemon juice"
+    },
+    {
+     "text": "1 garlic clove"
+    },
+    {
+     "text": "30 ml olive oil"
+    },
+    {
+     "text": "50 ml cold water"
+    },
+    {
+     "text": "½ tsp salt"
+    }
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "type": "weigh",
+   "text": "Put the chickpeas in the bowl.",
+   "grams": 400
+  },
+  {
+   "type": "instruction",
+   "text": "Add the tahini, lemon juice, garlic, olive oil, water and salt."
+  },
+  {
+   "type": "machine",
+   "text": "Blend.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 30,
+     "speed": 5,
+     "tempC": 0,
+     "reverse": false
+    },
+    {
+     "seconds": 30,
+     "speed": 7,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Scrape the sides down with the spatula."
+  },
+  {
+   "type": "machine",
+   "text": "Blend again until smooth.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 20,
+     "speed": 7,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Serve with a drizzle of olive oil and some paprika."
+  }
+ ],
+ "notes": []
+}

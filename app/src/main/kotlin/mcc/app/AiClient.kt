@@ -1,0 +1,195 @@
+package mcc.app
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import mcc.recipe.Recipe
+import mcc.recipe.RecipeFit
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * Talks to an OpenAI-compatible chat API (OpenAI, or a server on your own network such as LocalAI, Ollama,
+ * vLLM or LiteLLM). It only ever produces recipe text: it has no way to start the machine. Every recipe it
+ * makes is checked by [Recipe.parse] and fitted to the machine limits by [RecipeFit], and machine steps still
+ * need the user's hold on Start. Call from a background thread.
+ */
+class AiClient(private val prefs: Prefs) {
+    class AiException(msg: String) : Exception(msg)
+
+    data class Import(val recipe: Recipe, val changes: List<String>)
+
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    val configured get() = prefs.aiUrl.isNotBlank() && prefs.aiModel.isNotBlank()
+
+    /** Lists the server's models, as a connection test. */
+    fun models(): List<String> {
+        val body = http("GET", url("models"), null, 15_000)
+        val data = json.parseToJsonElement(body).jsonObject["data"]?.jsonArray ?: return emptyList()
+        return data.mapNotNull { (it as? JsonObject)?.get("id")?.jsonPrimitive?.content }
+    }
+
+    /** [input] is a web address or pasted recipe text. [lang] is "pt" or "en". */
+    fun importRecipe(input: String, lang: String): Import {
+        val isUrl = input.startsWith("http://") || input.startsWith("https://")
+        val page = if (isUrl) http("GET", input, null, 20_000, ai = false) else null
+        val source = if (page != null) pageText(page) else input
+        val photo = page?.let { pageImage(it, input) }
+        val user = "Recipe language: ${if (lang == "pt") "European Portuguese (pt-PT)" else "English"}.\n" +
+            (if (input.startsWith("http")) "Source URL: $input\n" else "") + "\n" + source.take(MAX_INPUT)
+        val messages = mutableListOf(msg("system", SYSTEM), msg("user", user))
+        var last: String? = null
+        repeat(2) { attempt ->
+            val reply = chat(messages)
+            val problem = try {
+                return finish(reply, lang, input, photo)
+            } catch (e: AiException) { throw e } catch (e: Exception) { e.message ?: "invalid" }
+            last = problem
+            if (attempt == 0) { messages += msg("assistant", reply); messages += msg("user", "That JSON was rejected: $problem\nReply with the corrected JSON object only.") }
+        }
+        throw AiException("the AI's recipe was not valid: $last")
+    }
+
+    private fun finish(reply: String, lang: String, input: String, photo: String?): Import {
+        val start = reply.indexOf('{'); val end = reply.lastIndexOf('}')
+        if (start < 0 || end <= start) throw IllegalArgumentException("no JSON object in the reply")
+        val obj = json.parseToJsonElement(reply.substring(start, end + 1)).jsonObject
+        obj["error"]?.let { throw AiException(it.jsonPrimitive.content) }
+        val title = obj["title"]?.jsonPrimitive?.content ?: "recipe"
+        val slug = java.text.Normalizer.normalize(title.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "recipe" }
+        val fixed = JsonObject(obj + mapOf(
+            "format" to JsonPrimitive(Recipe.FORMAT),
+            "id" to JsonPrimitive("my-$slug-${System.currentTimeMillis() / 1000 % 100000}"),
+            "language" to JsonPrimitive(lang),
+            "image" to JsonPrimitive(photo), // the page's own photo (cached on first view), or none
+            "source" to buildJsonObject {
+                put("kind", "ai-import")
+                if (input.startsWith("http")) put("url", input.take(500))
+            },
+        ))
+        val r = Recipe.parse(fixed.toString())
+        val fit = RecipeFit.fit(r, if (prefs.specialModes) RecipeFit.SPECIAL else emptySet())
+        return Import(fit.recipe, fit.changes)
+    }
+
+    private fun msg(role: String, content: String) = buildJsonObject { put("role", role); put("content", content) }
+
+    private fun chat(messages: List<JsonObject>): String {
+        fun body(jsonMode: Boolean) = buildJsonObject {
+            put("model", prefs.aiModel)
+            put("temperature", 0.2)
+            put("messages", JsonArray(messages))
+            if (jsonMode) put("response_format", buildJsonObject { put("type", "json_object") })
+        }.toString()
+        val text = try {
+            http("POST", url("chat/completions"), body(true), 240_000)
+        } catch (e: HttpError) {
+            if (e.code != 400 && e.code != 422) throw e
+            http("POST", url("chat/completions"), body(false), 240_000) // server without JSON mode
+        }
+        val root = json.parseToJsonElement(text).jsonObject
+        return root["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
+            ?: throw AiException("unexpected reply from the AI server")
+    }
+
+    /** Recipe part of a web page: its schema.org JSON-LD if it has one, else the visible text. */
+    /** The page's main photo: schema.org Recipe image, else og:image. Absolute http(s) URL or null. */
+    private fun pageImage(html: String, base: String): String? {
+        val ld = Regex("\"image\"\\s*:\\s*(?:\\[\\s*)?(?:\\{[^}]*?\"url\"\\s*:\\s*)?\"([^\"]+)\"").find(html)?.groupValues?.get(1)
+        val og = Regex("<meta[^>]+property=[\"']og:image[\"'][^>]+content=[\"']([^\"']+)", RegexOption.IGNORE_CASE).find(html)?.groupValues?.get(1)
+            ?: Regex("<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+property=[\"']og:image", RegexOption.IGNORE_CASE).find(html)?.groupValues?.get(1)
+        val raw = (og ?: ld)?.replace("\\/", "/")?.replace("&amp;", "&") ?: return null
+        return runCatching { URL(URL(base), raw).toString() }.getOrNull()?.takeIf { it.startsWith("http") }
+    }
+
+    private fun pageText(html: String): String {
+        val ld = Regex("<script[^>]*application/ld\\+json[^>]*>(.*?)</script>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+            .findAll(html).map { it.groupValues[1].trim() }.firstOrNull { "recipeIngredient" in it }
+        if (ld != null) return "Recipe data from the page (schema.org):\n$ld"
+        return html.replace(Regex("(?is)<(script|style|noscript|svg|nav|footer|header)[^>]*>.*?</\\1>"), " ")
+            .replace(Regex("(?i)<br\\s*/?>|</(p|li|h[1-6]|div|tr)>"), "\n")
+            .replace(Regex("<[^>]+>"), " ")
+            .replace("&nbsp;", " ").replace("&amp;", "&").replace("&quot;", "\"").replace("&#39;", "'")
+            .replace(Regex("[ \\t]+"), " ").replace(Regex("\\s*\\n\\s*"), "\n").trim()
+    }
+
+    private class HttpError(val code: Int, msg: String) : IOException(msg)
+
+    private fun url(path: String) = prefs.aiUrl.trim().trimEnd('/') + "/" + path
+
+    private fun http(method: String, address: String, body: String?, timeout: Int, ai: Boolean = true): String {
+        val c = URL(address).openConnection() as HttpURLConnection
+        c.requestMethod = method
+        c.connectTimeout = 10_000; c.readTimeout = timeout
+        c.setRequestProperty("User-Agent", "mcc-app")
+        if (ai) {
+            c.setRequestProperty("Content-Type", "application/json")
+            prefs.aiKey.takeIf { it.isNotBlank() }?.let { c.setRequestProperty("Authorization", "Bearer $it") }
+        }
+        try {
+            if (body != null) { c.doOutput = true; c.outputStream.use { it.write(body.toByteArray()) } }
+            val code = c.responseCode
+            if (code !in 200..299) {
+                val err = runCatching { c.errorStream?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()?.take(200) ?: ""
+                throw HttpError(code, "HTTP $code${if (err.isNotBlank()) ": $err" else ""}")
+            }
+            return c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
+        } finally { c.disconnect() }
+    }
+
+    companion object {
+        private const val MAX_INPUT = 14_000
+
+        private val SYSTEM = """
+You turn recipes into guided recipes for the Monsieur Cuisine Connect, a Thermomix-like kitchen machine:
+a 2.2 litre bowl with a blade, heater 37-130 °C, speeds 1-10, reverse, a built-in scale, a simmering basket
+that sits inside the bowl and a Varoma steaming tray on top.
+
+Reply with ONE JSON object and nothing else:
+{"format":"mcc-recipe/1","id":"x","title":"…","servings":"4 portions","activeMinutes":15,"totalMinutes":45,
+ "difficulty":"easy","tags":["Soups"],
+ "ingredients":[{"group":null,"items":[{"text":"1 onion (100 g)"}]}],
+ "steps":[
+  {"type":"instruction","text":"Peel the onion."},
+  {"type":"weigh","text":"Put the onion in the bowl.","grams":100},
+  {"type":"machine","text":"Chop.","mode":"run","segments":[{"seconds":5,"speed":5,"tempC":0,"reverse":false}]}
+ ],
+ "notes":[]}
+
+Step types: "instruction" (text), "weigh" (text, grams 1-5000: the user adds that much to the bowl on the scale),
+"machine" (text, mode "run", segments run back to back; several segments make a speed ramp).
+Use "mode":"turbo" only for short full-speed bursts (each segment 1-10 s).
+Special modes (the machine runs its own pattern; give one segment with the total seconds): "knead" (dough, at most 600 g,
+speed and tempC 0), "roast" (browning/sautéing at tempC 100-130), "steam" (Varoma steaming, tempC 120).
+
+Hard machine limits (never exceed them):
+- while heating (tempC > 0): speed 0-3;  reverse: speed 1-3;
+- tempC is 0 (no heat) or 37-130; 100 = boiling, 120 = steaming / browning ("Varoma");
+- one segment lasts at most 5940 s, and at most 900 s above speed 6;
+- heating needs at least 200 g in the bowl; speed 0 with a temperature heats without the blade turning.
+
+Converting other machines' settings (Thermomix / Bimby notation "time/temperature/speed"):
+- "5 sec/speed 5" -> {"seconds":5,"speed":5}; "10 min/100°C/speed 1" -> {"seconds":600,"speed":1,"tempC":100};
+- "Varoma" temperature -> 120; "speed spoon" / "soft" / "colher" -> speed 1; "reverse" / "inversa" -> "reverse":true;
+- "Turbo/1 sec" x3 -> a turbo step with three 1 s segments; "dough mode" / "amassar" N min -> run speed 4 for N min;
+- a speed above 3 while heating becomes speed 3.
+For ordinary recipes, decide sensible machine steps yourself: chop onion/garlic 5 s speed 5, sauté in oil
+5 min 120 °C speed 1, soups 20-25 min 100 °C speed 1 then blend 1 min rising from speed 5 to 9, etc.
+
+Write every text in the requested language, short and clear, one action per step. Weigh steps for what goes
+into the bowl by weight; mention the simmering basket, Varoma or measuring cup where the recipe needs them.
+Keep the ingredient list with quantities. 1-3 short tags in the recipe language. No image.
+If the input is not a recipe, reply {"error":"short reason"}.
+""".trimIndent()
+    }
+}

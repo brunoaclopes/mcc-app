@@ -1,0 +1,145 @@
+{
+ "format": "mcc-recipe/1",
+ "id": "sample-vegetable-soup-pt",
+ "title": "Sopa de legumes simples",
+ "language": "pt",
+ "servings": "4 porções",
+ "activeMinutes": 15,
+ "totalMinutes": 45,
+ "difficulty": "easy",
+ "tags": [
+  "Sopas",
+  "Vegetariano e vegano",
+  "Exemplo"
+ ],
+ "image": null,
+ "source": {
+  "kind": "original",
+  "ref": null,
+  "url": null
+ },
+ "ingredients": [
+  {
+   "group": null,
+   "items": [
+    {
+     "text": "1 cebola (100 g)"
+    },
+    {
+     "text": "2 dentes de alho"
+    },
+    {
+     "text": "30 ml de azeite"
+    },
+    {
+     "text": "2 cenouras (200 g)"
+    },
+    {
+     "text": "1 batata (200 g)"
+    },
+    {
+     "text": "1 curgete (200 g)"
+    },
+    {
+     "text": "700 g de água"
+    },
+    {
+     "text": "1 c. de chá de sal"
+    }
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "type": "instruction",
+   "text": "Descasque a cebola, o alho, as cenouras e a batata. Corte as cenouras, a batata e a curgete em pedaços grosseiros."
+  },
+  {
+   "type": "weigh",
+   "text": "Coloque a cebola e o alho no copo.",
+   "grams": 120
+  },
+  {
+   "type": "machine",
+   "text": "Pique a cebola e o alho.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 5,
+     "speed": 5,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Raspe as paredes do copo com a espátula. Junte o azeite, as cenouras, a batata e a curgete."
+  },
+  {
+   "type": "machine",
+   "text": "Aloure os legumes.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 300,
+     "speed": 1,
+     "tempC": 100,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "weigh",
+   "text": "Junte a água.",
+   "grams": 700
+  },
+  {
+   "type": "machine",
+   "text": "Coza a sopa.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 1200,
+     "speed": 1,
+     "tempC": 100,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Coloque o copo medidor na tampa."
+  },
+  {
+   "type": "machine",
+   "text": "Triture aos poucos até ficar cremosa.",
+   "mode": "run",
+   "segments": [
+    {
+     "seconds": 10,
+     "speed": 4,
+     "tempC": 0,
+     "reverse": false
+    },
+    {
+     "seconds": 10,
+     "speed": 6,
+     "tempC": 0,
+     "reverse": false
+    },
+    {
+     "seconds": 30,
+     "speed": 8,
+     "tempC": 0,
+     "reverse": false
+    }
+   ]
+  },
+  {
+   "type": "instruction",
+   "text": "Tempere com sal e sirva quente."
+  }
+ ],
+ "notes": []
+}

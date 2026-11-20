@@ -1,0 +1,62 @@
+{
+ "format": "mcc-index/1",
+ "generated": "2026-11-20T09:26:19+00:00",
+ "recipes": [
+  {
+   "id": "sample-hummus-en",
+   "title": "Hummus",
+   "language": "en",
+   "tags": [
+    "Dips and spreads",
+    "Vegetarian and vegan",
+    "Sample"
+   ],
+   "totalMinutes": 10,
+   "image": null,
+   "file": "recipes/sample-hummus-en.json",
+   "sha256": "5361521fed87e77cb7f039c90839e1394794a01ad2c21f647498110cf37f334b"
+  },
+  {
+   "id": "sample-vegetable-soup-en",
+   "title": "Simple vegetable soup",
+   "language": "en",
+   "tags": [
+    "Soups",
+    "Vegetarian and vegan",
+    "Sample"
+   ],
+   "totalMinutes": 45,
+   "image": null,
+   "file": "recipes/sample-vegetable-soup-en.json",
+   "sha256": "f5f3ed4c08861444d7230d754d7827090aa0d8b1400fc925d05c24748f3aa458"
+  },
+  {
+   "id": "sample-hummus-pt",
+   "title": "Húmus",
+   "language": "pt",
+   "tags": [
+    "Patês e pastas",
+    "Vegetariano e vegano",
+    "Exemplo"
+   ],
+   "totalMinutes": 10,
+   "image": null,
+   "file": "recipes/sample-hummus-pt.json",
+   "sha256": "50be1d1ca35bd8ff2241b2a5c549d30988c2cba93ea00967ae0c78fdd3deaf34"
+  },
+  {
+   "id": "sample-vegetable-soup-pt",
+   "title": "Sopa de legumes simples",
+   "language": "pt",
+   "tags": [
+    "Sopas",
+    "Vegetariano e vegano",
+    "Exemplo"
+   ],
+   "totalMinutes": 45,
+   "image": null,
+   "file": "recipes/sample-vegetable-soup-pt.json",
+   "sha256": "a7b839ec36fa60c2ad0d1d208fbb311ddffff476022ba90da9005e5e12519e22"
+  }
+ ]
+}

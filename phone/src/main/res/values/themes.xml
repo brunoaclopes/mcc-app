@@ -1,0 +1,16 @@
+<resources>
+    <style name="Theme.Mcc" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <!-- Android 12+ splash: the pot on the ember disc, then the app -->
+    <style name="Theme.Mcc.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_fg</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/icon_bg</item>
+        <item name="postSplashScreenTheme">@style/Theme.Mcc</item>
+    </style>
+    <color name="splash">#FF17191C</color>
+    <color name="icon_bg">#FFE8761C</color>
+</resources>
