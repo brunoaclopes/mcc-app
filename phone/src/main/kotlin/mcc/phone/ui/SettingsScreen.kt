@@ -32,6 +32,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -154,6 +155,14 @@ fun SettingsScreen(modifier: Modifier) {
                         }
                         batteryOk = pm.isIgnoringBatteryOptimizations(ctx.packageName)
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(S.battery) }
+                    Spacer(Modifier.height(8.dp))
+                    Text(S.idleNotifHelp, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
+                    TextButton(onClick = {
+                        runCatching {
+                            ctx.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName).putExtra(Settings.EXTRA_CHANNEL_ID, mcc.phone.Notifier.LINK))
+                        }
+                    }) { Text(S.idleNotifButton, color = Mc.amber) }
                     if (Build.MANUFACTURER.equals("huawei", true) || Build.MANUFACTURER.equals("honor", true))
                         Text(S.huaweiHelp, style = MaterialTheme.typography.bodySmall, color = Mc.amber, modifier = Modifier.padding(top = 8.dp))
                 }

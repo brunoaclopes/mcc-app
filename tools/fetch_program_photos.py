@@ -16,6 +16,8 @@ QUERIES = {
     "eggs-soft": "soft boiled egg", "eggs-medium": "boiled egg halves", "eggs-hard": "hard boiled eggs",
     "rice": "bowl white rice", "steam-veg": "steamed vegetables", "melt-chocolate": "melted chocolate",
     "smoothie": "strawberry smoothie", "proof-dough": "bread dough bowl", "reheat": "vegetable soup", "clean": "clean kitchen sink",
+    "knead": "kneading dough", "brown": "fried onions pan", "varoma": "bamboo steamer dumplings",
+    "clean-deep": "scrubbing brush dishes", "clean-smell": "lemon halves",
 }
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 OUT = os.path.join(ROOT, "common", "src", "main", "assets", "programs-pixabay")

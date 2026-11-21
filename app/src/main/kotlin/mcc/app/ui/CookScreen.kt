@@ -43,6 +43,8 @@ class CookScreen(app: AppUi) : Screen(app) {
     private lateinit var nextBtn: HoldButton
     private lateinit var backBtn: HoldButton
     private lateinit var ingredients: FrameLayout
+    /** The recipe the open ingredients sheet lists. */
+    private var sheetFor: Recipe? = null
     private lateinit var doneImage: RoundImage
     private var shownStep = -1
     private var shownRecipe: Recipe? = null
@@ -104,7 +106,8 @@ class CookScreen(app: AppUi) : Screen(app) {
         row.addView(panel, LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = T.dp(16) })
         main.addView(row, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        message = T.text(c, "", 15f, T.AMBER, T.bold).apply { gravity = Gravity.CENTER; setPadding(0, T.dp(8), 0, T.dp(2)); maxLines = 2 }
+        message = T.text(c, "", 15f, T.AMBER, T.bold).apply { gravity = Gravity.CENTER; setPadding(0, T.dp(8), 0, T.dp(2)); maxLines = 2
+            setOnClickListener { if (needsEmptyBowl()) app.askEmptyBowl(S.emptyBowlNeeded) } }
         main.addView(message, LinearLayout.LayoutParams(-1, -2))
 
         val bottom = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -112,7 +115,13 @@ class CookScreen(app: AppUi) : Screen(app) {
         bottom.addView(backBtn, LinearLayout.LayoutParams(T.dp(170), T.dp(60)))
         ingredientsBtn = HoldButton(c).apply { label = S.ingredients; icon = Icon.LIST; holdMillis = 0; style(T.SURFACE_3, T.SURFACE_3); onConfirm = { toggleIngredients() } }
         bottom.addView(ingredientsBtn,
-            LinearLayout.LayoutParams(T.dp(220), T.dp(60)).apply { leftMargin = T.dp(10) })
+            LinearLayout.LayoutParams(T.dp(190), T.dp(60)).apply { leftMargin = T.dp(10) })
+        bottom.addView(HoldButton(c).apply { label = S.cancelRecipe; icon = Icon.CLOSE; holdMillis = 0; style(T.SURFACE_3, T.SURFACE_3)
+            onConfirm = {
+                app.confirm(S.cancelRecipeTitle, S.cancelRecipeBody(recipe?.title ?: ""), S.cancelRecipe, danger = true, dismiss = S.keepRecipe) {
+                    app.service?.cancelRecipe(remote = false); app.go("home")
+                }
+            } }, LinearLayout.LayoutParams(T.dp(240), T.dp(60)).apply { leftMargin = T.dp(10) })
         bottom.addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
         nextBtn = HoldButton(c).apply { label = S.next; icon = Icon.NEXT; holdMillis = 0; style(T.AMBER, T.EMBER); onConfirm = { go(+1) } }
         bottom.addView(nextBtn, LinearLayout.LayoutParams(T.dp(230), T.dp(60)))
@@ -166,6 +175,7 @@ class CookScreen(app: AppUi) : Screen(app) {
             ingredients.animate().alpha(0f).setDuration(180).withEndAction { ingredients.visibility = View.GONE }.start(); return
         }
         ingredients.removeAllViews()
+        sheetFor = r
         val sheet = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; background = T.glass(24, strong = true); setPadding(T.dp(26), T.dp(18), T.dp(18), T.dp(18)); isClickable = true }
         val head = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(T.text(c, S.ingredientsFor(r) + (r.servings?.let { " · $it" } ?: ""), 22f, T.TEXT, T.heavy), LinearLayout.LayoutParams(0, -2, 1f))
@@ -190,9 +200,17 @@ class CookScreen(app: AppUi) : Screen(app) {
             RecipeRunner.Phase.RUNNING -> s.recipePause()
             else -> {
                 if (!MachineService.armed) { app.requestUnlock(); return }
+                if (needsEmptyBowl()) { app.askEmptyBowl(S.emptyBowlNeeded); return }
                 s.recipeStart()?.let { flash(it) }
             }
         }
+    }
+
+    /** A heating step while the app has no empty-bowl weight: ask for it here instead of refusing to start. */
+    private fun needsEmptyBowl(): Boolean {
+        val step = MachineService.runnerState?.step as? Step.Machine ?: return false
+        val heats = step.segments.any { it.tempC > 0 } || step.mode == Mode.ROAST || step.mode == Mode.STEAM
+        return heats && MachineService.snapshot?.hasEmptyReference == false
     }
 
     private fun flash(m: String) { notice = m; noticeUntil = System.currentTimeMillis() + 5000; render() }
@@ -205,6 +223,8 @@ class CookScreen(app: AppUi) : Screen(app) {
     /** Knob: turn = previous/next step (never while the machine runs), push = Next on non-machine steps. */
     override fun onKnob(keyCode: Int): Boolean {
         val st = MachineService.runnerState ?: return false
+        // a press on a machine step works like the big button: start (unlocked only), or pause while it runs
+        if (keyCode == 23 && (st.phase == RecipeRunner.Phase.RUNNING || st.step is Step.Machine)) { onAction(); return true }
         if (st.phase == RecipeRunner.Phase.RUNNING) return true
         val r = recipe ?: return true
         when (keyCode) {
@@ -230,6 +250,10 @@ class CookScreen(app: AppUi) : Screen(app) {
         val r = recipe
         val st = MachineService.runnerState
         val none = r == null || st == null
+        // the recipe was closed or replaced (from the phone, Home Assistant, Cancel): its ingredients sheet goes too
+        if (ingredients.visibility == View.VISIBLE && r !== sheetFor) {
+            ingredients.animate().cancel(); ingredients.visibility = View.GONE; ingredients.removeAllViews(); sheetFor = null
+        }
         emptyState.visibility = if (none) View.VISIBLE else View.GONE
         if (r == null || st == null) { main.visibility = View.GONE; doneState.visibility = View.GONE; lastPhase = null; return }
         val done = st.phase == RecipeRunner.Phase.DONE
@@ -355,7 +379,7 @@ class CookScreen(app: AppUi) : Screen(app) {
         ring.sub = if (f != null && f.temperatureStepC > 0) S.bowlTemp(f.temperatureStepC) else ""
         ring.setFraction(if (total > 0) (total - left) / total.toFloat() else 0f)
         ring.progress = if (st.phase == RecipeRunner.Phase.RUNNING || st.phase == RecipeRunner.Phase.PAUSED) (total - left) / total.toFloat() else null
-        val enabled = MachinePlan.expand(step).all { it.mode in mcc.machine.SafetyLimits().enabledModes }
+        val enabled = MachinePlan.expand(step).all { app.service?.modeEnabled(it.mode) ?: (it.mode in mcc.machine.SafetyLimits().enabledModes) }
 
         val armed = MachineService.armed
         when {

@@ -144,7 +144,7 @@ class RecipeRunnerTest {
         assertEquals(45_000L, MachinePlan.knead(45_000).sumOf { it.durationMillis })
         assertEquals(listOf(5_000L), MachinePlan.knead(5_000).map { it.durationMillis })
         val roast = MachinePlan.roast(420_000, 130)
-        assertEquals(listOf(1, 0), roast.map { it.speedLevel })
+        assertEquals(List(12) { listOf(1, 0) }.flatten(), roast.map { it.speedLevel }) // stir 5 s, heat 30 s, repeated
         assertEquals(420_000L, roast.sumOf { it.durationMillis })
     }
 

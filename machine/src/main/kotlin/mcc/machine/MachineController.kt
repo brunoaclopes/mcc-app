@@ -115,7 +115,7 @@ class MachineController(
      */
     @Volatile var userEnabledModes: Set<RunMode> = emptySet()
 
-    private fun modeEnabled(m: RunMode) = m in limits.enabledModes || (m in userEnabledModes && m in limits.userEnableableModes)
+    fun modeEnabled(m: RunMode) = m in limits.enabledModes || (m in userEnabledModes && m in limits.userEnableableModes)
 
     fun onBytes(bytes: ByteArray, count: Int, nowMillis: Long) {
         val frames = reader.feed(bytes, count)
@@ -137,17 +137,32 @@ class MachineController(
     fun setEmptyBowlReference(nowMillis: Long): Boolean {
         val f = lastFrame ?: return false
         if (!weightUsable(nowMillis) || !f.scaleStable) return false
-        emptyReferenceGrams = f.weightGrams
+        emptyReferenceGrams = f.weightGrams; lastContentGrams = null
         return true
     }
 
-    fun clearEmptyBowlReference() { emptyReferenceGrams = null }
+    fun clearEmptyBowlReference() { emptyReferenceGrams = null; lastContentGrams = null }
+
+    /** The empty-bowl reading (board grams), for keeping it across an app restart; null when not set. */
+    val emptyReference: Int? get() = emptyReferenceGrams
+
+    /** Puts back a reference saved by this same boot (the board keeps its scale zero while powered). */
+    fun restoreEmptyReference(grams: Int) { emptyReferenceGrams = grams }
 
     fun contentGrams(nowMillis: Long): Int? {
         val ref = emptyReferenceGrams ?: return null
         if (!weightUsable(nowMillis)) return null // board reports 0 g while the motor/heater runs
-        return lastFrame!!.weightGrams - ref
+        return (lastFrame!!.weightGrams - ref).also { lastContentGrams = it }
     }
+
+    /**
+     * The last content reading taken while the scale was usable. A heated start right after a pause, or the next part
+     * of a step, comes while the board still reports "running" and gives no weight; nothing was added or removed in
+     * those seconds, so the reading from just before counts. Lifting the bowl is still seen: the board is idle then.
+     */
+    private var lastContentGrams: Int? = null
+
+    private fun contentForStart(nowMillis: Long): Int? = contentGrams(nowMillis) ?: lastContentGrams?.takeIf { emptyReferenceGrams != null }
 
     /**
      * Zeroes the board scale with the next idle frame. The empty-bowl reference is shifted by the current
@@ -185,7 +200,7 @@ class MachineController(
         if (req.temperatureC > 0) {
             if (req.speedLevel > limits.maxSpeedWithHeat)
                 return reject("heating allows speed <= ${limits.maxSpeedWithHeat}", RejectCode.HEAT_SPEED, limits.maxSpeedWithHeat)
-            val content = contentGrams(nowMillis) ?: return reject("set the empty-bowl reference before heating", RejectCode.NO_REFERENCE)
+            val content = contentForStart(nowMillis) ?: return reject("set the empty-bowl reference before heating", RejectCode.NO_REFERENCE)
             val min = if (req.mode == RunMode.ROAST) limits.minContentForRoastGrams else limits.minContentForHeatGrams
             if (content < min) return reject("only $content g in the bowl; heating needs >= $min g", RejectCode.TOO_LITTLE_CONTENT, min)
         }

@@ -41,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.IconButton
@@ -56,6 +57,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -87,6 +89,8 @@ import mcc.phone.Recipes
 import mcc.recipe.Mode
 import mcc.recipe.Recipe
 import mcc.recipe.RecipeIndex
+import mcc.recipe.Servings
+import mcc.recipe.forPeople
 import mcc.recipe.Step
 
 /** Shared-element scopes for the photo that grows from the card into the recipe page (single-pane only). */
@@ -126,10 +130,10 @@ private fun TimePill(min: Int, modifier: Modifier = Modifier) {
 fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry) -> Unit) {
     val rs by Recipes.state.collectAsState()
     var q by rememberSaveable { mutableStateOf("") }
-    var lang by rememberSaveable { mutableStateOf(P.s.let { if (L.s.code == "en") "en" else "pt" }) }
     var tag by rememberSaveable { mutableStateOf<String?>(null) }
     val S = P.s
-    val inLang = remember(rs.index, lang) { rs.index.visible(lang, L.s.code.takeIf { it == "en" } ?: "pt") }
+    // each recipe once, in the app language (Settings → Language)
+    val inLang = remember(rs.index) { rs.index.visible(L.s.code.takeIf { it == "en" } ?: "pt") }
     val tags = remember(inLang) { inLang.flatMap { it.tags }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(10).map { it.key } }
     val shown = inLang.filter { e ->
         (tag == null || tag in e.tags) && (q.isBlank() || e.title.contains(q.trim(), ignoreCase = true) || e.tags.any { it.contains(q.trim(), true) })
@@ -157,14 +161,12 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                 OutlinedTextField(
                     value = q, onValueChange = { q = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(L.s.searchHint) }, leadingIcon = { McIcon(Icon.SEARCH, Mc.text2, 20.dp) },
+                    trailingIcon = if (q.isNotEmpty()) ({ IconButton(onClick = { q = "" }) { McIcon(Icon.CLOSE, Mc.text2, 18.dp, 2.4f) } }) else null,
                     shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Mc.amber, unfocusedBorderColor = Color.Transparent,
                         focusedContainerColor = Mc.surface, unfocusedContainerColor = Mc.surface.copy(alpha = 0.85f)),
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf("pt" to "PT", "en" to "EN", "all" to L.s.all).forEach { (k, label) ->
-                        FilterChip(selected = lang == k, onClick = { lang = k; tag = null }, label = { Text(label) }, colors = chipColors(), shape = RoundedCornerShape(12.dp))
-                    }
                     tags.forEach { t -> FilterChip(selected = tag == t, onClick = { tag = if (tag == t) null else t }, label = { Text(t) }, colors = chipColors(), shape = RoundedCornerShape(12.dp)) }
                 }
                 rs.warning?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Mc.amber) }
@@ -216,9 +218,9 @@ private fun chipColors() = FilterChipDefaults.filterChipColors(
     selectedContainerColor = Mc.amber, selectedLabelColor = Mc.onAccent, containerColor = Mc.surface.copy(alpha = 0.85f), labelColor = Mc.text2)
 
 /** Sends "open this recipe" to the machine and waits up to 6 s for the machine to report it. */
-private suspend fun openOnMachine(r: Recipe, ui: Ui) {
+private suspend fun openOnMachine(r: Recipe, servings: Int?, ui: Ui) {
     val S = P.s
-    if (!LinkClient.send(Command.Load(r.id))) { ui.say(S.connecting); return }
+    if (!LinkClient.send(Command.Load(r.id, servings))) { ui.say(S.connecting); return }
     val ok = withTimeoutOrNull(6_000) { LinkClient.state.first { it?.recipeId == r.id } } != null
     ui.say(if (ok) S.openedOnMachine else S.notOpened)
 }
@@ -230,7 +232,13 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
     val st by LinkClient.state.collectAsState()
     val haptic = rememberHaptic()
     val recipe by produceState<Result<Recipe>?>(null, e.id) { value = null; value = Recipes.load(e) }
-    val r = recipe?.getOrNull()
+    val raw = recipe?.getOrNull()
+    // how many people: what the machine cooks it for when it is open there, else the choice made here
+    val base = raw?.let { Servings.base(it) }
+    val machinePeople = if (raw != null && st?.recipeId == raw.id) Servings.parse(st?.servings)?.count else null
+    var chosen by remember(e.id) { mutableIntStateOf(Recipes.people[e.id] ?: 0) }
+    val people = machinePeople ?: chosen.takeIf { it > 0 } ?: base?.count
+    val r = remember(raw, people) { raw?.let { if (people != null) it.forPeople(people) else it } }
     // predictive back: the page shrinks and rounds as the back gesture is drawn
     var back by remember { mutableFloatStateOf(0f) }
     if (onBack != null) PredictiveBackHandler { progress ->
@@ -288,6 +296,8 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                                     haptic(false); ui.say(S.addedToList(PhoneApp.app.shopping.add(r.ingredients.flatMap { g -> g.items.map { it.text } }, r.title)))
                                 }.padding(6.dp))
                         }
+                        if (base != null && people != null) ServingsStepper(people, Servings.range(base), r.servings ?: "$people", changed = people != base.count,
+                            locked = machinePeople != null) { n -> haptic(false); chosen = n; Recipes.people[e.id] = n }
                         r.ingredients.forEach { g ->
                             g.group?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = Mc.text, modifier = Modifier.padding(top = 6.dp)) }
                             g.items.forEach {
@@ -317,7 +327,7 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                 .clip(RoundedCornerShape(28.dp)).background(Mc.surface.copy(alpha = 0.94f)).border(1.dp, Mc.stroke, RoundedCornerShape(28.dp)).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         ) {
-            Button(onClick = { haptic(true); ui.scope.launch { openOnMachine(r, ui) } }, enabled = !onMachine && st?.running != true,
+            Button(onClick = { haptic(true); ui.scope.launch { openOnMachine(r, people?.takeIf { base != null && it != base.count }, ui) } }, enabled = !onMachine && st?.running != true,
                 modifier = Modifier.weight(1f).height(54.dp), shape = RoundedCornerShape(22.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) {
                 McIcon(Icon.POT, Mc.onAccent, 18.dp); Spacer(Modifier.width(8.dp)); Text(S.openOnMachine, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -326,6 +336,24 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                 McIcon(Icon.CHEF, Mc.text, 18.dp); Spacer(Modifier.width(6.dp)); Text(S.cookMode.substringBefore(" "), maxLines = 1)
             }
         }
+    }
+}
+
+/** − 6 pessoas +, and a word that amounts changed but times did not. Locked while the machine has the recipe open. */
+@Composable
+private fun ServingsStepper(people: Int, range: IntRange, label: String, changed: Boolean, locked: Boolean, onChange: (Int) -> Unit) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Row(Modifier.clip(RoundedCornerShape(22.dp)).background(Mc.surface3.copy(alpha = 0.6f)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            FilledTonalIconButton(onClick = { onChange(people - 1) }, enabled = !locked && people > range.first, modifier = Modifier.size(40.dp)) {
+                Text("−", style = MaterialTheme.typography.titleLarge)
+            }
+            Text(P.s.servings(label), style = MaterialTheme.typography.titleMedium, color = Mc.text, modifier = Modifier.padding(horizontal = 14.dp))
+            FilledTonalIconButton(onClick = { onChange(people + 1) }, enabled = !locked && people < range.last, modifier = Modifier.size(40.dp)) {
+                Text("+", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+        if (locked) Text(P.s.servingsOnMachine, style = MaterialTheme.typography.bodySmall, color = Mc.text3, modifier = Modifier.padding(top = 6.dp))
+        else if (changed) Text(L.s.scaledNote, style = MaterialTheme.typography.bodySmall, color = Mc.amber, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
@@ -383,7 +411,9 @@ fun StepRow(i: Int, step: Step, current: Int?, last: Boolean = false) {
 fun LoadedRecipePanel(modifier: Modifier, onOpen: (String) -> Unit) {
     val st by LinkClient.state.collectAsState()
     val id = st?.recipeId
-    val r = rememberLoadedRecipe(id)
+    val written = rememberLoadedRecipe(id)
+    val machinePeople = Servings.parse(st?.servings)?.count
+    val r = remember(written, machinePeople) { written?.let { w -> machinePeople?.let { w.forPeople(it) } ?: w } }
     if (id == null || r == null) {
         Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -401,11 +431,12 @@ fun LoadedRecipePanel(modifier: Modifier, onOpen: (String) -> Unit) {
         Row(Modifier.padding(16.dp).clickable { onOpen(r.id) }, verticalAlignment = Alignment.CenterVertically) {
             Cover(r.id, r.title, r.tags, r.image, 200, Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)))
             Spacer(Modifier.width(12.dp))
-            Column {
+            Column(Modifier.weight(1f)) {
                 Label(P.s.machineHere, Mc.teal)
                 Text(r.title, style = MaterialTheme.typography.titleMedium, color = Mc.text, maxLines = 2)
             }
         }
+        CancelRecipeButton(onPhoto = false, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
         LazyColumn(state = list, contentPadding = PaddingValues(bottom = 24.dp)) { itemsIndexed(r.steps) { i, s -> StepRow(i, s, current, i == r.steps.lastIndex) } }
     }
 }

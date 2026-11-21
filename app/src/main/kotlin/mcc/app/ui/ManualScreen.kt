@@ -37,6 +37,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
     private var shownRemote: Boolean? = null
     private var shownTurbo: Boolean? = null
     private var wasRunning = false
+    private var wasPaused = false
     private var shownReverse: Boolean? = null
 
     override val view: View = build()
@@ -203,6 +204,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
         val s = app.service ?: return
         if (running) { s.stop(); return }
         if (!MachineService.armed) { app.requestUnlock(); return }
+        if (MachineService.pausedRun != null) { s.resumeManual()?.let { app.notify(it, Notice.WARN) }; return }
         if (tempLevel > 0 && snap?.hasEmptyReference == false) { app.askEmptyBowl(S.emptyBowlNeeded); return }
         val e = s.startManual(RunRequest(speed, tempC, seconds * 1000L, reverse))
         if (e != null) app.notify(e, Notice.WARN)
@@ -230,7 +232,18 @@ class ManualScreen(app: AppUi) : Screen(app) {
         val f = s?.lastFrame
         val run = s?.running == true
         val req = s?.request
-        if (run && req != null) {
+        val paused = if (run) null else MachineService.pausedRun
+        if (paused != null) {
+            // a paused run: show what it will continue with; PARAR (top right) ends it
+            val p = paused.request
+            timeDial.value = fmtClock(p.durationMillis); timeDial.unit = S.paused.lowercase(S.locale)
+            timeDial.progress = 1f - p.durationMillis / paused.totalMillis.toFloat()
+            speedDial.value = "${p.speedLevel}"; speedDial.unit = if (p.reverse) S.reverse.lowercase(S.locale) else S.speed.lowercase(S.locale)
+            speedDial.setFraction(p.speedLevel / 10f)
+            tempDial.value = if (p.temperatureC == 0) S.off else "${p.temperatureC}"
+            tempDial.unit = if (p.temperatureC == 0) S.noHeat else "°C ${S.target}"
+            dials.forEach { it.interactive = false }
+        } else if (run && req != null) {
             timeDial.value = fmtClock(s.remainingMillis); timeDial.unit = S.remaining
             timeDial.progress = 1f - s.remainingMillis / req.durationMillis.toFloat()
             speedDial.value = "${req.speedLevel}"; speedDial.unit = if (req.reverse) S.reverse.lowercase(S.locale) else S.speed.lowercase(S.locale)
@@ -239,11 +252,12 @@ class ManualScreen(app: AppUi) : Screen(app) {
             tempDial.unit = if (req.temperatureC == 0) S.noHeat else "°C ${S.target}"
             dials.forEach { it.interactive = false }
         } else {
-            if (wasRunning) refreshDials(true)
+            if (wasRunning || wasPaused) refreshDials(true)
             timeDial.progress = null
             dials.forEach { it.interactive = true }
         }
         wasRunning = run
+        wasPaused = paused != null
         val now = f?.temperatureStepC ?: 0
         tempDial.sub = if (f == null) "" else if (now == 0) S.bowlBelow37 else S.bowlTemp(now)
         tempDial.colorA = if (now >= 60) T.EMBER else T.AMBER
@@ -272,6 +286,8 @@ class ManualScreen(app: AppUi) : Screen(app) {
         val armed = MachineService.armed
         when {
             run -> { startBtn.label = S.stop; startBtn.icon = Icon.STOP; startBtn.holdMillis = 0; startBtn.style(T.DANGER, T.DANGER_DEEP); startBtn.isEnabled = true }
+            paused != null && armed -> { startBtn.label = S.continueLabel; startBtn.icon = Icon.PLAY; startBtn.holdMillis = 0; startBtn.style(T.EMBER, T.EMBER_HOT)
+                startBtn.isEnabled = s?.connected == true && f?.lidOpen != true }
             !armed -> { startBtn.label = S.unlock; startBtn.icon = Icon.LOCK; startBtn.holdMillis = 0; startBtn.style(T.SURFACE_3, T.SURFACE_3); startBtn.isEnabled = true }
             else -> {
                 val content = s?.contentGrams
@@ -288,6 +304,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
             f?.lidOpen == true -> S.closeLidToStart
             f?.error != null -> S.machineReports(S.boardError(f.error))
             run -> S.runningAt(s.request?.speedLevel ?: 0)
+            paused != null -> S.manualPausedInfo
             !armed -> S.unlockToStart
             tempLevel > 0 && !s.hasEmptyReference -> S.heatNeedsReference
             tempLevel > 0 && (s.contentGrams ?: 0) < 200 -> S.heatNeedsContent(s.contentGrams ?: 0)

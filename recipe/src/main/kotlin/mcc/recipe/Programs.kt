@@ -11,14 +11,18 @@ object Programs {
     /** Photos ship inside the app (app/src/main/assets/programs/, credits in THIRD-PARTY.md). */
     const val ASSET = "asset:programs/"
     /** Programs without a bundled photo yet: they get a drawn cover. */
-    private val DRAWN = setOf("knead", "brown", "varoma")
+    private val DRAWN = emptySet<String>()
 
     fun all(): List<Recipe> = listOf("en", "pt").flatMap { lang -> defs.map { it(Txt(lang)) } }
 
     /** Cooking programs (shown with the recipes); cleaning is machine care and has its own button. */
     fun cooking(): List<Recipe> = all().filter { !isCleaning(it) }
 
-    fun cleaning(lang: String): Recipe = all().first { isCleaning(it) && it.language == lang }
+    /** The everyday cleaning (Home's Clean button). */
+    fun cleaning(lang: String): Recipe = all().first { it.id == "program-clean-$lang" }
+
+    /** Everyday and intensive cleaning, for the Programs screen. */
+    fun cleanings(lang: String): List<Recipe> = all().filter { isCleaning(it) && it.language == lang }
 
     fun isCleaning(r: Recipe) = r.id.startsWith("program-clean-")
 
@@ -119,16 +123,53 @@ object Programs {
             say(x.t("Lift the Varoma off carefully: the steam is very hot. Open its lid away from you.",
                 "Retire a Varoma com cuidado: o vapor queima. Abra a tampa para longe de si."))) },
         { x -> recipe(x, "clean", x.t("Clean the bowl", "Limpeza do copo"), 8,
-            listOf(x.t("1000 g warm water", "1000 g de água morna"), x.t("1 drop of washing-up liquid", "1 gota de detergente da loiça")),
+            listOf(x.t("1000 g warm water", "1000 g de água morna"), x.t("1 drop of washing-up liquid", "1 gota de detergente da loiça"), x.t("500 g clean water to rinse", "500 g de água limpa para enxaguar")),
             say(x.t("Empty the bowl and scrape off any big leftovers.", "Esvazie o copo e retire os restos maiores.")),
             weigh(x.t("Pour in the warm water and add one drop of washing-up liquid (more makes foam).",
                 "Deite a água morna e junte uma gota de detergente (mais faz espuma)."), 1000),
             say(x.t("Close the lid and put the measuring cup in.", "Feche a tampa e coloque o copo medidor.")),
-            run(x.t("Soak and stir warm.", "Amolecer e mexer a quente."), seg(3.0, 2, 60)),
-            run(x.t("Scrub: short bursts.", "Esfregar: impulsos curtos."), sec(10, 5), sec(5, 2), sec(10, 6), sec(5, 2), sec(10, 5)),
-            say(x.t("Empty the bowl, then rinse it and the lid under the tap. The blade unit can be cleaned with a brush; dry everything.",
-                "Esvazie o copo e passe-o, com a tampa, por água. As lâminas limpam-se com uma escova; seque tudo.")),
-            notes = listOf(x.t("For burnt-on food, repeat with a tablespoon of vinegar instead of the washing-up liquid.",
-                "Para restos queimados, repita com uma colher de sopa de vinagre em vez do detergente."))) },
+            // one step, nothing to do in between: warm soak, then short scrubbing bursts
+            run(x.t("Soak warm (3 min), then scrub with short bursts.", "Amolecer a quente (3 min) e depois esfregar com impulsos curtos."),
+                seg(3.0, 2, 60), sec(10, 5), sec(5, 2), sec(10, 6), sec(5, 2), sec(10, 5)),
+            // rinse, so no washing-up liquid is left on the blade for the next recipe
+            say(x.t("Pour out the soapy water and put the bowl back.", "Despeje a água com detergente e volte a colocar o copo.")),
+            weigh(x.t("Pour in clean water.", "Deite água limpa."), 500),
+            run(x.t("Rinse.", "Enxaguar."), sec(10, 4), sec(10, 6)),
+            say(x.t("Empty the bowl and dry it and the lid. Burnt-on bits on the blade come off with a brush.",
+                "Esvazie o copo e seque-o, com a tampa. Restos agarrados às lâminas saem com uma escova.")),
+            notes = listOf(x.t("For burnt-on food, use the intensive cleaning.",
+                "Para restos queimados, use a limpeza intensiva."))) },
+        { x -> recipe(x, "clean-deep", x.t("Intensive cleaning", "Limpeza intensiva"), 12,
+            listOf(x.t("1000 g hot water", "1000 g de água quente"), x.t("2 tbsp white vinegar", "2 c. de sopa de vinagre branco"),
+                x.t("500 g clean water to rinse", "500 g de água limpa para enxaguar")),
+            say(x.t("Empty the bowl and scrape off what comes away easily.", "Esvazie o copo e retire o que sair com facilidade.")),
+            weigh(x.t("Pour in the hot water and add the vinegar (no washing-up liquid).",
+                "Deite a água quente e junte o vinagre (sem detergente)."), 1000),
+            say(x.t("Close the lid and put the measuring cup in.", "Feche a tampa e coloque o copo medidor.")),
+            // a long hot soak loosens burnt-on food; then the same scrubbing bursts, done twice
+            run(x.t("Soak hot (8 min), then scrub with short bursts.", "Amolecer bem quente (8 min) e depois esfregar com impulsos curtos."),
+                seg(8.0, 2, 80), sec(10, 5), sec(5, 2), sec(10, 6), sec(5, 2), sec(10, 5), sec(5, 2), sec(10, 6), sec(5, 2)),
+            say(x.t("Pour out the water and put the bowl back.", "Despeje a água e volte a colocar o copo.")),
+            weigh(x.t("Pour in clean water.", "Deite água limpa."), 500),
+            run(x.t("Rinse.", "Enxaguar."), sec(10, 4), sec(10, 6)),
+            say(x.t("Empty the bowl and dry it and the lid. Anything still stuck to the blade comes off with a brush.",
+                "Esvazie o copo e seque-o, com a tampa. O que ainda estiver agarrado às lâminas sai com uma escova.")),
+            notes = listOf(x.t("If it is still not clean, run it once more.", "Se ainda não estiver limpo, repita uma vez."))) },
+        { x -> recipe(x, "clean-smell", x.t("Remove smells", "Tirar cheiros"), 16,
+            listOf(x.t("500 g water", "500 g de água"), x.t("1 lemon, quartered (or 2 tbsp white vinegar)", "1 limão em quartos (ou 2 c. de sopa de vinagre branco)"),
+                x.t("500 g clean water to rinse", "500 g de água limpa para enxaguar")),
+            say(x.t("Take the seal out of the lid, wash it with soapy water and put it back: it holds most of the smell.",
+                "Tire o vedante da tampa, lave-o com água e detergente e volte a colocá-lo: é ele que guarda a maior parte do cheiro.")),
+            weigh(x.t("Pour the water into the empty bowl.", "Deite a água no copo vazio."), 500),
+            say(x.t("Add the lemon quarters (or the vinegar), close the lid and put the measuring cup in.",
+                "Junte os quartos de limão (ou o vinagre), feche a tampa e coloque o copo medidor.")),
+            // the steam reaches the lid and its seal, where the smell sits
+            run(x.t("Chop the lemon, then simmer for 10 minutes: the steam freshens the lid and the seal.",
+                "Picar o limão e ferver 10 minutos: o vapor refresca a tampa e o vedante."), sec(5, 5), seg(10.0, 1, 100)),
+            say(x.t("Pour out the lemon water and put the bowl back.", "Despeje a água com limão e volte a colocar o copo.")),
+            weigh(x.t("Pour in clean water.", "Deite água limpa."), 500),
+            run(x.t("Rinse.", "Enxaguar."), sec(10, 4), sec(10, 6)),
+            say(x.t("Empty the bowl and leave it to dry with the lid off: a closed damp bowl keeps smells.",
+                "Esvazie o copo e deixe-o secar sem tampa: um copo húmido e fechado guarda cheiros."))) },
     )
 }

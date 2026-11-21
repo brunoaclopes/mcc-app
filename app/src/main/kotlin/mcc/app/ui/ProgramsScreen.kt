@@ -26,7 +26,7 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
 
     private fun build(): View {
         val lang = app.prefs.uiLanguage
-        list = Programs.cooking().filter { it.language == lang } + Programs.cleaning(lang)
+        list = Programs.cooking().filter { it.language == lang } + Programs.cleanings(lang)
         val page = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(T.dp(16), T.dp(6), T.dp(16), T.dp(16)) }
         scroll = android.widget.ScrollView(c).apply { isVerticalScrollBarEnabled = false; isVerticalFadingEdgeEnabled = true; setFadingEdgeLength(T.dp(24)); addView(page) }
         val cols = 5

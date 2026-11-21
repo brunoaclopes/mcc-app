@@ -308,10 +308,10 @@ class HomeScreen(app: AppUi) : Screen(app) {
             if (cookImageFor != r.id) { cookImageFor = r.id; ImageLoader.load(app.store, r.image, cookImage, T.dp(560)) }
         } else {
             cookTitle.put(S.whatCooking)
-            cookSub.put(S.recipesTapBrowse(app.index?.visible(app.prefs.language, app.prefs.uiLanguage)?.size ?: 0))
+            cookSub.put(S.recipesTapBrowse(app.index?.visible(app.prefs.uiLanguage)?.size ?: 0))
             cookCta.label = S.browseRecipes
             cookLabel.put(S.navRecipes.uppercase(S.locale))
-            val hero = app.index?.visible(app.prefs.language, app.prefs.uiLanguage)?.filter { it.image != null && !it.id.startsWith("program-") }
+            val hero = app.index?.visible(app.prefs.uiLanguage)?.filter { it.image != null && !it.id.startsWith("program-") }
                 ?.let { l -> if (l.isEmpty()) null else l[((System.currentTimeMillis() / 86_400_000L).toInt() and 0x7fffffff) % l.size] }
             if (hero != null && cookImageFor != hero.id) { cookImageFor = hero.id; ImageLoader.load(app.store, hero.image, cookImage, T.dp(560)) }
         }

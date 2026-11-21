@@ -59,6 +59,9 @@ class RunOverlay(private val app: AppUi) {
 
     fun minimise() { minimisedForRun = true; hide() }
 
+    /** Shows the running view again after [minimise] (tap on the status pill). */
+    fun restore() { minimisedForRun = false; render() }
+
     private fun show() {
         if (shown) return
         shown = true

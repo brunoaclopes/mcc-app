@@ -23,6 +23,8 @@ class Notifier(private val c: Context) {
         const val LINK = "link"
         const val ALERTS = "alerts"
         const val LIVE_ID = 1
+        const val ALERT_ID = 10
+        private val OWN_STOPS = setOf("stop_button", "remote_stop", "recipe_cancelled", "user")
         private const val PROMOTED = "android.requestPromotedOngoing" // Notification.EXTRA_REQUEST_PROMOTED_ONGOING (API 36)
     }
 
@@ -47,6 +49,9 @@ class Notifier(private val c: Context) {
         Intent(c, ActionReceiver::class.java).setAction(what), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
     /** The foreground-service notification: live progress while cooking, a quiet status line otherwise. */
+    fun isCooking(st: MachineState?, conn: LinkClient.Conn, available: String?, liveOn: Boolean) =
+        liveOn && st != null && st.running && available != "offline" && conn == LinkClient.Conn.Connected
+
     fun live(st: MachineState?, conn: LinkClient.Conn, available: String?, liveOn: Boolean): Notification {
         val running = st != null && st.running && available != "offline" && conn == LinkClient.Conn.Connected
         if (running && liveOn && android.os.Build.VERSION.SDK_INT >= 36) return liveUpdate(st!!)
@@ -77,6 +82,7 @@ class Notifier(private val c: Context) {
                 .setContentText(statusLine(st, conn, available))
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setShowWhen(false)
+                .setDeleteIntent(action(ActionReceiver.HIDE_IDLE, 3))
         }
         return b.build()
     }
@@ -131,6 +137,8 @@ class Notifier(private val c: Context) {
         conn is LinkClient.Conn.Failed -> S.brokerError(conn.message)
         conn != LinkClient.Conn.Connected -> S.connecting
         available == "offline" || st == null || st.status == Status.DISCONNECTED -> S.machineOffline
+        // "finished" is news and the alert already says it: the quiet status line just says ready
+        st.status == Status.FINISHED -> S.idle
         else -> statusWord(st.status) + (st.recipe?.let { " · $it" } ?: "")
     }
 
@@ -151,7 +159,10 @@ class Notifier(private val c: Context) {
             MachineEvent.NEEDS_YOU -> Triple(S.evNeedsYou, e.text ?: e.step?.let { val (a, z) = it.split("/").map(String::toInt); L.s.stepOf(a, z) } ?: "", p.notifyNeedsYou)
             MachineEvent.WEIGHED -> Triple(S.evWeighed, S.evWeighedText(e.grams), p.notifyWeighed)
             MachineEvent.RUN_DONE -> Triple(S.evRunDone, S.evRunDoneText, p.notifyFinished)
-            MachineEvent.STOPPED -> Triple(S.evStopped, L.s.stopReason(runCatching { mcc.machine.StopReason.valueOf(e.reason!!.uppercase()) }.getOrNull()), p.notifyProblems)
+            // stops people make themselves (PARAR, cancel, the phone's Stop) go to Home Assistant but are no news here
+            MachineEvent.STOPPED -> if (e.reason in OWN_STOPS) return else Triple(S.evStopped,
+                if (e.reason == "pause_expired") S.pauseExpired
+                else L.s.stopReason(runCatching { mcc.machine.StopReason.valueOf(e.reason!!.uppercase()) }.getOrNull()), p.notifyProblems)
             MachineEvent.ERROR -> Triple(S.evError, L.s.boardError(runCatching { mcc.machine.BoardError.valueOf(e.error!!.uppercase()) }.getOrNull()), p.notifyProblems)
             else -> return
         }
@@ -170,7 +181,7 @@ class Notifier(private val c: Context) {
             .setContentIntent(open())
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
-        // one notification per kind: a newer "needs you" replaces the older one
-        nm.notify(10 + MachineEvent.TYPES.indexOf(e.type), n)
+        // one alert at a time: each new event replaces the previous one instead of piling up
+        nm.notify(ALERT_ID, n)
     }
 }

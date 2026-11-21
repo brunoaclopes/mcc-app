@@ -144,7 +144,8 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             Command.Pause -> service.pauseFromRemote()
             Command.Tare -> service.tare()
             Command.Start -> service.remoteStart()
-            is Command.Load -> service.remoteLoad(cmd.recipeId)
+            Command.Cancel -> service.cancelRecipe(remote = true)
+            is Command.Load -> service.remoteLoad(cmd.recipeId, cmd.servings)
             null -> Log.w(MachineService.TAG, "ignored mqtt command '${raw.take(200)}'")
         }
         lastPayload = null
@@ -249,6 +250,7 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             remoteProgram = pm?.label,
             remoteUntil = pm?.let { iso.format(Date(it.untilWall)) },
             recipeId = recipe?.id,
+            servings = recipe?.servings,
             runTotal = total,
             // whole seconds, so the payload only changes once a second
             // while paused the time left stays put (and finish is null)

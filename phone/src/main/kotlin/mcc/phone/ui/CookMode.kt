@@ -35,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,8 @@ import mcc.phone.LinkClient
 import mcc.phone.P
 import mcc.phone.Recipes
 import mcc.recipe.Recipe
+import mcc.recipe.Servings
+import mcc.recipe.forPeople
 import mcc.recipe.Step
 import kotlin.math.absoluteValue
 
@@ -60,13 +63,16 @@ import kotlin.math.absoluteValue
  */
 @Composable
 fun CookMode(recipeId: String, onClose: () -> Unit) {
-    val r by produceState<Recipe?>(null, recipeId) { value = Recipes.byId(recipeId) }
+    val written by produceState<Recipe?>(null, recipeId) { value = Recipes.byId(recipeId) }
     val view = LocalView.current
     DisposableEffect(view) { view.keepScreenOn = true; onDispose { view.keepScreenOn = false } }
     BackHandler { onClose() }
     val S = P.s
     val haptic = rememberHaptic()
     val st by LinkClient.state.collectAsState()
+    // the amounts for as many people as the machine cooks it for, or as chosen on the recipe page
+    val people = if (st?.recipeId == recipeId) Servings.parse(st?.servings)?.count else Recipes.people[recipeId]
+    val r = remember(written, people) { written?.let { w -> people?.let { w.forPeople(it) } ?: w } }
 
     Box(Modifier.fillMaxSize()) {
         Ambient(if (st?.recipeId == recipeId && st?.running == true) mood(st, true) else Mc.amber)

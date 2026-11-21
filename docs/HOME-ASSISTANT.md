@@ -35,7 +35,7 @@ when the run starts (lid, content for heating, speed, time).
 | `mcc/state` | machine → HA | yes | JSON state (below), sent on change, at most every 0.5 s, and at least every 60 s |
 | `mcc/availability` | machine → HA | yes | `online` / `offline` (offline is the MQTT last will) |
 | `mcc/event` | machine → HA | no | one-off events (below), JSON with `event_type` |
-| `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare` or `start`, as a bare word or `{"command": "stop"}` |
+| `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare`, `cancel` or `start`, as a bare word or `{"command": "stop"}` |
 
 ## State payload
 
@@ -76,6 +76,7 @@ when the run starts (lid, content for heating, speed, time).
 | `remote_start` | `ready` while a remote-start permit is valid, else `off` |
 | `remote_program`, `remote_until` | what was permitted (text) and when the permit ends (UTC), or `null` |
 | `recipe_id` | id of the loaded recipe, or `null` (the phone app uses it to show the recipe) |
+| `servings` | who the loaded recipe is cooked for, as the recipe words it (`"6 portions"`); its amounts are already scaled to it. `null` without a recipe |
 | `run_total`, `run_left` | length and seconds left of the running machine step or manual run, or `null` when nothing runs |
 
 The payload is `MachineState` in `link/src/main/kotlin/mcc/link/Link.kt`, the same class the phone app reads.
@@ -117,6 +118,7 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `pause` | button | publishes `pause` |
 | `stop` | button | publishes `stop` |
 | `tare` | button | publishes `tare` (named "Tare scale") |
+| `cancel` | button | publishes `cancel` (named "Cancel recipe") |
 
 `error` is a diagnostic entity. The payload is built by `Discovery.config()` in `link/src/main/kotlin/mcc/link/Discovery.kt`;
 `./gradlew :link:test` writes it to `link/build/discovery.json`.
@@ -129,6 +131,8 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `pause` | pauses a recipe step or a manual run (turbo just stops): `status` becomes `paused`, `run_left` keeps the time left and `finish` is `null`. Resume at the machine (Continue; the controls must be unlocked) or permit Home Assistant to continue it (Remote on the paused card, then **Start**). A paused manual run is dropped after an hour (`stopped`, reason `pause_expired`) |
 | `tare` | tares the scale |
 | `start` | starts the run permitted at the machine (see Remote start); ignored without a valid permit |
+| `cancel` | closes the loaded recipe; stops the machine first if a step runs. Works while the controls are locked, like `stop` |
+| `{"command":"load","recipe":"<id>","servings":6}` | `servings` is optional (1–99): scales the amounts for that many people; times and temperatures stay as written |
 | `{"command":"load","recipe":"<id>"}` | opens that recipe on the machine's Cook screen, ready to cook; **never starts it**. Refused while the machine runs or another recipe is under way, or when *Recipes from the phone* is off on the machine |
 
 Anything else is ignored and logged.
@@ -145,7 +149,7 @@ where things are). Every event has `event_type` and `at` (UTC time).
 | `needs_you` | a machine step ends and the recipe moved on (the next step always waits for someone) | `recipe`, `step` (`3/7`), `text` |
 | `weighed` | the ingredient of a weigh step reaches its amount | `recipe`, `grams` |
 | `run_done` | a manual run (not a recipe step) ends on time | |
-| `stopped` | a run ended before its time: `stop_button` (STOP at the machine), `remote_stop` (Home Assistant or the phone), `pause_expired`, `lid_opened`, `comm_lost`, `max_runtime`, `board_error`. Turbo (hold to run) never sends it | `reason`, `recipe` |
+| `stopped` | a run ended before its time: `stop_button` (STOP at the machine), `remote_stop` (Home Assistant or the phone), `recipe_cancelled` (a recipe under way was cancelled), `pause_expired`, `lid_opened`, `comm_lost`, `max_runtime`, `board_error`. Turbo (hold to run) never sends it | `reason`, `recipe` |
 | `paused` | a recipe step or manual run paused with its time kept: `reason` = `remote`, `machine`, `stop_button` / `remote_stop` (STOP during a recipe step pauses it) | `reason`, `recipe`, `step` |
 | `error` | the board reports an error | `error`, `recipe` |
 

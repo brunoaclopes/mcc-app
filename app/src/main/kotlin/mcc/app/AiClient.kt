@@ -69,7 +69,8 @@ class AiClient(private val prefs: Prefs) {
             .replace(Regex("\\p{M}+"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "recipe" }
         val fixed = JsonObject(obj + mapOf(
             "format" to JsonPrimitive(Recipe.FORMAT),
-            "id" to JsonPrimitive("my-$slug-${System.currentTimeMillis() / 1000 % 100000}"),
+            // -pt / -en: the translated copy gets the same id with the other ending, so the list shows one of them
+            "id" to JsonPrimitive("my-$slug-${System.currentTimeMillis() / 1000 % 100000}-$lang"),
             "language" to JsonPrimitive(lang),
             "image" to JsonPrimitive(photo), // the page's own photo (cached on first view), or none
             "source" to buildJsonObject {
@@ -80,6 +81,66 @@ class AiClient(private val prefs: Prefs) {
         val r = Recipe.parse(fixed.toString())
         val fit = RecipeFit.fit(r, if (prefs.specialModes) RecipeFit.SPECIAL else emptySet())
         return Import(fit.recipe, fit.changes)
+    }
+
+    /**
+     * The same recipe in [to] ("pt" or "en"). Only the words go to the AI; steps, grams, times and temperatures are
+     * copied from [r], so a translation can never change what the machine does.
+     */
+    fun translate(r: Recipe, to: String): Recipe {
+        val texts = buildJsonObject {
+            put("title", r.title); r.servings?.let { put("servings", it) }
+            put("tags", JsonArray(r.tags.map { JsonPrimitive(it) }))
+            put("ingredients", JsonArray(r.ingredients.map { g -> buildJsonObject {
+                g.group?.let { put("group", it) }; put("items", JsonArray(g.items.map { JsonPrimitive(it.text) }))
+            } }))
+            put("steps", JsonArray(r.steps.map { JsonPrimitive(it.text) }))
+            put("notes", JsonArray(r.notes.map { JsonPrimitive(it) }))
+        }
+        val target = if (to == "pt") "European Portuguese (pt-PT, as used in Portugal: \"frigorífico\", \"natas\", \"c. de sopa\")" else "British English"
+        val messages = mutableListOf(
+            msg("system", "You translate recipes. Reply with one JSON object of exactly the same shape and the same number of " +
+                "items in every list, every string translated to $target. Keep numbers and units as they are. Translate tags as a " +
+                "cookbook would. Empty strings stay empty."),
+            msg("user", texts.toString()),
+        )
+        var last: String? = null
+        repeat(2) { attempt ->
+            val reply = chat(messages)
+            try {
+                return applyTexts(r, reply, to)
+            } catch (e: AiException) { throw e } catch (e: Exception) { last = e.message ?: "invalid" }
+            if (attempt == 0) { messages += msg("assistant", reply); messages += msg("user", "Rejected: $last\nReply with the corrected JSON object only.") }
+        }
+        throw AiException("the translation was not valid: $last")
+    }
+
+    private fun applyTexts(r: Recipe, reply: String, to: String): Recipe {
+        val o = json.parseToJsonElement(reply.substring(reply.indexOf('{'), reply.lastIndexOf('}') + 1)).jsonObject
+        fun str(k: String) = o[k]?.jsonPrimitive?.content
+        fun list(e: kotlinx.serialization.json.JsonElement?) = (e as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty()
+        val groups = (o["ingredients"] as? JsonArray).orEmpty()
+        val steps = list(o["steps"]); val notes = list(o["notes"])
+        require(groups.size == r.ingredients.size) { "ingredients must have ${r.ingredients.size} groups" }
+        require(steps.size == r.steps.size) { "steps must have ${r.steps.size} items" }
+        require(notes.size == r.notes.size) { "notes must have ${r.notes.size} items" }
+        val ingredients = r.ingredients.mapIndexed { i, g ->
+            val t = groups[i].jsonObject; val items = list(t["items"])
+            require(items.size == g.items.size) { "ingredient group ${i + 1} must have ${g.items.size} items" }
+            g.copy(group = g.group?.let { t["group"]?.jsonPrimitive?.content ?: it }, items = items.map { mcc.recipe.Ingredient(it) })
+        }
+        val out = r.copy(
+            id = r.id.replace(Regex("-(pt|en)$"), "") + "-$to", language = to,
+            title = str("title")?.takeIf { it.isNotBlank() } ?: r.title, servings = r.servings?.let { str("servings") ?: it },
+            tags = list(o["tags"]).ifEmpty { r.tags }, ingredients = ingredients, notes = notes,
+            steps = r.steps.mapIndexed { i, s -> when (s) {
+                is mcc.recipe.Step.Instruction -> s.copy(text = steps[i])
+                is mcc.recipe.Step.Weigh -> s.copy(text = steps[i])
+                is mcc.recipe.Step.Machine -> s.copy(text = steps[i])
+            } },
+        )
+        require(out.validate().isEmpty()) { out.validate().joinToString("; ") }
+        return out
     }
 
     private fun msg(role: String, content: String) = buildJsonObject { put("role", role); put("content", content) }

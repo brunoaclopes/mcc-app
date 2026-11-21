@@ -239,6 +239,9 @@ class MainActivity : Activity(), AppUi {
         linkDot = Dot(this); link.addView(linkDot, LinearLayout.LayoutParams(T.dp(14), T.dp(14)))
         linkText = T.text(this, "", 14f, T.TEXT, T.bold).apply { setPadding(T.dp(8), 0, 0, 0) }
         link.addView(linkText); bar.addView(link, lp())
+        // while something runs, the status pill brings back the big running view after it was minimised
+        link.background = T.pressable(link.background)
+        link.setOnClickListener { if (MachineService.snapshot?.running == true) runOverlay.restore() }
 
         lidChip = chip()
         lidIcon = IconView(this, Icon.LID, T.TEXT_2); lidChip.addView(lidIcon, LinearLayout.LayoutParams(T.dp(20), T.dp(20)))
@@ -348,7 +351,8 @@ class MainActivity : Activity(), AppUi {
         lidText.put(if (lid == null) "—" else if (lid) S.lidShortOpen else S.lidShortClosed)
         lidIcon.set(Icon.LID, if (lid == true) T.AMBER else T.TEXT_2)
         lidText.setTextColor(if (lid == true) T.AMBER else T.TEXT)
-        if (lid == true && lastLid == false) Anim.shake(lidChip)
+        if (lid == true && lastLid == false) { Anim.shake(lidChip); play(Sounds.Cue.LID_OPEN) }
+        if (lid == false && lastLid == true) play(Sounds.Cue.LID_CLOSED)
         lastLid = lid
         val g = MachineService.displayGrams
         if (g != shownWeight) {
@@ -466,7 +470,6 @@ class MainActivity : Activity(), AppUi {
     override fun setLanguage(code: String) {
         if (code == prefs.uiLanguage) return
         prefs.uiLanguage = code
-        prefs.language = code
         L.set(code)
         rebuild()
     }
@@ -517,14 +520,14 @@ class MainActivity : Activity(), AppUi {
     }
 
     /** Modal confirmation. The scrim starts below the top bar, so STOP is never dimmed or blocked. */
-    override fun confirm(title: String, msg: String, ok: String, danger: Boolean, onOk: () -> Unit) =
-        dialog(title, msg, ok, danger, null) { onOk() }.let {}
+    override fun confirm(title: String, msg: String, ok: String, danger: Boolean, dismiss: String?, onOk: () -> Unit) =
+        dialog(title, msg, ok, danger, null, dismiss) { onOk() }.let {}
 
     override fun ask(title: String, msg: String, hint: String, ok: String, onOk: (String) -> Unit) =
-        dialog(title, msg, ok, false, hint, onOk).let {}
+        dialog(title, msg, ok, false, hint, onOk = onOk).let {}
 
     /** Returns the message view, so a caller can update it (the standby countdown). */
-    private fun dialog(title: String, msg: String, ok: String, danger: Boolean, inputHint: String?, onOk: (String) -> Unit): TextView {
+    private fun dialog(title: String, msg: String, ok: String, danger: Boolean, inputHint: String?, dismiss: String? = null, onOk: (String) -> Unit): TextView {
         val scrim = FrameLayout(this).apply { setBackgroundColor(T.SCRIM); isClickable = true; alpha = 0f }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; background = T.glass(24, strong = true)
@@ -550,7 +553,7 @@ class MainActivity : Activity(), AppUi {
             card.animate().scaleX(0.96f).scaleY(0.96f).setDuration(140).start()
             scrim.animate().alpha(0f).setDuration(150).withEndAction { root.removeView(scrim) }.start()
         }
-        buttons.addView(HoldButton(this).apply { label = S.cancel; icon = null; holdMillis = 0; style(T.SURFACE_3, T.SURFACE_3); onConfirm = { close() } },
+        buttons.addView(HoldButton(this).apply { label = dismiss ?: S.cancel; icon = null; holdMillis = 0; style(T.SURFACE_3, T.SURFACE_3); onConfirm = { close() } },
             LinearLayout.LayoutParams(T.dp(150), T.dp(56)))
         buttons.addView(HoldButton(this).apply {
             label = ok; icon = null; holdMillis = 0
@@ -586,7 +589,19 @@ class MainActivity : Activity(), AppUi {
     private var standbyAt = 0L
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean { lastUse = SystemClock.elapsedRealtime(); lastTouch = lastUse; return super.dispatchTouchEvent(ev) }
-    override fun dispatchKeyEvent(ev: KeyEvent): Boolean { lastUse = SystemClock.elapsedRealtime(); lastTouch = lastUse; return super.dispatchKeyEvent(ev) }
+    override fun dispatchKeyEvent(ev: KeyEvent): Boolean {
+        lastUse = SystemClock.elapsedRealtime(); lastTouch = lastUse
+        // the wheel goes to our screens before any focused view: otherwise a focused field or button swallows the press
+        // the wheel: turning sends F6/F7 (136/137), pressing sends F5 (135, seen with getevent); 23 kept for adb tests
+        if (ev.keyCode == 135 || ev.keyCode == 136 || ev.keyCode == 137 || ev.keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+            if (closeDialog == null) {
+                val code = if (ev.keyCode == 135) KeyEvent.KEYCODE_DPAD_CENTER else ev.keyCode
+                if (ev.action == KeyEvent.ACTION_DOWN) onKeyDown(code, ev)
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(ev)
+    }
 
     /** After [Prefs.standbyMinutes] without use and with nothing running: a 30 s countdown, then screen off and controls locked. */
     private fun standbyTick() {
@@ -664,8 +679,17 @@ class MainActivity : Activity(), AppUi {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == 136 || keyCode == 137 || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
-            if (runOverlay.isShown()) return true // the knob never acts behind the running view
-            if (keyCode != KeyEvent.KEYCODE_DPAD_CENTER) play(Sounds.Cue.KNOB) // a soft detent click per step
+            val press = keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+            if (event?.repeatCount ?: 0 > 0) return true // holding the wheel down is one press
+            play(if (press) Sounds.Cue.TAP else Sounds.Cue.KNOB) // a soft detent click per step, a tap per press
+            if (runOverlay.isShown()) {
+                // over the running view a press pauses (it only ever stops things); turning does nothing
+                if (press) {
+                    val s = service
+                    if (MachineService.runnerState?.phase == RecipeRunner.Phase.RUNNING) s?.recipePause() else s?.pauseManual("knob")
+                }
+                return true
+            }
             if (screens[current]?.onKnob(keyCode) == true) return true
         }
         return super.onKeyDown(keyCode, event)
