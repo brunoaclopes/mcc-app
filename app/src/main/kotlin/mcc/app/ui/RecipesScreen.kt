@@ -22,7 +22,9 @@ import android.widget.ScrollView
 import android.widget.TextView
 import mcc.recipe.Recipe
 import mcc.recipe.RecipeIndex
+import mcc.recipe.Servings
 import mcc.recipe.Step
+import mcc.recipe.forPeople
 
 class RecipesScreen(app: AppUi) : Screen(app) {
     override val title get() = S.recipesTitle
@@ -33,10 +35,13 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     /** The selected tag chip (null = all). Not called "tag": inside a View.apply block that name means View.tag. */
     private var selectedTag: String? = null
     private var warning: String? = null
+    /** The open recipe as it will be cooked, scaled to [people]. */
     private var detailRecipe: Recipe? = null
+    private var people = 0
+    private var onPeople: ((Int) -> Unit)? = null
 
     private lateinit var search: EditText
-    private lateinit var langRow: LinearLayout
+    private val clear by lazy { FrameLayout(c) }
     private lateinit var tagRow: LinearLayout
     private lateinit var grid: GridView
     private lateinit var empty: TextView
@@ -60,21 +65,20 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             typeface = T.semibold; background = null; isSingleLine = true; imeOptions = EditorInfo.IME_ACTION_SEARCH
             setPadding(T.dp(10), 0, 0, 0)
             addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) = filter(animate = false)
+                override fun afterTextChanged(s: Editable?) { clear.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE; filter(animate = false) }
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             })
         }
         box.addView(search, LinearLayout.LayoutParams(0, -1, 1f))
-        top.addView(box, LinearLayout.LayoutParams(0, T.dp(52), 1f))
-        langRow = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; background = T.glass(26); setPadding(T.dp(4), T.dp(4), T.dp(4), T.dp(4)) }
-        for (l in listOf("pt", "en", "all")) {
-            langRow.addView(T.text(c, if (l == "all") S.all else l.uppercase(), 14f, T.TEXT_2, T.heavy).apply {
-                gravity = Gravity.CENTER; tag = l; setPadding(T.dp(14), 0, T.dp(14), 0)
-                setOnClickListener { app.prefs.language = l; buildTags(); filter() }
-            }, LinearLayout.LayoutParams(-2, -1))
+        clear.apply {
+            background = T.pressable(T.round(T.ink(0x1A), 18)); visibility = View.GONE
+            addView(IconView(c, Icon.CLOSE, T.TEXT_2, 2.4f), FrameLayout.LayoutParams(T.dp(16), T.dp(16), Gravity.CENTER))
+            setOnClickListener { search.setText("") }
+            T.press(this)
         }
-        top.addView(langRow, LinearLayout.LayoutParams(-2, T.dp(52)).apply { leftMargin = T.dp(10) })
+        box.addView(clear, LinearLayout.LayoutParams(T.dp(36), T.dp(36)).apply { leftMargin = T.dp(6) })
+        top.addView(box, LinearLayout.LayoutParams(0, T.dp(52), 1f))
         val refresh = FrameLayout(c).apply { background = T.pressable(T.glass(26)); setOnClickListener { app.reloadIndex(true); app.notify(S.syncing) } }
         refresh.addView(IconView(c, Icon.REFRESH, T.TEXT_2), FrameLayout.LayoutParams(T.dp(22), T.dp(22), Gravity.CENTER))
         T.press(refresh)
@@ -110,7 +114,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         page.addView(grid, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(page)
         empty = T.text(c, "", 18f, T.TEXT_2, T.semibold).apply { gravity = Gravity.CENTER; visibility = View.GONE; setLineSpacing(0f, 1.3f)
-            setOnClickListener { if (app.index != null) { selectedTag = null; app.prefs.language = "all"; search.setText(""); styleTags(); filter() } } }
+            setOnClickListener { if (app.index != null) { selectedTag = null; search.setText(""); styleTags(); filter() } } }
         root.addView(empty, FrameLayout.LayoutParams(-1, -1))
         detail = FrameLayout(c).apply { visibility = View.GONE; isClickable = true }
         detail.background = BackdropSlice(detail)
@@ -127,9 +131,8 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     private fun buildTags() {
         tagRow.removeAllViews()
         val idx = app.index ?: return
-        val lang = app.prefs.language
         val counts = HashMap<String, Int>()
-        idx.visible(lang, app.prefs.uiLanguage).forEach { e -> e.tags.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
+        idx.visible(app.prefs.uiLanguage).forEach { e -> e.tags.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
         // programs and the user's own recipes always come first
         val pinned = listOf(S.tagMine, mcc.recipe.Programs.TAG_PT, mcc.recipe.Programs.TAG_EN).filter { it in counts }
         val tags = listOf<String?>(null) + pinned + counts.entries.filter { it.key !in pinned }.sortedByDescending { it.value }.take(14 - pinned.size).map { it.key }
@@ -155,16 +158,9 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     }
 
     private fun filter(animate: Boolean = true) {
-        val lang = app.prefs.language
-        for (i in 0 until langRow.childCount) {
-            val v = langRow.getChildAt(i) as TextView
-            val sel = v.tag == lang
-            v.background = if (sel) T.round(T.ink(0x33), 22) else null
-            v.setTextColor(if (sel) T.TEXT else T.TEXT_3)
-        }
         val q = search.text.toString().trim().lowercase()
         shown.clear()
-        app.index?.visible(lang, app.prefs.uiLanguage)?.filter { e ->
+        app.index?.visible(app.prefs.uiLanguage)?.filter { e ->
             (selectedTag == null || selectedTag in e.tags) &&
                 (q.isEmpty() || e.title.lowercase().contains(q) || e.tags.any { it.lowercase().contains(q) })
         }?.let { shown.addAll(it) }
@@ -189,7 +185,10 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     override fun onKnob(keyCode: Int): Boolean {
         val inDetail = detail.visibility == View.VISIBLE
         when (keyCode) {
-            136, 137 -> if (!inDetail && shown.isNotEmpty()) {
+            136, 137 -> if (inDetail) {
+                // in a recipe the knob picks how many people it is for
+                onPeople?.invoke(people + if (keyCode == 136) 1 else -1)
+            } else if (shown.isNotEmpty()) {
                 // turning moves a highlight card by card; a press opens it
                 knobPos = (knobPos + if (keyCode == 136) 1 else -1).coerceIn(0, shown.lastIndex)
                 grid.smoothScrollToPosition(knobPos)
@@ -258,6 +257,8 @@ class RecipesScreen(app: AppUi) : Screen(app) {
 
     private fun showDetail(e: RecipeIndex.Entry, r: Recipe) {
         detailRecipe = r
+        val base = Servings.base(r)
+        people = base?.count ?: 0
         detail.removeAllViews()
         val row = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; setPadding(T.dp(16), T.dp(4), T.dp(16), T.dp(16)) }
 
@@ -275,7 +276,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         val machineSteps = r.steps.count { it is Step.Machine }
         listOfNotNull(
             r.totalMinutes?.let { Icon.CLOCK to S.minutesShort(it) },
-            r.servings?.let { Icon.CHEF to it },
+            r.servings?.takeIf { base == null }?.let { Icon.CHEF to it },
             r.nutritionPerServing?.kcal?.let { Icon.FLAME to S.kcal(it) },
             Icon.DIAL to S.machineSteps(machineSteps),
         ).forEach { (ic, t) -> meta.addView(metaChip(ic, t), LinearLayout.LayoutParams(-2, T.dp(34)).apply { rightMargin = T.dp(8) }) }
@@ -284,13 +285,51 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         row.addView(hero, LinearLayout.LayoutParams(0, -1, 1.1f))
 
         val right = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(T.dp(22), T.dp(6), 0, 0) }
-        right.addView(T.text(c, S.ingredientsFor(r), 21f, T.TEXT, T.heavy))
+        val head = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(T.text(c, S.ingredientsFor(r), 21f, T.TEXT, T.heavy), LinearLayout.LayoutParams(0, -2, 1f))
+        right.addView(head, LinearLayout.LayoutParams(-1, T.dp(52)))
+        val scaledNote = T.text(c, S.scaledNote, 13f, T.AMBER, T.semibold).apply { setPadding(0, T.dp(4), 0, 0); visibility = View.GONE }
+        right.addView(scaledNote)
         val list = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(0, T.dp(8), 0, T.dp(8)) }
-        fillIngredients(list, r)
-        if (r.notes.isNotEmpty()) list.addView(T.text(c, "${S.notesFor(r)}: " + r.notes.joinToString("; "), 13f, T.TEXT_3).apply { setPadding(0, T.dp(14), 0, 0) })
+        fun fill(rr: Recipe) {
+            list.removeAllViews()
+            fillIngredients(list, rr)
+            if (rr.notes.isNotEmpty()) list.addView(T.text(c, "${S.notesFor(rr)}: " + rr.notes.joinToString("; "), 13f, T.TEXT_3).apply { setPadding(0, T.dp(14), 0, 0) })
+        }
+        fill(r)
+        if (base != null) {
+            val range = Servings.range(base)
+            val label = T.text(c, "", 16f, T.TEXT, T.heavy).apply { gravity = Gravity.CENTER; maxLines = 1 }
+            fun stepBtn(sign: String, d: Int) = FrameLayout(c).apply {
+                background = T.pressable(T.round(T.ink(0x1A), 22))
+                addView(T.text(c, sign, 24f, T.TEXT, T.heavy).apply { gravity = Gravity.CENTER; includeFontPadding = false }, FrameLayout.LayoutParams(-1, -1))
+                setOnClickListener { onPeople?.invoke(people + d) }
+                T.press(this)
+            }
+            val minus = stepBtn("−", -1); val plus = stepBtn("+", 1)
+            val pill = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; background = T.glass(26); setPadding(T.dp(4), T.dp(4), T.dp(4), T.dp(4)) }
+            pill.addView(minus, LinearLayout.LayoutParams(T.dp(44), T.dp(44)))
+            pill.addView(label, LinearLayout.LayoutParams(-2, -1).apply { leftMargin = T.dp(12); rightMargin = T.dp(12) })
+            pill.addView(plus, LinearLayout.LayoutParams(T.dp(44), T.dp(44)))
+            head.addView(pill, LinearLayout.LayoutParams(-2, T.dp(52)))
+            onPeople = { n ->
+                val v = n.coerceIn(range.first, range.last)
+                if (v != people || label.text.isEmpty()) {
+                    people = v
+                    val rr = r.forPeople(v)
+                    detailRecipe = rr
+                    label.text = rr.servings
+                    minus.alpha = if (v > range.first) 1f else 0.35f
+                    plus.alpha = if (v < range.last) 1f else 0.35f
+                    scaledNote.visibility = if (v != base.count) View.VISIBLE else View.GONE
+                    fill(rr)
+                }
+            }
+            onPeople?.invoke(base.count)
+        } else onPeople = null
         right.addView(ScrollView(c).apply { isVerticalScrollBarEnabled = false; isVerticalFadingEdgeEnabled = true; setFadingEdgeLength(T.dp(24)); addView(list) },
             LinearLayout.LayoutParams(-1, 0, 1f))
-        right.addView(HoldButton(c).apply { label = S.startFor(r); icon = Icon.NEXT; holdMillis = 0; style(T.AMBER, T.EMBER); onConfirm = { app.cook(r) } },
+        right.addView(HoldButton(c).apply { label = S.startFor(r); icon = Icon.NEXT; holdMillis = 0; style(T.AMBER, T.EMBER); onConfirm = { app.cook(detailRecipe ?: r) } },
             LinearLayout.LayoutParams(-1, T.dp(64)).apply { topMargin = T.dp(10) })
         right.addView(T.text(c, S.nothingMoves, 13f, T.TEXT_2, T.semibold).apply { gravity = Gravity.CENTER; setPadding(0, T.dp(8), 0, 0) })
         if (app.store.isMine(e)) {
@@ -334,15 +373,20 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         app.ask(S.aiImport, S.aiImportBody, S.aiImportHint, S.aiImportGo) { input ->
             app.notify(S.aiWorking)
             aiStarted = android.os.SystemClock.elapsedRealtime(); aiTick.run()
-            val lang = app.prefs.language.takeIf { it != "all" } ?: app.prefs.uiLanguage
+            val lang = app.prefs.uiLanguage
             Thread {
                 val res = runCatching { ai.importRecipe(input, lang) }
+                // and the other language straight away, so it shows whichever language the machine is set to
+                val other = if (lang == "pt") "en" else "pt"
+                val translated = res.getOrNull()?.let { imp -> runCatching { ai.translate(imp.recipe, other) } }
                 view.post {
                     aiStarted = 0L; aiTick.run()
                     res.fold(onSuccess = { imp ->
                         val saved = app.store.saveMine(imp.recipe)
+                        translated?.getOrNull()?.let { app.store.saveMine(it) }
                         app.reloadIndex(false)
-                        app.notify(S.aiDone(saved.title) + if (imp.changes.isEmpty()) "" else " · " + S.aiChanges(imp.changes.size), Notice.OK)
+                        app.notify(S.aiDone(saved.title) + (if (imp.changes.isEmpty()) "" else " · " + S.aiChanges(imp.changes.size)) +
+                            (if (translated?.isSuccess == true) "" else " · " + S.aiNoTranslation), if (translated?.isSuccess == true) Notice.OK else Notice.WARN)
                         showDetail(RecipeIndex.Entry(saved.id, saved.title, saved.language, saved.tags, saved.totalMinutes, null, "mine/${saved.id}.json"), saved)
                     }, onFailure = { app.notify(S.aiFailed(it.message ?: it.javaClass.simpleName), Notice.ERROR) })
                 }
@@ -351,7 +395,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     }
 
     private fun closeDetail() {
-        detailRecipe = null
+        detailRecipe = null; onPeople = null
         detail.animate().alpha(0f).scaleX(0.97f).scaleY(0.97f).setDuration(180).withEndAction { detail.visibility = View.GONE }.start()
     }
 

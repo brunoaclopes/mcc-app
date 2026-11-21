@@ -71,6 +71,20 @@ class MachineControllerTest {
         assertEquals(TxCommand(WorkCommand.RUN, 1, 3), decode(c.tick(60)))
     }
 
+    @Test fun heatedRestartWhileBoardStillReportsRunning() {
+        val c = controller()
+        c.feed(rx(weight = 2130), 0)
+        assertTrue(c.setEmptyBowlReference(10))
+        c.feed(rx(weight = 2650), 20) // 520 g of water
+        assertIs<StartResult.Started>(c.start(RunRequest(1, 100, 60_000), 30))
+        c.stop(40) // pause
+        c.feed(rx(running = true), 50) // the board still says running for a moment: no weight
+        assertIs<StartResult.Started>(c.start(RunRequest(0, 100, 60_000), 60), "resume uses the reading from just before")
+        c.stop(70)
+        c.feed(rx(weight = 2130), 80) // bowl emptied: idle frames show it
+        assertIs<StartResult.Rejected>(c.start(RunRequest(1, 100, 60_000), 90))
+    }
+
     @Test fun speedLimitsWithHeatAndReverse() {
         val c = controller()
         c.feed(rx(weight = 0), 0); c.setEmptyBowlReference(0); c.feed(rx(weight = 600), 10)

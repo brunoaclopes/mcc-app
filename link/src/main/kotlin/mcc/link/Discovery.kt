@@ -112,6 +112,7 @@ object Discovery {
                 cmp("start", "button", "Start (permitted run)") { put("command_topic", Topics.CMD); put("payload_press", "start"); put("icon", "mdi:play-circle") }
                 cmp("pause", "button", "Pause") { put("command_topic", Topics.CMD); put("payload_press", "pause"); put("icon", "mdi:pause-circle") }
                 cmp("stop", "button", "Stop") { put("command_topic", Topics.CMD); put("payload_press", "stop"); put("icon", "mdi:stop-circle") }
+                cmp("cancel", "button", "Cancel recipe") { put("command_topic", Topics.CMD); put("payload_press", "cancel"); put("icon", "mdi:close-circle") }
                 cmp("tare", "button", "Tare scale") { put("command_topic", Topics.CMD); put("payload_press", "tare"); put("icon", "mdi:scale-balance") }
             }
             put("qos", 1)

@@ -16,7 +16,8 @@ object MachinePlan {
         Mode.TURBO -> step.segments.map { RunRequest(TURBO_SPEED, 0, it.seconds * 1000L, false, RunMode.TURBO) }
         Mode.KNEAD -> step.segments.flatMap { knead(it.seconds * 1000L) }
         Mode.ROAST -> step.segments.flatMap { roast(it.seconds * 1000L, if (it.tempC > 0) it.tempC else 130) }
-        Mode.STEAM -> step.segments.map { RunRequest(1, STEAM_TEMP_C, it.seconds * 1000L, false, RunMode.STEAM) }
+        // stock Varoma preset: speed 1 in reverse (MachineConfiguration(3, 1, 1, 17)), the blunt side keeps the water moving
+        Mode.STEAM -> step.segments.map { RunRequest(1, STEAM_TEMP_C, it.seconds * 1000L, true, RunMode.STEAM) }
     }
 
     /** Stock kneading: 15 s reverse at speed 4, a rest (T-85 s, at least 1 s), then forward for the rest of T. */
@@ -31,13 +32,19 @@ object MachinePlan {
         ).filter { it.durationMillis > 0 }
     }
 
-    /** Stock roasting: 5 s stirring at speed 1, then heat without stirring. */
+    /**
+     * Stock roasting: a 35 s cycle repeated for the whole time, 5 s stirring at speed 1 then 30 s heating with the blade
+     * still (mc2 Presets.roastingCookingUnit; CookingManager picks the part by elapsed % cycle). The board's roast mode
+     * does not stir by itself: checked on the machine.
+     */
     fun roast(totalMillis: Long, tempC: Int): List<RunRequest> {
-        val stir = minOf(5_000L, totalMillis)
-        return listOf(
-            RunRequest(1, tempC, stir, mode = RunMode.ROAST),
-            RunRequest(0, tempC, totalMillis - stir, mode = RunMode.ROAST),
-        ).filter { it.durationMillis > 0 }
+        val out = ArrayList<RunRequest>()
+        var left = totalMillis
+        while (left > 0) {
+            val stir = minOf(5_000L, left); out += RunRequest(1, tempC, stir, mode = RunMode.ROAST); left -= stir
+            val heat = minOf(30_000L, left); if (heat > 0) out += RunRequest(0, tempC, heat, mode = RunMode.ROAST); left -= heat
+        }
+        return out
     }
 
     fun describe(step: Step.Machine): String {

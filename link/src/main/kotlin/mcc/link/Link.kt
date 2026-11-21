@@ -58,6 +58,8 @@ data class MachineState(
     @SerialName("remote_until") val remoteUntil: String? = null,
     /** Id of the loaded recipe (for the phone to show it); null without one. */
     @SerialName("recipe_id") val recipeId: String? = null,
+    /** Who the loaded recipe is cooked for, as the recipe says it ("6 portions"); amounts are already scaled to it. */
+    val servings: String? = null,
     /** Total and remaining time of the running step or manual run, in seconds (for progress); null when idle. */
     @SerialName("run_total") val runTotal: Int? = null,
     @SerialName("run_left") val runLeft: Int? = null,
@@ -122,12 +124,17 @@ sealed class Command {
     object Pause : Command()
     object Tare : Command()
     object Start : Command()
-    /** Opens a recipe on the machine's Cook screen (needs the machine's opt-in; refused while one is in progress). */
-    data class Load(val recipeId: String) : Command()
+    /** Closes the loaded recipe on the machine (stops it first if it runs). Only ever stops things. */
+    object Cancel : Command()
+    /**
+     * Opens a recipe on the machine's Cook screen (needs the machine's opt-in; refused while one is in progress).
+     * [servings] scales its amounts for that many people (null: as written).
+     */
+    data class Load(val recipeId: String, val servings: Int? = null) : Command()
 
     fun encode(): String = when (this) {
-        Stop -> "stop"; Pause -> "pause"; Tare -> "tare"; Start -> "start"
-        is Load -> """{"command":"load","recipe":${JsonPrimitive(recipeId)}}"""
+        Stop -> "stop"; Pause -> "pause"; Tare -> "tare"; Start -> "start"; Cancel -> "cancel"
+        is Load -> """{"command":"load","recipe":${JsonPrimitive(recipeId)}""" + (servings?.let { ""","servings":$it""" } ?: "") + "}"
     }
 
     companion object {
@@ -135,14 +142,16 @@ sealed class Command {
             val t = raw.trim()
             var word = t
             var recipe: String? = null
+            var servings: Int? = null
             if (t.startsWith("{")) {
                 val o = runCatching { LinkJson.json.parseToJsonElement(t).jsonObject }.getOrNull() ?: return null
                 word = o["command"]?.jsonPrimitive?.content ?: return null
                 recipe = (o["recipe"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                servings = (o["servings"] as? JsonPrimitive)?.content?.toIntOrNull()?.takeIf { it in 1..99 }
             }
             return when (word.lowercase()) {
-                "stop" -> Stop; "pause" -> Pause; "tare" -> Tare; "start" -> Start
-                "load" -> recipe?.takeIf { it.isNotBlank() && it.length <= 200 }?.let { Load(it) }
+                "stop" -> Stop; "pause" -> Pause; "tare" -> Tare; "start" -> Start; "cancel" -> Cancel
+                "load" -> recipe?.takeIf { it.isNotBlank() && it.length <= 200 }?.let { Load(it, servings) }
                 else -> null
             }
         }

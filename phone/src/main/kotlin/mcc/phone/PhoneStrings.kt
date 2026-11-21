@@ -18,13 +18,14 @@ abstract class PhoneStrings {
     abstract val connection: String; abstract val tls: String; abstract val saveConnect: String; abstract val repoHint: String
     abstract val notifications: String; abstract val notifNeedsYou: String; abstract val notifFinished: String
     abstract val notifWeighed: String; abstract val notifProblems: String; abstract val notifLive: String; abstract val notifLiveHelp: String
+    abstract val idleNotifHelp: String; abstract val idleNotifButton: String
     abstract val background: String; abstract val backgroundHelp: String; abstract val battery: String; abstract val batteryDone: String
     abstract val huaweiHelp: String; abstract val safetyNote: String; abstract val about: String
     abstract val evFinished: String; abstract fun evFinishedText(r: String?): String; abstract val evNeedsYou: String
-    abstract val evWeighed: String; abstract fun evWeighedText(g: Int?): String; abstract val evRunDone: String; abstract val evRunDoneText: String
+    abstract val evWeighed: String; abstract fun evWeighedText(g: Int?): String; abstract val evRunDone: String; abstract val pauseExpired: String; abstract val evRunDoneText: String
     abstract val evStopped: String; abstract val evError: String
     abstract val channelLive: String; abstract val channelAlerts: String; abstract val channelLink: String
-    abstract val retry: String; abstract val noRepo: String; abstract val steps: String; abstract fun servings(s: String): String
+    abstract val retry: String; abstract val noRepo: String; abstract val steps: String; abstract fun servings(s: String): String; abstract val servingsOnMachine: String
     abstract val machineIsOn: String; abstract val stopSent: String; abstract val pauseSent: String; abstract val tareSent: String
     abstract val testConnection: String; abstract val connectedOk: String; abstract val stepNow: String
     abstract val machineHere: String; abstract val noRecipeLoaded: String; abstract val saved: String
@@ -32,6 +33,7 @@ abstract class PhoneStrings {
     abstract val greetMorning: String; abstract val greetAfternoon: String; abstract val greetEvening: String
     abstract val cookMode: String; abstract val cookModeHelp: String; abstract fun bought(n: Int, total: Int): String; abstract val featured: String
     abstract val look: String; abstract val wallpaperColors: String; abstract val wallpaperColorsHelp: String
+    abstract val keepRecipe: String; abstract val cancelRecipe: String; abstract val cancelRecipeTitle: String; abstract val cancelRecipeText: String
     abstract val stopConfirm: String; abstract val stopConfirmText: String; abstract val cancel: String
     abstract val nothingCooking: String; abstract val whatsCooking: String; abstract val temperature: String; abstract val scale: String
     abstract val next: String; abstract val previous: String; abstract fun removed(t: String): String; abstract val undo: String
@@ -60,6 +62,8 @@ object PhoneEn : PhoneStrings() {
     override val notifLive = "Live progress while cooking"; override val notifLiveHelp = "Time left and the step on the lock screen, with Pause and Stop."
     override val background = "Stay connected in the background"
     override val backgroundHelp = "Needed for notifications with the app closed. Shows a quiet notification while connected."
+    override val idleNotifHelp = "Android needs a notification to stay connected. Swipe the \"Ready\" one away and it stays hidden until something cooks, or turn its category off: cooking progress and alerts are separate and keep working."
+    override val idleNotifButton = "Hide the idle notification"
     override val battery = "Allow running in the background"; override val batteryDone = "Background use allowed"
     override val huaweiHelp = "Huawei phones: Settings → Battery → App launch → Monsieur Cuisine → Manage manually, and switch everything on."
     override val safetyNote = "The phone can watch, pause and stop. It only starts a run that was prepared and allowed at the machine, and opening a recipe never starts it."
@@ -67,11 +71,12 @@ object PhoneEn : PhoneStrings() {
     override val evFinished = "Ready!"; override fun evFinishedText(r: String?) = if (r != null) "$r is ready." else "The recipe is ready."
     override val evNeedsYou = "The recipe needs you"
     override val evWeighed = "Weight reached"; override fun evWeighedText(g: Int?) = if (g != null) "$g g on the scale." else "Weight reached."
-    override val evRunDone = "Done"; override val evRunDoneText = "The manual run has finished."
+    override val evRunDone = "Done"; override val pauseExpired = "It stayed paused for over an hour, so the run was cancelled."; override val evRunDoneText = "The manual run has finished."
     override val evStopped = "Stopped"; override val evError = "Machine error"
     override val channelLive = "Cooking progress"; override val channelAlerts = "Machine alerts"; override val channelLink = "Connection"
     override val retry = "Try again"; override val noRepo = "Set the recipe repository address in Settings."
     override val steps = "Steps"; override fun servings(s: String) = if (s.all { it.isDigit() }) "Serves $s" else s
+    override val servingsOnMachine = "Set when it was opened on the machine."
     override val machineIsOn = "Cooking on the machine"; override val stopSent = "Stop sent"; override val pauseSent = "Pause sent"; override val tareSent = "Scale zeroed"
     override val testConnection = "Connection"; override val connectedOk = "Connected"; override val stepNow = "Now"
     override val machineHere = "On the machine"; override val noRecipeLoaded = "No recipe open on the machine"; override val saved = "Saved"
@@ -81,6 +86,8 @@ object PhoneEn : PhoneStrings() {
     override fun bought(n: Int, total: Int) = "$n of $total bought"; override val featured = "Try today"
     override val look = "Look"; override val wallpaperColors = "Wallpaper colours"
     override val wallpaperColorsHelp = "Use the colours of your wallpaper instead of the machine's orange (Android 12 and newer)."
+    override val keepRecipe = "Keep recipe"; override val cancelRecipe = "Cancel recipe"; override val cancelRecipeTitle = "Cancel the recipe?"
+    override val cancelRecipeText = "It closes on the machine, and the machine stops if it is running."
     override val stopConfirm = "Stop the machine?"; override val stopConfirmText = "The motor and heating stop straight away."; override val cancel = "Cancel"
     override val nothingCooking = "Nothing cooking"; override val whatsCooking = "What's cooking"; override val temperature = "Temperature"; override val scale = "Scale"
     override val next = "Next"; override val previous = "Back"; override fun removed(t: String) = "Removed $t"; override val undo = "Undo"
@@ -109,6 +116,8 @@ object PhonePt : PhoneStrings() {
     override val notifLive = "Progresso ao vivo a cozinhar"; override val notifLiveHelp = "Tempo restante e passo no ecrã de bloqueio, com Pausa e Parar."
     override val background = "Manter ligado em segundo plano"
     override val backgroundHelp = "Necessário para receber notificações com a app fechada. Mostra uma notificação discreta enquanto está ligado."
+    override val idleNotifHelp = "O Android precisa de uma notificação para manter a ligação. Deslize a de \"Pronta\" para a esconder até a máquina começar a cozinhar, ou desligue essa categoria: o progresso e os alertas são à parte e continuam a funcionar."
+    override val idleNotifButton = "Esconder a notificação em espera"
     override val battery = "Permitir execução em segundo plano"; override val batteryDone = "Execução em segundo plano permitida"
     override val huaweiHelp = "Telemóveis Huawei: Definições → Bateria → Início de apps → Monsieur Cuisine → Gerir manualmente, e ligue tudo."
     override val safetyNote = "O telemóvel pode ver, pausar e parar. Só inicia o que foi preparado e permitido na máquina, e abrir uma receita nunca a inicia."
@@ -116,11 +125,12 @@ object PhonePt : PhoneStrings() {
     override val evFinished = "Pronta!"; override fun evFinishedText(r: String?) = if (r != null) "$r está pronta." else "A receita está pronta."
     override val evNeedsYou = "A receita precisa de si"
     override val evWeighed = "Peso atingido"; override fun evWeighedText(g: Int?) = if (g != null) "$g g na balança." else "Peso atingido."
-    override val evRunDone = "Terminado"; override val evRunDoneText = "O modo manual terminou."
+    override val evRunDone = "Terminado"; override val pauseExpired = "Ficou em pausa mais de uma hora e foi cancelado."; override val evRunDoneText = "O modo manual terminou."
     override val evStopped = "Parou"; override val evError = "Erro da máquina"
     override val channelLive = "Progresso a cozinhar"; override val channelAlerts = "Avisos da máquina"; override val channelLink = "Ligação"
     override val retry = "Tentar de novo"; override val noRepo = "Defina o endereço do repositório de receitas em Definições."
     override val steps = "Passos"; override fun servings(s: String) = if (s.all { it.isDigit() }) "$s pessoas" else s
+    override val servingsOnMachine = "Definido quando foi aberta na máquina."
     override val machineIsOn = "A cozinhar na máquina"; override val stopSent = "Parar enviado"; override val pauseSent = "Pausa enviada"; override val tareSent = "Balança a zero"
     override val testConnection = "Ligação"; override val connectedOk = "Ligado"; override val stepNow = "Agora"
     override val machineHere = "Na máquina"; override val noRecipeLoaded = "Nenhuma receita aberta na máquina"; override val saved = "Guardado"
@@ -130,6 +140,8 @@ object PhonePt : PhoneStrings() {
     override fun bought(n: Int, total: Int) = "$n de $total comprados"; override val featured = "Para hoje"
     override val look = "Aspeto"; override val wallpaperColors = "Cores do fundo de ecrã"
     override val wallpaperColorsHelp = "Usar as cores do seu fundo de ecrã em vez do laranja da máquina (Android 12 ou mais recente)."
+    override val keepRecipe = "Manter receita"; override val cancelRecipe = "Cancelar receita"; override val cancelRecipeTitle = "Cancelar a receita?"
+    override val cancelRecipeText = "Fecha na máquina, e a máquina para se estiver a trabalhar."
     override val stopConfirm = "Parar a máquina?"; override val stopConfirmText = "O motor e o aquecimento param de imediato."; override val cancel = "Cancelar"
     override val nothingCooking = "Nada ao lume"; override val whatsCooking = "A cozinhar"; override val temperature = "Temperatura"; override val scale = "Balança"
     override val next = "Seguinte"; override val previous = "Anterior"; override fun removed(t: String) = "Removido: $t"; override val undo = "Anular"

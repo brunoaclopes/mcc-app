@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -32,12 +33,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -258,11 +261,14 @@ private fun CookingCard(s: MachineState, recipe: Recipe?, onOpenRecipe: ((String
                     }
                 }
             }
-            if (onCook != null && s.recipeId != null) {
+            if (s.recipeId != null) {
                 Spacer(Modifier.height(14.dp))
-                Button(onClick = { onCook(s.recipeId!!) }, shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0x33FFFFFF), contentColor = Mc.onPhoto)) {
-                    McIcon(Icon.CHEF, Mc.onPhoto, 18.dp); Spacer(Modifier.width(8.dp)); Text(S.cookMode)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onCook != null) Button(onClick = { onCook(s.recipeId!!) }, shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x33FFFFFF), contentColor = Mc.onPhoto)) {
+                        McIcon(Icon.CHEF, Mc.onPhoto, 18.dp); Spacer(Modifier.width(8.dp)); Text(S.cookMode)
+                    }
+                    CancelRecipeButton(onPhoto = true)
                 }
             }
         }
@@ -367,4 +373,23 @@ private fun RemoteCard(s: MachineState) {
             }, modifier = Modifier.fillMaxWidth().height(58.dp))
         }
     }
+}
+
+/** Cancels the recipe loaded on the machine, after a confirmation. A pill like the other card buttons. */
+@Composable
+fun CancelRecipeButton(onPhoto: Boolean, modifier: Modifier = Modifier) {
+    val S = P.s
+    var ask by remember { mutableStateOf(false) }
+    val fg = if (onPhoto) Mc.onPhoto else Mc.danger
+    Button(onClick = { ask = true }, modifier = modifier, shape = RoundedCornerShape(16.dp),
+        contentPadding = PaddingValues(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = if (onPhoto) Color(0x33FFFFFF) else Mc.danger.copy(alpha = 0.12f), contentColor = fg)) {
+        McIcon(Icon.CLOSE, fg, 16.dp, 2.4f); Spacer(Modifier.width(8.dp)); Text(S.cancelRecipe)
+    }
+    if (ask) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { ask = false },
+        title = { Text(S.cancelRecipeTitle) }, text = { Text(S.cancelRecipeText) },
+        confirmButton = { TextButton(onClick = { ask = false; mcc.phone.LinkClient.send(mcc.link.Command.Cancel) }) { Text(S.cancelRecipe, color = Mc.danger) } },
+        dismissButton = { TextButton(onClick = { ask = false }) { Text(S.keepRecipe) } },
+    )
 }

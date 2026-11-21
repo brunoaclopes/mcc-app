@@ -15,6 +15,8 @@ object Recipes {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
     private val opened = HashMap<String, Recipe>()
+    /** How many people each recipe was last set to on this phone (while the app runs); cook along uses it too. */
+    val people = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     fun refresh(force: Boolean = false) {
         val app = PhoneApp.app

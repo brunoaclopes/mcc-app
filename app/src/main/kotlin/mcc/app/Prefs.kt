@@ -38,9 +38,6 @@ class Prefs(context: Context) {
         get() = sp.getString("theme", "auto") ?: "auto"
         set(v) = sp.edit().putString("theme", v).apply()
 
-    var language: String
-        get() = sp.getString("language", systemLang) ?: systemLang
-        set(v) = sp.edit().putString("language", v).apply()
 
     /** Turbo button in Manual. Off until the user has done the supervised turbo test (docs/TEST-PLAN.md, T8). */
     /** Richer LED animations (motor-speed pulse, temperature colour, weighing fill, rainbow). Off = stock-like. */
@@ -48,6 +45,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("ledAnimated", true)
         set(v) = sp.edit().putBoolean("ledAnimated", v).apply()
     /** LED brightness, percent (25, 50, 100). */
+    /** Empty-bowl reading saved as "bootId:grams"; only valid while the tablet (and the board) stay powered. */
+    var emptyBowl: String
+        get() = sp.getString("emptyBowl", "") ?: ""
+        set(v) = sp.edit().putString("emptyBowl", v).apply()
+
     var ledBrightness: Int
         get() = sp.getInt("ledBrightness", 100)
         set(v) = sp.edit().putInt("ledBrightness", v).apply()

@@ -17,7 +17,7 @@ interface AppUi {
     var index: RecipeIndex?
     fun go(screen: String)
     fun notify(msg: String, kind: Notice = Notice.INFO)
-    fun confirm(title: String, msg: String, ok: String, danger: Boolean = false, onOk: () -> Unit)
+    fun confirm(title: String, msg: String, ok: String, danger: Boolean = false, dismiss: String? = null, onOk: () -> Unit)
     /** Like [confirm], with a text field; [onOk] gets the (non-empty) text. */
     fun ask(title: String, msg: String, hint: String, ok: String, onOk: (String) -> Unit)
     fun reloadIndex(refresh: Boolean)

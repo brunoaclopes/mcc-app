@@ -21,5 +21,24 @@ Setup: open the app → tap **Unlock** (top right) → confirm. Then **Manual** 
 | T8c | 1000 g water | program "Clean the bowl" | warm soak, then short bursts up to speed 6, no foam out of the lid | cleaning program |
 | T9 | dough / water | knead, roast, steam, one per session, enabled one at a time | like the stock app | compare against stock-app sniffs |
 
-After T3: if the board does NOT stop by itself, then the tablet app is the only thing ending a run.
-In that case, keep runs short until we decide on an extra safeguard (e.g. a watchdog process).
+**T3 result (2026-11-21):** the board has its own watchdog. With the app killed mid-run (speed 1), the motor stopped almost
+immediately, so a crashed or killed tablet app does not leave the motor running.
+
+## Results 2026-11-21 (real machine, supervised)
+
+| Test | Result |
+|------|--------|
+| Manual pause from the phone, Continuar, PARAR | pass: `paused` (remote) then `stopped` (stop_button); the Manual screen now shows the paused run |
+| Recipe step: phone Pause, Iniciar resumes, PARAR pauses, phone Cancel | pass: `paused` remote, `paused` stop_button, `stopped` recipe_cancelled |
+| Open on the machine from the phone at 6 servings | pass: amounts scaled on the machine; fixed the ingredients sheet staying open after a remote cancel |
+| Phone "Ready" notification swiped away | pass: stays away until cooking starts |
+| T3 watchdog | pass: board stops by itself almost at once |
+| T8 turbo | pass: short burst, stops on release |
+| T8c cleaning | pass: soak + bursts to speed 6, no foam; program now one wash step + rinse |
+| T9a knead | pass: 15 s reverse, 35 s rest, 70 s forward (stock preset) |
+| T9b roast | pass after fix: the board's roast mode does not stir by itself; the app now repeats 5 s stir + 30 s heat |
+| T9c steam | pass: boils and steams at speed 1 (now in reverse, as the stock preset) |
+
+Fixed during these runs: special modes showed "not enabled" on the Cook screen; the empty-bowl weight is kept across app
+restarts (same boot only); heated restarts right after a pause no longer fail the weight check; the running view can be
+reopened from the status pill; "stopped" only when the recipe ran something; "weighed" only on a steady reading.

@@ -250,7 +250,7 @@ class SettingsScreen(app: AppUi) : Screen(app) {
         val st = app.service?.mqttStatus ?: "off"
         mqttStatus.put(when { st == "off" -> S.notConnected; st == "connected" -> S.connectedWord; st.startsWith("connecting") -> S.connecting; else -> st })
         mqttDot.color = when { st == "connected" -> T.OK; st == "off" -> T.TEXT_3; else -> T.AMBER }
-        repoStatus.put(S.recipesAvailable(app.index?.visible("all", app.prefs.uiLanguage)?.size ?: 0))
+        repoStatus.put(S.recipesAvailable(app.index?.visible(app.prefs.uiLanguage)?.size ?: 0))
         val s = snap
         kv[S.link]?.put(if (s?.connected == true) S.connectedWord else if (MachineService.status.startsWith("BLOCKED")) S.stockApp else S.offline)
         kv[S.powerBoard]?.put(S.firmware(s?.lastFrame?.firmwareVersion?.toString() ?: "—"))

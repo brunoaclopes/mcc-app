@@ -13,7 +13,7 @@ The protocol notes in `docs/PROTOCOL.md` describe behaviour; no stock code is co
 
 ## Program photos
 
-From Wikimedia Commons, cropped and resized to 640×400, in `common/src/main/assets/programs/`. Each file stays under
+From Wikimedia Commons and Flickr (found through Openverse), cropped and resized to 640×400, in `common/src/main/assets/programs/`. Each file stays under
 its own licence below (the MIT licence of this project does not apply to them); the CC BY-SA crops are shared
 under the same CC BY-SA licence.
 
@@ -29,6 +29,11 @@ under the same CC BY-SA licence.
 | `proof-dough.jpg` | [Craisin bread dough.jpg](https://commons.wikimedia.org/wiki/File:Craisin_bread_dough.jpg) | Ruth Hartnup | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
 | `reheat.jpg` | [Vegetable soup in Switzerland.jpg](https://commons.wikimedia.org/wiki/File:Vegetable_soup_in_Switzerland.jpg) | Tiia Monto | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
 | `clean.jpg` | [Sponge-for-washing-1212612.jpg](https://commons.wikimedia.org/wiki/File:Sponge-for-washing-1212612.jpg) | Robert Fotograf | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
+| `knead.jpg` | [Baker woman's hands kneading bread dough.jpg](https://commons.wikimedia.org/wiki/File%3ABaker_woman%27s_hands_kneading_bread_dough.jpg) | Shixart1985 | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
+| `brown.jpg` | [Fried onion with seasoning.JPG](https://commons.wikimedia.org/wiki/File%3AFried_onion_with_seasoning.JPG) | Gran | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
+| `varoma.jpg` | [Chinese soup dumplings.jpg](https://commons.wikimedia.org/wiki/File%3AChinese_soup_dumplings.jpg) | Phil Denton | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
+| `clean-deep.jpg` | [Cleaning Kitchen Counter](https://www.flickr.com/photos/184594136@N08/51486539352) (Flickr) | Alabama Extension | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `clean-smell.jpg` | [Lemons](https://www.flickr.com/photos/101300267@N05/12950385095) (Flickr) | Tim-Hoggarth | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
 
 To use nicer photos in your own build, `tools/fetch_program_photos.py` downloads them from Pixabay (free API key)
 into `common/src/main/assets/programs-pixabay/`, which git ignores: the Pixabay Content License allows them inside

@@ -11,9 +11,11 @@ class ActionReceiver : BroadcastReceiver() {
     companion object {
         const val STOP = "mcc.phone.STOP"
         const val PAUSE = "mcc.phone.PAUSE"
+        const val HIDE_IDLE = "mcc.phone.HIDE_IDLE"
     }
 
     override fun onReceive(c: Context, i: Intent) {
+        if (i.action == HIDE_IDLE) { LinkService.idleHidden = true; return }
         val (cmd, ok) = when (i.action) {
             STOP -> Command.Stop to P.s.stopSent
             PAUSE -> Command.Pause to P.s.pauseSent

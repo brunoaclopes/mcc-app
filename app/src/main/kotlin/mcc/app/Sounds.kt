@@ -12,7 +12,7 @@ import kotlin.math.sin
  * tablet has no system UI sounds. Plays on the alarm stream so it is heard over a running motor.
  */
 class Sounds(private val level: () -> Int) {
-    enum class Cue { HELLO, KNOB, TAP, START, STOP, STEP, WEIGHED, DONE, FINISHED, ALERT, UNLOCK, LOCK, TICK, STANDBY }
+    enum class Cue { HELLO, KNOB, TAP, START, STOP, STEP, WEIGHED, DONE, FINISHED, ALERT, UNLOCK, LOCK, TICK, STANDBY, LID_OPEN, LID_CLOSED }
 
     private val rate = 22050
     private val clips = HashMap<Cue, ShortArray>()
@@ -39,6 +39,9 @@ class Sounds(private val level: () -> Int) {
             clips[Cue.UNLOCK] = render(listOf(Note(659.0, 0.0, 0.15, 0.7), Note(988.0, 0.07, 0.25, 0.7)))
             clips[Cue.LOCK] = render(listOf(Note(988.0, 0.0, 0.15, 0.7), Note(659.0, 0.07, 0.25, 0.7)))
             clips[Cue.TICK] = render(listOf(Note(1319.0, 0.0, 0.08, 0.5)), bell = false)
+            // lid: a short soft pair, rising when it opens, falling when it closes
+            clips[Cue.LID_OPEN] = render(listOf(Note(587.0, 0.0, 0.12, 0.55), Note(880.0, 0.06, 0.2, 0.55)))
+            clips[Cue.LID_CLOSED] = render(listOf(Note(880.0, 0.0, 0.12, 0.55), Note(587.0, 0.06, 0.2, 0.55)))
             clips[Cue.STANDBY] = render(listOf(Note(784.0, 0.0, 0.4, 0.6), Note(523.0, 0.18, 0.7, 0.6)))
         }
     }

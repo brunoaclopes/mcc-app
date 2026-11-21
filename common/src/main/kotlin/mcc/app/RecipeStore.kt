@@ -54,9 +54,9 @@ class RecipeStore(private val context: Context, private val repoUrl: () -> Strin
 
     private val mineDir get() = File(localDir, "mine")
 
-    /** Saves an imported recipe (tagged "Mine") and returns it; it shows up in the list after [loadIndex]. */
+    /** Saves an imported recipe (tagged "My recipes" in its language) and returns it; it shows up in the list after [loadIndex]. */
     fun saveMine(r: Recipe): Recipe {
-        val tag = mcc.app.i18n.L.s.tagMine
+        val tag = (if (r.language == "en") mcc.app.i18n.En else mcc.app.i18n.Pt).tagMine
         val out = r.copy(tags = (listOf(tag) + r.tags.filter { it != tag }).take(4))
         mineDir.mkdirs()
         File(mineDir, out.id + ".json").writeText(Recipe.json.encodeToString(Recipe.serializer(), out))
@@ -64,7 +64,13 @@ class RecipeStore(private val context: Context, private val repoUrl: () -> Strin
     }
 
     fun isMine(e: RecipeIndex.Entry) = e.file.startsWith("mine/")
-    fun deleteMine(e: RecipeIndex.Entry) { if (isMine(e)) File(localDir, e.file).delete() }
+    /** Deletes one of my recipes, with its other-language copy. */
+    fun deleteMine(e: RecipeIndex.Entry) {
+        if (!isMine(e)) return
+        File(localDir, e.file).delete()
+        val base = e.id.replace(Regex("-(pt|en)$"), "")
+        if (base != e.id) listOf("pt", "en").forEach { File(mineDir, "$base-$it.json").delete() }
+    }
 
     fun loadRecipe(entry: RecipeIndex.Entry): Recipe {
         if (entry.file.startsWith(PROGRAM)) return Programs.all().first { it.id == entry.file.removePrefix(PROGRAM) }

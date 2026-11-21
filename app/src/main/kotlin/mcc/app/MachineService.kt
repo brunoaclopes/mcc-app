@@ -20,6 +20,7 @@ import mcc.machine.StartResult
 import mcc.machine.TxCommand
 import mcc.recipe.MachinePlan
 import mcc.recipe.Recipe
+import mcc.recipe.Servings
 import mcc.recipe.RecipeRunner
 import mcc.app.i18n.L
 
@@ -108,6 +109,7 @@ class MachineService : Service() {
         led.start()
         restartMqtt()
         applyModes()
+        restoreEmptyBowl()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -232,6 +234,9 @@ class MachineService : Service() {
         if (controller.snapshot(now).request?.mode == RunMode.TURBO) { controller.stop(now); lastEvent = "turbo released" }
     }
 
+    /** Whether the machine accepts this mode now: always-on modes plus the ones switched on in Settings. */
+    fun modeEnabled(m: RunMode) = controller.modeEnabled(m)
+
     val mqttStatus: String get() = mqtt?.status ?: "off"
 
     // ---- commands from the UI / MQTT (all return null on success, else a message for the user) ----
@@ -313,7 +318,7 @@ class MachineService : Service() {
      * The phone asked to open a recipe (by id) on the Cook screen. It never starts anything. Refused when switched off,
      * while the machine runs, or while another recipe is under way.
      */
-    fun remoteLoad(id: String) {
+    fun remoteLoad(id: String, servings: Int? = null) {
         if (!prefs.remoteLoad) { Log.i(TAG, "remote load '$id' ignored: switched off"); return }
         Thread {
             val busy = synchronized(lock) {
@@ -324,7 +329,7 @@ class MachineService : Service() {
             if (busy) { Log.i(TAG, "remote load '$id' refused: busy"); lastEvent = "remote load refused (busy)"; return@Thread }
             val store = RecipeStore(this) { prefs.repoUrl }
             val entry = store.loadIndex(false).first?.recipes?.firstOrNull { it.id == id }
-            val r = entry?.let { runCatching { store.loadRecipe(it) }.getOrNull() }
+            val r = entry?.let { runCatching { store.loadRecipe(it) }.getOrNull() }?.let { if (servings != null) Servings.scale(it, servings) else it }
             when {
                 r == null -> Log.w(TAG, "remote load: recipe '$id' not found")
                 mcc.recipe.RecipeFit.usesSpecial(r) && !prefs.specialModes -> Log.i(TAG, "remote load '$id' refused: special modes off")
@@ -335,6 +340,25 @@ class MachineService : Service() {
                 }
             }
         }.start()
+    }
+
+    // The empty-bowl reference survives an app restart (updates, crashes) but not a reboot: after a power cut the
+    // board zeroes its scale again, so an old reading could let an empty bowl heat. Then the app asks again.
+    private val bootId by lazy { runCatching { java.io.File("/proc/sys/kernel/random/boot_id").readText().trim() }.getOrDefault("") }
+    private var savedRef: Int? = null
+
+    private fun restoreEmptyBowl() {
+        val (boot, grams) = prefs.emptyBowl.split(":").takeIf { it.size == 2 } ?: return
+        val g = grams.toIntOrNull() ?: return
+        if (bootId.isNotEmpty() && boot == bootId) synchronized(lock) { controller.restoreEmptyReference(g); savedRef = g }
+    }
+
+    /** Called from the serial loop: saves the reference whenever it changes (set, tare, cleared). */
+    private fun keepEmptyBowl() {
+        val ref = controller.emptyReference
+        if (ref == savedRef || bootId.isEmpty()) return
+        savedRef = ref
+        prefs.emptyBowl = if (ref == null) "" else "$bootId:$ref"
     }
 
     fun setEmptyBowl(): String? = synchronized(lock) {
@@ -360,10 +384,29 @@ class MachineService : Service() {
         }
     }
 
+    /**
+     * Cancels the loaded recipe: stops the machine if a step runs and closes the recipe. Allowed while locked and from
+     * Home Assistant or the phone, like STOP. A recipe under way sends "stopped" (reason recipe_cancelled).
+     */
+    fun cancelRecipe(remote: Boolean): Boolean = synchronized(lock) {
+        val r = runner ?: return false
+        val now = SystemClock.elapsedRealtime()
+        val st = r.state(now)
+        // an interruption only if the machine ran something for it: browsing the steps and closing is not
+        val underway = st.phase != RecipeRunner.Phase.DONE && recipeRan
+        cancelRemote("recipe cancelled")
+        if (controller.snapshot(now).running) controller.stop(now)
+        runner = null; runnerState = null
+        lastEvent = if (remote) "recipe cancelled remotely" else "recipe cancelled"
+        if (underway) mqtt?.publishEvent(MachineEvent(MachineEvent.STOPPED, reason = "recipe_cancelled", recipe = r.recipe.title))
+        true
+    }
+
     fun loadRecipe(recipe: Recipe?): String? = synchronized(lock) {
         val now = SystemClock.elapsedRealtime()
         if (snapshot?.running == true) return L.s.stopMachineFirst
         runner = recipe?.let { RecipeRunner(it, controller) }
+        recipeRan = false
         runnerState = runner?.state(now)
         null
     }
@@ -465,6 +508,7 @@ class MachineService : Service() {
                     displayGrams = scaleFilter.update(s.scaleGrams, s.lastFrame)
                     checkPermit(s, now)
                     checkPaused(now)
+                    keepEmptyBowl()
                     updateLed(s, now)
                     trackEvents(s)
                     if (s.running || inStandby) acquireWake() else releaseWake() // standby: keep watching lid and scale (mains powered)
@@ -531,6 +575,8 @@ class MachineService : Service() {
     private var evStepIndex = -1
     private var evPhase: RecipeRunner.Phase? = null
     private var evWeighed = false
+    /** Whether the loaded recipe has run anything on the machine (only then is closing it an interruption). */
+    @Volatile private var recipeRan = false
     private var evError: Any? = null
 
     /** Edge detection on the loop's state: what a phone notification should say, sent once. */
@@ -544,6 +590,7 @@ class MachineService : Service() {
         evError = err
 
         if (rs != null && r != null) {
+            if (rs.phase == RecipeRunner.Phase.RUNNING) recipeRan = true
             when {
                 rs.phase == RecipeRunner.Phase.DONE && evPhase != RecipeRunner.Phase.DONE && evPhase != null ->
                     m?.publishEvent(MachineEvent(MachineEvent.FINISHED, recipe = title))
@@ -553,7 +600,8 @@ class MachineService : Service() {
                         text = rs.step?.text?.take(200)?.ifBlank { null }))
             }
             val step = rs.step
-            val done = step is mcc.recipe.Step.Weigh && rs.weighedGrams != null && rs.weighedGrams!! >= step.grams * 0.95
+            // a steady reading only: a jolt while pouring can read high for a moment
+            val done = step is mcc.recipe.Step.Weigh && rs.weighedGrams != null && rs.weighedGrams!! >= step.grams * 0.95 && s.lastFrame?.scaleStable == true
             if (done && !evWeighed && rs.stepIndex == evStepIndex) m?.publishEvent(MachineEvent(MachineEvent.WEIGHED, recipe = title, grams = (step as mcc.recipe.Step.Weigh).grams))
             evWeighed = done
             evStepIndex = rs.stepIndex

@@ -19,7 +19,8 @@ abstract class Strings {
     // navigation / chrome
     abstract val navHome: String; abstract val navManual: String; abstract val navRecipes: String
     abstract val navCook: String; abstract val navSettings: String
-    abstract val continueLabel: String; abstract val switchRecipeTitle: String; abstract fun switchRecipeBody(old: String, step: Int, new: String): String; abstract val switchRecipeOk: String
+    abstract val keepRecipe: String; abstract val cancelRecipe: String; abstract val cancelRecipeTitle: String; abstract fun cancelRecipeBody(title: String): String
+    abstract val continueLabel: String; abstract val manualPausedInfo: String; abstract val switchRecipeTitle: String; abstract fun switchRecipeBody(old: String, step: Int, new: String): String; abstract val switchRecipeOk: String
     abstract val specialModesSetting: String; abstract val specialModesHelp: String; abstract val specialModesOff: String
     abstract val navPrograms: String; abstract val programsSubtitle: String
     abstract val emptyBowlNeeded: String
@@ -65,7 +66,7 @@ abstract class Strings {
     abstract val aiHelp: String; abstract val aiTest: String; abstract fun aiOk(models: Int): String; abstract val aiSaved: String
     abstract val aiImport: String; abstract val aiImportBody: String; abstract val aiImportHint: String; abstract val aiImportGo: String
     abstract val aiWorking: String; abstract fun aiDone(title: String): String; abstract fun aiFailed(why: String): String
-    abstract val aiNotSet: String; abstract fun aiChanges(n: Int): String; abstract val deleteRecipe: String; abstract val deleteRecipeBody: String
+    abstract val aiNotSet: String; abstract val aiNoTranslation: String; abstract fun aiChanges(n: Int): String; abstract val deleteRecipe: String; abstract val deleteRecipeBody: String
     abstract val remote: String; abstract val remoteOffHint: String; abstract val remoteNoStep: String; abstract val remoteTitle: String
     abstract fun remoteBody(what: String, minutes: Int): String; abstract val remoteAllow: String; abstract fun remoteLeft(min: Int): String
     abstract val remoteCancelled: String; abstract val remoteSetting: String; abstract val remoteSettingHelp: String; abstract val remoteWindow: String
@@ -108,7 +109,7 @@ abstract class Strings {
     abstract fun kcal(n: Int): String
     abstract fun machineSteps(n: Int): String
     abstract val ingredients: String; abstract val converterNotes: String
-    abstract val startCooking: String; abstract val nothingMoves: String
+    abstract val startCooking: String; abstract val nothingMoves: String; abstract val scaledNote: String
 
     // cook
     abstract val cookTitle: String; abstract val guidedCooking: String
@@ -197,7 +198,9 @@ object En : Strings() {
     override val locale: java.util.Locale = java.util.Locale.UK
     override val navHome = "Home"; override val navManual = "Manual"; override val navRecipes = "Recipes"
     override val navCook = "Cook"; override val navSettings = "Settings"
-    override val continueLabel = "Continue"; override val switchRecipeTitle = "Leave the current recipe?"
+    override val keepRecipe = "Keep recipe"; override val cancelRecipe = "Cancel recipe"; override val cancelRecipeTitle = "Cancel this recipe?"
+    override fun cancelRecipeBody(title: String) = "$title closes and the machine stops if it is running. You can open the recipe again from Recipes."
+    override val continueLabel = "Continue"; override val manualPausedInfo = "Paused · Continue carries on with the time left, STOP ends it"; override val switchRecipeTitle = "Leave the current recipe?"
     override fun switchRecipeBody(old: String, step: Int, new: String) = "“$old” is at step $step. Open “$new” instead?"
     override val switchRecipeOk = "Open the new one"
     override val specialModesSetting = "Knead, brown and Varoma modes"
@@ -253,6 +256,7 @@ object En : Strings() {
     override val aiImportHint = "https://… or recipe text"; override val aiImportGo = "Import"
     override val aiWorking = "The AI is writing the recipe… (this can take a minute)"
     override fun aiDone(title: String) = "Saved to My recipes: $title"
+    override val aiNoTranslation = "the Portuguese copy could not be made"
     override fun aiFailed(why: String) = "Import failed: $why"
     override val aiNotSet = "Set up the AI server in Settings first"
     override fun aiChanges(n: Int) = if (n == 1) "1 step was adjusted to the machine limits" else "$n steps were adjusted to the machine limits"
@@ -308,6 +312,7 @@ object En : Strings() {
     override fun machineSteps(n: Int) = "$n machine"
     override val ingredients = "Ingredients"; override val converterNotes = "Converter notes"
     override val startCooking = "Start cooking"; override val nothingMoves = "Nothing moves until you press and hold Start on a machine step."
+    override val scaledNote = "Amounts adjusted. Times and temperatures stay as written; keep below the bowl's MAX mark."
 
     override val cookTitle = "Cook"; override val guidedCooking = "Guided cooking"
     override fun stepOf(a: Int, b: Int) = "Step $a of $b"
@@ -457,7 +462,9 @@ object Pt : Strings() {
     override val locale: java.util.Locale = java.util.Locale("pt", "PT")
     override val navHome = "Início"; override val navManual = "Manual"; override val navRecipes = "Receitas"
     override val navCook = "Cozinhar"; override val navSettings = "Definições"
-    override val continueLabel = "Continuar"; override val switchRecipeTitle = "Deixar a receita atual?"
+    override val keepRecipe = "Manter receita"; override val cancelRecipe = "Cancelar receita"; override val cancelRecipeTitle = "Cancelar esta receita?"
+    override fun cancelRecipeBody(title: String) = "$title fecha e a máquina para, se estiver a trabalhar. Pode voltar a abri-la em Receitas."
+    override val continueLabel = "Continuar"; override val manualPausedInfo = "Em pausa · Continuar retoma com o tempo que falta, PARAR termina"; override val switchRecipeTitle = "Deixar a receita atual?"
     override fun switchRecipeBody(old: String, step: Int, new: String) = "“$old” está no passo $step. Abrir “$new” em vez disso?"
     override val switchRecipeOk = "Abrir a nova"
     override val specialModesSetting = "Modos amassar, alourar e Varoma"
@@ -513,6 +520,7 @@ object Pt : Strings() {
     override val aiImportHint = "https://… ou texto da receita"; override val aiImportGo = "Importar"
     override val aiWorking = "A IA está a escrever a receita… (pode demorar um minuto)"
     override fun aiDone(title: String) = "Guardada em As minhas receitas: $title"
+    override val aiNoTranslation = "não foi possível fazer a cópia em inglês"
     override fun aiFailed(why: String) = "A importação falhou: $why"
     override val aiNotSet = "Configure primeiro o servidor IA nas Definições"
     override fun aiChanges(n: Int) = if (n == 1) "1 passo foi ajustado aos limites da máquina" else "$n passos foram ajustados aos limites da máquina"
@@ -568,6 +576,7 @@ object Pt : Strings() {
     override fun machineSteps(n: Int) = "$n na máquina"
     override val ingredients = "Ingredientes"; override val converterNotes = "Notas da conversão"
     override val startCooking = "Começar a cozinhar"; override val nothingMoves = "Nada se mexe até manter premido Iniciar num passo da máquina."
+    override val scaledNote = "Quantidades ajustadas. Tempos e temperaturas mantêm-se; não passe a marca MAX do copo."
 
     override val cookTitle = "Cozinhar"; override val guidedCooking = "Cozinha guiada"
     override fun stepOf(a: Int, b: Int) = "Passo $a de $b"
