@@ -17,7 +17,6 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
     override val subtitle get() = S.programsSubtitle
 
     private val tiles = ArrayList<View>()
-    private val specials = ArrayList<View>()
     private var focus = 0
     private lateinit var scroll: android.widget.ScrollView
     private lateinit var list: List<Recipe>
@@ -59,7 +58,6 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
             }
             card.addView(badge, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply { setMargins(T.dp(10), T.dp(10), 0, 0) })
         }
-        if (mcc.recipe.RecipeFit.usesSpecial(r)) specials += card
         card.setOnClickListener { open(r) }
         T.press(card)
         tiles.add(card)
@@ -67,7 +65,6 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
     }
 
     private fun open(r: Recipe) {
-        if (mcc.recipe.RecipeFit.usesSpecial(r) && !app.prefs.specialModes) { app.notify(S.specialModesOff, Notice.INFO); return }
         app.cook(r)
     }
 
@@ -94,7 +91,6 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
 
     override fun onShow() {
         Anim.stagger(tiles, step = 35)
-        view.postDelayed({ specials.forEach { it.animate().alpha(if (app.prefs.specialModes) 1f else 0.5f).setDuration(200).start() } }, 700)
     }
 
     override fun onHide() { tiles.forEach { it.foreground = null } }

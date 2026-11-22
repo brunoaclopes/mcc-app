@@ -16,7 +16,7 @@ Setup: open the app → tap **Unlock** (top right) → confirm. Then **Manual** 
 | T5 | empty | speed 1, 50 °C | refused: "set the empty-bowl reference" | heat interlock |
 | T6 | empty → press "Empty bowl", then add 500 g water | speed 1, 50 °C, 3 min | heats, temperature rises to 50, stops after 3 min | first heat from our app |
 | T7 | water | recipe step test: any recipe with only `run` steps | Start → runs → advances to the next step | recipe runner |
-| T8 | empty | turbo, held 2 s (switch on Settings → Machine → Turbo button first) | short burst | turbo frame (C6) speed byte unverified |
+| T8 | empty | turbo, held 2 s (the switch has since been removed: turbo is always available) | short burst | turbo frame (C6) speed byte unverified |
 | T8b | 500 g water | program "Boiled eggs, soft" (speed 0 with heat) | heats without the blade turning, boils | heat with motor off in normal mode |
 | T8c | 1000 g water | program "Clean the bowl" | warm soak, then short bursts up to speed 6, no foam out of the lid | cleaning program |
 | T9 | dough / water | knead, roast, steam, one per session, enabled one at a time | like the stock app | compare against stock-app sniffs |

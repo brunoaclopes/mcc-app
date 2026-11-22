@@ -79,7 +79,7 @@ class AiClient(private val prefs: Prefs) {
             },
         ))
         val r = Recipe.parse(fixed.toString())
-        val fit = RecipeFit.fit(r, if (prefs.specialModes) RecipeFit.SPECIAL else emptySet())
+        val fit = RecipeFit.fit(r, RecipeFit.SPECIAL)
         return Import(fit.recipe, fit.changes)
     }
 

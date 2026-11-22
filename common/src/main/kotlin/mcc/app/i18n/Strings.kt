@@ -21,7 +21,6 @@ abstract class Strings {
     abstract val navCook: String; abstract val navSettings: String
     abstract val keepRecipe: String; abstract val cancelRecipe: String; abstract val cancelRecipeTitle: String; abstract fun cancelRecipeBody(title: String): String
     abstract val continueLabel: String; abstract val manualPausedInfo: String; abstract val switchRecipeTitle: String; abstract fun switchRecipeBody(old: String, step: Int, new: String): String; abstract val switchRecipeOk: String
-    abstract val specialModesSetting: String; abstract val specialModesHelp: String; abstract val specialModesOff: String
     abstract val navPrograms: String; abstract val programsSubtitle: String
     abstract val emptyBowlNeeded: String
     abstract val stop: String; abstract val stopped: String
@@ -76,7 +75,7 @@ abstract class Strings {
     abstract val lightSound: String; abstract val soundSetting: String; abstract val soundOff: String; abstract val soundQuiet: String; abstract val soundNormal: String
     abstract val ledAnimSetting: String; abstract val ledAnimHelp: String; abstract val ledBrightness: String
     abstract val standbySetting: String; abstract val standbyHelp: String; abstract val standbyAfter: String
-    abstract val turbo: String; abstract val turboOff: String; abstract val turboSetting: String; abstract val turboSettingHelp: String
+    abstract val turbo: String
     abstract val emptyBowlTitle: String; abstract val emptyBowlBody: String; abstract val emptyBowlOk: String; abstract val emptyBowlSaved: String
     abstract val scaleNotReady: String
     abstract val lockedHint: String
@@ -156,7 +155,7 @@ abstract class Strings {
     abstract val passwordHint: String; abstract val save: String; abstract val haSaved: String; abstract val haHelp: String
     abstract val on: String; abstract val notConnected: String; abstract val connectedWord: String; abstract val connecting: String
     abstract val safetyTitle: String; abstract val safetyLines: List<String>; abstract val fontCredit: String
-    abstract val language: String
+    abstract val language: String; abstract val about: String
     abstract val location: String; abstract val locationHint: String; abstract val haArea: String; abstract val haAreaHint: String
     abstract val appearance: String; abstract val themeAuto: String; abstract val themeDay: String; abstract val themeNight: String
     abstract fun themeHelp(auto: Boolean, day: Boolean, sunrise: String, sunset: String): String
@@ -203,9 +202,6 @@ object En : Strings() {
     override val continueLabel = "Continue"; override val manualPausedInfo = "Paused · Continue carries on with the time left, STOP ends it"; override val switchRecipeTitle = "Leave the current recipe?"
     override fun switchRecipeBody(old: String, step: Int, new: String) = "“$old” is at step $step. Open “$new” instead?"
     override val switchRecipeOk = "Open the new one"
-    override val specialModesSetting = "Knead, brown and Varoma modes"
-    override val specialModesHelp = "The machine's own work modes, as in the original app: kneading turns the blade back and forth, browning stirs in short bursts at high heat, Varoma steams. Used by the matching programs."
-    override val specialModesOff = "Switch on the knead, brown and Varoma modes in Settings → Machine first"
     override val navPrograms = "Programs"; override val programsSubtitle = "Tap one to prepare it · nothing starts until you hold Start"
     override val emptyBowlNeeded = "Before heating, the app needs the weight of the empty bowl."
     override val stop = "STOP"; override val stopped = "Stopped"
@@ -266,15 +262,12 @@ object En : Strings() {
     override val standbyNow = "Turn off now"
     override val lightSound = "Light and sound"; override val soundSetting = "Sounds"; override val soundOff = "Off"; override val soundQuiet = "Quiet"; override val soundNormal = "Normal"
     override val ledAnimSetting = "Animated light ring"
-    override val ledAnimHelp = "The ring pulses faster with the blade speed, turns amber to red as the bowl heats, fills green while you weigh, breathes when the bowl is hot, strobes for turbo and plays a rainbow when a recipe ends. Off: the original plain white, green and red."
+    override val ledAnimHelp = "The ring follows the blade speed and the heat, fills green while you weigh and plays a rainbow when a recipe ends. Off: the original plain colours."
     override val ledBrightness = "Ring brightness"
     override val standbySetting = "Standby when idle"
-    override val standbyHelp = "Like the original app: the screen turns off when nothing runs and nobody touches it, and the controls lock. Opening or closing the lid, putting something on the scale, the knob or the power button wake it."
+    override val standbyHelp = "The screen turns off and the controls lock when nothing runs. The lid, the scale, the knob or the power button wake it."
     override val standbyAfter = "After"
     override val turbo = "Turbo"
-    override val turboOff = "Turbo is off. Switch it on in Settings → Machine after the supervised turbo test."
-    override val turboSetting = "Turbo button"
-    override val turboSettingHelp = "Full speed while you hold it, 10 s at most, never with heat or above 60 °C. Leave it off if you prefer a machine that can only spin as fast as the dials allow."
     override val emptyBowlTitle = "Is the bowl empty?"
     override val emptyBowlBody = "Fit the empty bowl with the lid on. Heating then needs at least 200 g of food or liquid above this weight."
     override val emptyBowlOk = "Bowl is empty"; override val emptyBowlSaved = "Empty bowl saved"
@@ -370,7 +363,7 @@ object En : Strings() {
     private fun longTime(sec: Int) = when { sec < 60 -> "$sec seconds"; sec == 60 -> "1 minute"; sec % 60 == 0 -> "${sec / 60} minutes"; else -> "${sec / 60} min ${sec % 60} s" }
     override val revShort = "rev"
 
-    override val settingsTitle = "Settings"; override val settingsSubtitle = "Language, recipes and Home Assistant"
+    override val settingsTitle = "Settings"; override val settingsSubtitle = "Language, machine and connections"
     override val recipeServer = "Recipe server"
     override val recipeServerHelp = "A folder with index.json, recipes/ and images/ on any web server (a NAS, a Raspberry Pi…)."
     override val address = "Address"; override val saveSync = "Save & sync"
@@ -398,16 +391,16 @@ object En : Strings() {
     override val remoteLoadHelp = "The phone app can open a recipe here, ready to cook. It never starts anything: you still press Start at the machine. Refused while another recipe is in progress."
     override fun remoteLoaded(title: String) = "Sent from the phone: $title"
     override val on = "ON"; override val notConnected = "Not connected"; override val connectedWord = "Connected"; override val connecting = "Connecting…"
-    override val safetyTitle = "Safety limits (enforced by the machine layer)"
+    override val safetyTitle = "Safety limits, always enforced"
     override val safetyLines = listOf(
         "Heating: speed ≤ 3, at least 200 g in the bowl, max 130 °C",
         "Reverse: speed ≤ 3 · max 99 min, 15 min above speed 6",
         "Stops on lid open, board error or lost contact (1.5 s)",
-        "Turbo: only while held, max 10 s, off until switched on below",
-        "Knead, roast and steam stay off until tested",
+        "Turbo: only while held, max 10 s, never with heat or above 60 °C",
+        "Knead, brown and Varoma: the stock presets, with the same limits",
     )
     override val fontCredit = "Font: Manrope (SIL Open Font License)"
-    override val language = "Language"
+    override val language = "Language"; override val about = "About this machine"
     override val location = "Location (for sunrise and sunset)"; override val locationHint = "latitude, longitude  e.g. 38.72, -9.14"
     override val haArea = "Area"; override val haAreaHint = "e.g. Kitchen (optional)"
     override val appearance = "Appearance"; override val themeAuto = "Auto"; override val themeDay = "Day"; override val themeNight = "Night"
@@ -467,9 +460,6 @@ object Pt : Strings() {
     override val continueLabel = "Continuar"; override val manualPausedInfo = "Em pausa · Continuar retoma com o tempo que falta, PARAR termina"; override val switchRecipeTitle = "Deixar a receita atual?"
     override fun switchRecipeBody(old: String, step: Int, new: String) = "“$old” está no passo $step. Abrir “$new” em vez disso?"
     override val switchRecipeOk = "Abrir a nova"
-    override val specialModesSetting = "Modos amassar, alourar e Varoma"
-    override val specialModesHelp = "Os modos próprios da máquina, como na app original: amassar roda a lâmina nos dois sentidos, alourar mexe em impulsos curtos a alta temperatura, Varoma coze a vapor. Usados pelos programas correspondentes."
-    override val specialModesOff = "Ative primeiro os modos amassar, alourar e Varoma em Definições → Máquina"
     override val navPrograms = "Programas"; override val programsSubtitle = "Toque num para o preparar · nada arranca sem manter Iniciar premido"
     override val emptyBowlNeeded = "Antes de aquecer, a app precisa do peso do copo vazio."
     override val stop = "PARAR"; override val stopped = "Parado"
@@ -527,18 +517,15 @@ object Pt : Strings() {
     override val deleteRecipe = "Apagar"; override val deleteRecipeBody = "Apagar esta receita da máquina?"
     override val lightSound = "Luz e som"; override val soundSetting = "Sons"; override val soundOff = "Sem som"; override val soundQuiet = "Baixo"; override val soundNormal = "Normal"
     override val ledAnimSetting = "Anel de luz animado"
-    override val ledAnimHelp = "O anel pulsa mais depressa com a velocidade das lâminas, passa de âmbar a vermelho à medida que o copo aquece, enche-se de verde enquanto pesa, respira quando o copo está quente, pisca no turbo e faz um arco-íris no fim da receita. Desligado: o branco, verde e vermelho simples do original."
+    override val ledAnimHelp = "O anel acompanha a velocidade e o calor, enche-se de verde enquanto pesa e faz um arco-íris no fim da receita. Desligado: as cores simples do original."
     override val ledBrightness = "Brilho do anel"
     override val standbyTitle = "Repouso"
     override fun standbyBody(s: Int) = "Sem utilização há algum tempo. O ecrã desliga-se em $s s e os comandos ficam bloqueados. Toque em qualquer lado para continuar."
     override val standbyNow = "Desligar já"
     override val standbySetting = "Repouso automático"
-    override val standbyHelp = "Como na aplicação original: o ecrã desliga-se quando nada está a funcionar e ninguém lhe toca, e os comandos ficam bloqueados. Abrir ou fechar a tampa, pôr algo na balança, o botão rotativo ou o botão de ligar acordam-no."
+    override val standbyHelp = "O ecrã desliga-se e os comandos bloqueiam quando nada está a funcionar. A tampa, a balança, o botão rotativo ou o botão de ligar acordam-no."
     override val standbyAfter = "Depois de"
     override val turbo = "Turbo"
-    override val turboOff = "O turbo está desligado. Ligue-o em Definições → Máquina depois do teste supervisionado do turbo."
-    override val turboSetting = "Botão turbo"
-    override val turboSettingHelp = "Velocidade máxima enquanto o mantém premido, no máximo 10 s, nunca com calor nem acima de 60 °C. Deixe desligado se preferir que a máquina só rode até à velocidade dos mostradores."
     override val emptyBowlTitle = "O copo está vazio?"
     override val emptyBowlBody = "Coloque o copo vazio com a tampa. Para aquecer serão depois precisos pelo menos 200 g de alimentos ou líquido acima deste peso."
     override val emptyBowlOk = "O copo está vazio"; override val emptyBowlSaved = "Copo vazio guardado"
@@ -634,7 +621,7 @@ object Pt : Strings() {
     private fun longTime(sec: Int) = when { sec < 60 -> "$sec segundos"; sec == 60 -> "1 minuto"; sec % 60 == 0 -> "${sec / 60} minutos"; else -> "${sec / 60} min ${sec % 60} s" }
     override val revShort = "inv."
 
-    override val settingsTitle = "Definições"; override val settingsSubtitle = "Idioma, receitas e Home Assistant"
+    override val settingsTitle = "Definições"; override val settingsSubtitle = "Idioma, máquina e ligações"
     override val recipeServer = "Servidor de receitas"
     override val recipeServerHelp = "Uma pasta com index.json, recipes/ e images/ em qualquer servidor web (um NAS, um Raspberry Pi…)."
     override val address = "Endereço"; override val saveSync = "Guardar e sincronizar"
@@ -662,16 +649,16 @@ object Pt : Strings() {
     override val remoteLoadHelp = "A app do telemóvel pode abrir aqui uma receita, pronta a cozinhar. Nunca inicia nada: continua a carregar em Iniciar na máquina. Recusado se outra receita estiver a meio."
     override fun remoteLoaded(title: String) = "Enviada do telemóvel: $title"
     override val on = "LIG."; override val notConnected = "Sem ligação"; override val connectedWord = "Ligado"; override val connecting = "A ligar…"
-    override val safetyTitle = "Limites de segurança (impostos pela camada da máquina)"
+    override val safetyTitle = "Limites de segurança, sempre aplicados"
     override val safetyLines = listOf(
         "Aquecimento: velocidade ≤ 3, pelo menos 200 g no copo, máx. 130 °C",
         "Inverso: velocidade ≤ 3 · máx. 99 min, 15 min acima da velocidade 6",
         "Para com a tampa aberta, erro da placa ou perda de ligação (1,5 s)",
-        "Turbo: só enquanto premido, máx. 10 s, desligado até o ligar abaixo",
-        "Amassar, refogar e vapor ficam desligados até serem testados",
+        "Turbo: só enquanto premido, máx. 10 s, nunca com calor nem acima de 60 °C",
+        "Amassar, alourar e Varoma: as predefinições originais, com os mesmos limites",
     )
     override val fontCredit = "Tipo de letra: Manrope (SIL Open Font License)"
-    override val language = "Idioma"
+    override val language = "Idioma"; override val about = "Sobre a máquina"
     override val location = "Localização (para o nascer e o pôr do sol)"; override val locationHint = "latitude, longitude  p. ex. 38.72, -9.14"
     override val haArea = "Divisão"; override val haAreaHint = "p. ex. Cozinha (opcional)"
     override val appearance = "Aspeto"; override val themeAuto = "Auto"; override val themeDay = "Dia"; override val themeNight = "Noite"

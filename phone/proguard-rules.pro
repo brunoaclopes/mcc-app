@@ -10,3 +10,7 @@
 # Glance -> WorkManager -> Room: generated database classes are created by reflection
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 -keep class androidx.work.impl.** { *; }
+# WorkManager creates these by reflection too (Glance runs the widget session as a worker):
+# without them the widget never leaves its loading layout
+-keep class * extends androidx.work.InputMerger { <init>(); }
+-keep class * extends androidx.work.ListenableWorker { <init>(android.content.Context, androidx.work.WorkerParameters); }

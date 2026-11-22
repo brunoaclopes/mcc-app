@@ -153,4 +153,4 @@ about 1 s; 42–75 MB of memory.
 - Photos go through `RoundImage`: one draw pass, no outline clipping, no stacked overlay views.
 - The rail and top bar are hardware layers.
 - The serial threads run at urgent priority on a fixed-rate schedule. The loop logs any gap over 250 ms, and
-  Settings → Machine → Serial loop shows live figures.
+  Settings → About this machine → Serial loop shows live figures.
