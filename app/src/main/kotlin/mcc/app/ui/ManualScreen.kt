@@ -175,7 +175,6 @@ class ManualScreen(app: AppUi) : Screen(app) {
                 when {
                     running -> return true
                     !MachineService.armed -> { app.requestUnlock(); return true }
-                    !app.prefs.turboEnabled -> { app.notify(S.turboOff, Notice.INFO); return true }
                 }
                 val err = s.turboStart()
                 if (err != null) app.notify(err, Notice.WARN) else { turboHeld = true; v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY) }
@@ -272,7 +271,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
             turboChip.background = if (turboOn) T.pressable(T.gradient(T.TEAL, T.TEAL_DEEP, 20)) else T.pressable(T.glass(20))
             shownTurbo = turboOn
         }
-        turboIcon.set(Icon.TURBO, if (turboOn) T.ON_PHOTO else if (app.prefs.turboEnabled) T.TEAL else T.TEXT_3)
+        turboIcon.set(Icon.TURBO, if (turboOn) T.ON_PHOTO else T.TEAL)
         turboChip.alpha = if (run && !turboOn) 0.45f else 1f
         val pm = MachineService.remotePermit
         remoteChip.visibility = if (app.prefs.remoteStart || pm != null) View.VISIBLE else View.GONE

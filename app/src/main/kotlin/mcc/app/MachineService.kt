@@ -216,11 +216,10 @@ class MachineService : Service() {
         if (why != null) cancelRemote(why)
     }
 
-    /** Modes the user switched on in Settings (the controller only accepts the ones it allows). */
+    /** Turbo and the firmware work modes are tested and always on; the controller still applies their limits. */
     fun applyModes() {
         val p = Prefs(this)
-        controller.userEnabledModes = (if (p.turboEnabled) setOf(RunMode.TURBO) else emptySet()) +
-            (if (p.specialModes) setOf(RunMode.KNEAD, RunMode.ROAST, RunMode.STEAM) else emptySet())
+        controller.userEnabledModes = setOf(RunMode.TURBO, RunMode.KNEAD, RunMode.ROAST, RunMode.STEAM)
         remoteEnabled = p.remoteStart
     }
 
@@ -332,7 +331,6 @@ class MachineService : Service() {
             val r = entry?.let { runCatching { store.loadRecipe(it) }.getOrNull() }?.let { if (servings != null) Servings.scale(it, servings) else it }
             when {
                 r == null -> Log.w(TAG, "remote load: recipe '$id' not found")
-                mcc.recipe.RecipeFit.usesSpecial(r) && !prefs.specialModes -> Log.i(TAG, "remote load '$id' refused: special modes off")
                 loadRecipe(r) == null -> {
                     remoteLoaded = ((remoteLoaded?.first ?: 0) + 1) to r.title
                     lastEvent = "recipe opened from the phone"

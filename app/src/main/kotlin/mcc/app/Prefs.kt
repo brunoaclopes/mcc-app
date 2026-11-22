@@ -33,6 +33,11 @@ class Prefs(context: Context) {
         get() = location.split(',').map { it.trim().toDoubleOrNull() }.takeIf { it.size == 2 && it.all { v -> v != null } }
             ?.let { (a, b) -> a!! to b!! }?.takeIf { it.first in -90.0..90.0 && it.second in -180.0..180.0 }
 
+    /** Settings cards folded shut, by key. */
+    var collapsed: Set<String>
+        get() = sp.getStringSet("collapsed", setOf("about"))?.toSet() ?: setOf("about")
+        set(v) = sp.edit().putStringSet("collapsed", v).apply()
+
     /** Look: "auto" (sunrise/sunset), "day" or "night". */
     var theme: String
         get() = sp.getString("theme", "auto") ?: "auto"
@@ -57,15 +62,6 @@ class Prefs(context: Context) {
     var soundLevel: Int
         get() = sp.getInt("soundLevel", 2)
         set(v) = sp.edit().putInt("soundLevel", v).apply()
-
-    /** The stock app's firmware work modes: knead, brown (roast) and Varoma steaming. */
-    var specialModes: Boolean
-        get() = sp.getBoolean("specialModes", false)
-        set(v) = sp.edit().putBoolean("specialModes", v).apply()
-
-    var turboEnabled: Boolean
-        get() = sp.getBoolean("turboEnabled", false)
-        set(v) = sp.edit().putBoolean("turboEnabled", v).apply()
 
     /** OpenAI-compatible API base, e.g. http://nas.local:8080/v1 (empty = AI features off). */
     var aiUrl: String
