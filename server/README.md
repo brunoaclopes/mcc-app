@@ -128,7 +128,7 @@ phone polls `<recipe server>/index.json` for up to 5 minutes after an upload.
 
 1. Datasets, e.g. `<pool>/apps/mcc-server/config` (the deploy key and `known_hosts`, mode 700) and
    `<pool>/apps/mcc-server/data` (writable), owned by `apps` (568:568).
-2. Build the image on the NAS, as the `apps` user so ssh has a user entry:
+2. Build the image on the NAS with `APP_UID`/`APP_GID` 568, so the container's user exists (ssh needs that):
 
        git clone <mcc-app> && cd mcc-app/server
        sudo docker build --build-arg APP_UID=568 --build-arg APP_GID=568 -t mcc-server:<version> .
