@@ -225,6 +225,8 @@ class Transcriber:
         return subtitle_text(files[0])
 
     def whisper(self, info: dict, tmp: Path, deadline: float):
+        # is the speech-to-text server there at all? (no point downloading the audio otherwise)
+        socket.create_connection((self.s.whisper_host, self.s.whisper_port), timeout=10).close()
         r = self.run(self.ytdlp("--load-info-json", str(tmp / "info.json"), "-f", "bestaudio/best",
                                 "--max-filesize", "200M", "--no-part", "--paths", f"temp:{tmp}",
                                 "-o", str(tmp / "audio.%(ext)s")), deadline)
