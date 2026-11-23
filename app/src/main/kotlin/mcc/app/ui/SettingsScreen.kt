@@ -242,7 +242,7 @@ class SettingsScreen(app: AppUi) : Screen(app) {
             onConfirm = {
                 p.aiUrl = aiUrl.text.toString(); p.aiModel = aiModel.text.toString(); p.aiKey = aiKey.text.toString()
                 if (p.aiUrl.isBlank()) app.notify(S.aiSaved, Notice.OK) else Thread {
-                    val r = runCatching { mcc.app.AiClient(p).models() }
+                    val r = runCatching { mcc.app.AiClient(p.aiUrl, p.aiModel, p.aiKey).models() }
                     view.post { r.fold({ app.notify(S.aiOk(it.size), Notice.OK) }, { app.notify(S.aiFailed(it.message ?: ""), Notice.ERROR) }) }
                 }.start()
             } }, lp(-1, T.dp(54)).apply { topMargin = T.dp(14) })

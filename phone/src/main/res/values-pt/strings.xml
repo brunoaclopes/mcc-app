@@ -3,4 +3,5 @@
     <string name="sc_recipes">Receitas</string>
     <string name="sc_list">Lista de compras</string>
     <string name="widget_desc">Estado da máquina, tempo restante e Parar</string>
+    <string name="share_import">Importar receita</string>
 </resources>

@@ -35,7 +35,7 @@ when the run starts (lid, content for heating, speed, time).
 | `mcc/state` | machine → HA | yes | JSON state (below), sent on change, at most every 0.5 s, and at least every 60 s |
 | `mcc/availability` | machine → HA | yes | `online` / `offline` (offline is the MQTT last will) |
 | `mcc/event` | machine → HA | no | one-off events (below), JSON with `event_type` |
-| `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare`, `cancel` or `start`, as a bare word or `{"command": "stop"}` |
+| `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare`, `cancel`, `refresh` or `start`, as a bare word or `{"command": "stop"}` |
 
 ## State payload
 
@@ -132,6 +132,7 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `tare` | tares the scale |
 | `start` | starts the run permitted at the machine (see Remote start); ignored without a valid permit |
 | `cancel` | closes the loaded recipe; stops the machine first if a step runs. Works while the controls are locked, like `stop` |
+| `refresh` | re-reads the recipe server's index (sent by the phone after it publishes a recipe). Changes nothing else |
 | `{"command":"load","recipe":"<id>","servings":6}` | `servings` is optional (1–99): scales the amounts for that many people; times and temperatures stay as written |
 | `{"command":"load","recipe":"<id>"}` | opens that recipe on the machine's Cook screen, ready to cook; **never starts it**. Refused while the machine runs or another recipe is under way, or when *Recipes from the phone* is off on the machine |
 

@@ -155,6 +155,7 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                         Text(L.s.recipesTitle, style = MaterialTheme.typography.headlineMedium, color = Mc.text)
                         Text(L.s.recipesCount(shown.size), style = MaterialTheme.typography.bodyMedium, color = Mc.text2)
                     }
+                    IconButton(onClick = { mcc.phone.Importer.open() }) { McIcon(Icon.SPARK, Mc.amber) }
                     if (rs.loading) CircularProgressIndicator(Modifier.size(22.dp), color = Mc.amber, strokeWidth = 2.5.dp)
                     else IconButton(onClick = { Recipes.refresh(force = true) }) { McIcon(Icon.REFRESH, Mc.text2) }
                 }

@@ -52,6 +52,7 @@ import mcc.phone.LinkClient
 import mcc.phone.P
 import mcc.phone.PhoneApp
 import mcc.phone.Recipes
+import kotlinx.coroutines.launch
 
 @Composable
 private fun Field(label: String, value: String, onChange: (String) -> Unit, hint: String? = null, password: Boolean = false, number: Boolean = false) {
@@ -93,6 +94,12 @@ fun SettingsScreen(modifier: Modifier) {
     var pass by remember { mutableStateOf(p.password) }
     var tls by remember { mutableStateOf(p.tls) }
     var repo by remember { mutableStateOf(p.repoUrl) }
+    var aiUrl by remember { mutableStateOf(p.aiUrl) }
+    var aiModel by remember { mutableStateOf(p.aiModel) }
+    var aiKey by remember { mutableStateOf(p.aiKey) }
+    var pubUrl by remember { mutableStateOf(p.publishUrl) }
+    var pubToken by remember { mutableStateOf(p.publishToken) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var bg by remember { mutableStateOf(p.background) }
     var live by remember { mutableStateOf(p.live) }
     var nNeeds by remember { mutableStateOf(p.notifyNeedsYou) }
@@ -133,6 +140,27 @@ fun SettingsScreen(modifier: Modifier) {
                 Field(L.s.address, repo, { repo = it }, "https://…")
                 FilledTonalButton(onClick = { p.repoUrl = repo; Recipes.refresh(force = true); ui.say(S.saved) },
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(L.s.saveSync) }
+            }
+        }
+
+        Glass(Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Label(S.importSettings, Mc.amber, Icon.SPARK)
+                Text(S.importSettingsHelp, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
+                Field(L.s.aiAddress, aiUrl, { aiUrl = it }, "http://nas.local:8080/v1")
+                Field(L.s.aiModel, aiModel, { aiModel = it }, "gpt-4o-mini")
+                Field(L.s.aiKey, aiKey, { aiKey = it }, password = true)
+                Field(S.publishAddress, pubUrl, { pubUrl = it }, "http://nas.local:8090/")
+                Field(S.publishToken, pubToken, { pubToken = it }, password = true)
+                FilledTonalButton(onClick = {
+                    p.aiUrl = aiUrl; p.aiModel = aiModel; p.aiKey = aiKey; p.publishUrl = pubUrl; p.publishToken = pubToken
+                    if (aiUrl.isBlank()) ui.say(S.saved) else scope.launch {
+                        val r = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            runCatching { mcc.app.AiClient(aiUrl, aiModel, aiKey).models() }
+                        }
+                        ui.say(r.fold({ L.s.aiOk(it.size) }, { L.s.aiFailed(it.message ?: "") }))
+                    }
+                }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(S.testAi) }
             }
         }
 

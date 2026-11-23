@@ -146,6 +146,7 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             Command.Start -> service.remoteStart()
             Command.Cancel -> service.cancelRecipe(remote = true)
             is Command.Load -> service.remoteLoad(cmd.recipeId, cmd.servings)
+            Command.Refresh -> service.refreshRecipes()
             null -> Log.w(MachineService.TAG, "ignored mqtt command '${raw.take(200)}'")
         }
         lastPayload = null

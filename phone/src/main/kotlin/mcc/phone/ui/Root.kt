@@ -79,12 +79,18 @@ fun Root(size: WindowSizeClass) {
     var shownCook by remember { mutableStateOf<String?>(null) }
     if (cookId != null) shownCook = cookId
     androidx.compose.runtime.LaunchedEffect(pendingTab.value) {
-        when (pendingTab.value) { "machine" -> tab = Tab.MACHINE; "recipes" -> tab = Tab.RECIPES; "list" -> tab = Tab.LIST }
+        when (pendingTab.value) { "machine" -> tab = Tab.MACHINE; "recipes" -> tab = Tab.RECIPES; "list" -> tab = Tab.LIST; "settings" -> tab = Tab.SETTINGS }
         pendingTab.value = null
     }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val ui = remember(wide) { Ui(snackbar, scope, wide) }
+    // recipe import: its messages, the recipe it made, and the sheet itself
+    val importMsg by mcc.phone.Importer.message.collectAsState()
+    val importOpen by mcc.phone.Importer.openId.collectAsState()
+    val importSheet by mcc.phone.Importer.sheet.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(importMsg) { importMsg?.let { ui.say(it); mcc.phone.Importer.message.value = null } }
+    androidx.compose.runtime.LaunchedEffect(importOpen) { importOpen?.let { openId = it; tab = Tab.RECIPES; mcc.phone.Importer.openId.value = null } }
     val st by LinkClient.state.collectAsState()
     val items by PhoneApp.app.shopping.items.collectAsState()
     val recipes by Recipes.state.collectAsState()
@@ -174,6 +180,7 @@ fun Root(size: WindowSizeClass) {
             exit = androidx.compose.animation.slideOutVertically { it } + fadeOut()) {
             shownCook?.let { id -> CookMode(id) { cookId = null } }
         }
+        if (importSheet) ImportSheet(onSettings = { tab = Tab.SETTINGS })
       }
     }
 }

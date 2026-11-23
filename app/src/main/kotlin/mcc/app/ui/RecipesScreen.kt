@@ -368,7 +368,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     }
 
     private fun importAi() {
-        val ai = mcc.app.AiClient(app.prefs)
+        val ai = mcc.app.AiClient(app.prefs.aiUrl, app.prefs.aiModel, app.prefs.aiKey)
         if (!ai.configured) { app.notify(S.aiNotSet, Notice.WARN); return }
         app.ask(S.aiImport, S.aiImportBody, S.aiImportHint, S.aiImportGo) { input ->
             app.notify(S.aiWorking)

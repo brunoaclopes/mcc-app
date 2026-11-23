@@ -69,6 +69,9 @@ class MachineService : Service() {
         /** Title of the last recipe the phone opened here, and a counter the UI watches to show it. */
         @Volatile var remoteLoaded: Pair<Int, String>? = null
             private set
+        /** Bumped when the recipe index was re-downloaded here, so the UI reloads its list. */
+        @Volatile var recipesRefreshed = 0
+            private set
     }
 
     private val lock = Object()
@@ -327,7 +330,9 @@ class MachineService : Service() {
             }
             if (busy) { Log.i(TAG, "remote load '$id' refused: busy"); lastEvent = "remote load refused (busy)"; return@Thread }
             val store = RecipeStore(this) { prefs.repoUrl }
+            // not in the cached index: it may have just been published, so ask the server once
             val entry = store.loadIndex(false).first?.recipes?.firstOrNull { it.id == id }
+                ?: store.loadIndex(true).first?.recipes?.firstOrNull { it.id == id }?.also { recipesRefreshed++ }
             val r = entry?.let { runCatching { store.loadRecipe(it) }.getOrNull() }?.let { if (servings != null) Servings.scale(it, servings) else it }
             when {
                 r == null -> Log.w(TAG, "remote load: recipe '$id' not found")
@@ -337,6 +342,15 @@ class MachineService : Service() {
                     wakeScreen()
                 }
             }
+        }.start()
+    }
+
+    /** Downloads the recipe index again (the phone published a recipe); the UI picks it up through [recipesRefreshed]. */
+    fun refreshRecipes() {
+        Thread {
+            val (_, warning) = RecipeStore(this) { prefs.repoUrl }.loadIndex(true)
+            Log.i(TAG, "recipe index refreshed from the phone${warning?.let { ": $it" } ?: ""}")
+            recipesRefreshed++
         }.start()
     }
 
