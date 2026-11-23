@@ -5,4 +5,5 @@
     <string name="sc_list">Shopping list</string>
     <string name="tile_label">Monsieur Cuisine</string>
     <string name="widget_desc">Machine status, time left and Stop</string>
+    <string name="share_import">Import recipe</string>
 </resources>

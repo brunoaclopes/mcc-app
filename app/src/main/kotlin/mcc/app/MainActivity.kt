@@ -324,8 +324,10 @@ class MainActivity : Activity(), AppUi {
     }
 
     private var remoteSeen = MachineService.remoteLoaded?.first ?: 0
+    private var refreshSeen = MachineService.recipesRefreshed
 
     private fun render() {
+        if (MachineService.recipesRefreshed != refreshSeen) { refreshSeen = MachineService.recipesRefreshed; reloadIndex(false) }
         MachineService.remoteLoaded?.let { (n, title) ->
             if (n != remoteSeen) {
                 remoteSeen = n

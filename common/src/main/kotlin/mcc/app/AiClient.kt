@@ -22,14 +22,14 @@ import java.net.URL
  * makes is checked by [Recipe.parse] and fitted to the machine limits by [RecipeFit], and machine steps still
  * need the user's hold on Start. Call from a background thread.
  */
-class AiClient(private val prefs: Prefs) {
+class AiClient(private val address: String, private val model: String, private val key: String) {
     class AiException(msg: String) : Exception(msg)
 
     data class Import(val recipe: Recipe, val changes: List<String>)
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    val configured get() = prefs.aiUrl.isNotBlank() && prefs.aiModel.isNotBlank()
+    val configured get() = address.isNotBlank() && model.isNotBlank()
 
     /** Lists the server's models, as a connection test. */
     fun models(): List<String> {
@@ -147,7 +147,7 @@ class AiClient(private val prefs: Prefs) {
 
     private fun chat(messages: List<JsonObject>): String {
         fun body(jsonMode: Boolean) = buildJsonObject {
-            put("model", prefs.aiModel)
+            put("model", model)
             put("temperature", 0.2)
             put("messages", JsonArray(messages))
             if (jsonMode) put("response_format", buildJsonObject { put("type", "json_object") })
@@ -186,7 +186,7 @@ class AiClient(private val prefs: Prefs) {
 
     private class HttpError(val code: Int, msg: String) : IOException(msg)
 
-    private fun url(path: String) = prefs.aiUrl.trim().trimEnd('/') + "/" + path
+    private fun url(path: String) = address.trim().trimEnd('/') + "/" + path
 
     private fun http(method: String, address: String, body: String?, timeout: Int, ai: Boolean = true): String {
         val c = URL(address).openConnection() as HttpURLConnection
@@ -195,7 +195,7 @@ class AiClient(private val prefs: Prefs) {
         c.setRequestProperty("User-Agent", "mcc-app")
         if (ai) {
             c.setRequestProperty("Content-Type", "application/json")
-            prefs.aiKey.takeIf { it.isNotBlank() }?.let { c.setRequestProperty("Authorization", "Bearer $it") }
+            key.trim().takeIf { it.isNotBlank() }?.let { c.setRequestProperty("Authorization", "Bearer $it") }
         }
         try {
             if (body != null) { c.doOutput = true; c.outputStream.use { it.write(body.toByteArray()) } }

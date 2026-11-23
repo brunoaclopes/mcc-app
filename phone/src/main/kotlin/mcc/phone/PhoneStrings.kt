@@ -38,6 +38,13 @@ abstract class PhoneStrings {
     abstract val nothingCooking: String; abstract val whatsCooking: String; abstract val temperature: String; abstract val scale: String
     abstract val next: String; abstract val previous: String; abstract fun removed(t: String): String; abstract val undo: String
     abstract val goToMachineStep: String
+    abstract val importTitle: String; abstract val importHelp: String; abstract val importGo: String; abstract fun importStage(n: Int, sec: Int): String
+    abstract fun importReady(t: String): String; abstract fun importSummary(ingredients: Int, steps: Int, machine: Int): String
+    abstract val publish: String; abstract val keepOnPhone: String; abstract val discard: String; abstract val publishHelp: String; abstract val publishOff: String
+    abstract fun publishFailed(m: String): String; abstract fun published(t: String): String; abstract fun publishedPending(t: String): String
+    abstract fun savedOnPhone(t: String): String; abstract val noSecondLanguage: String; abstract val importNotSet: String; abstract val openSettings: String
+    abstract val importSettings: String; abstract val importSettingsHelp: String; abstract val publishAddress: String; abstract val publishToken: String
+    abstract val testAi: String
 }
 
 object PhoneEn : PhoneStrings() {
@@ -81,6 +88,26 @@ object PhoneEn : PhoneStrings() {
     override val testConnection = "Connection"; override val connectedOk = "Connected"; override val stepNow = "Now"
     override val machineHere = "On the machine"; override val noRecipeLoaded = "No recipe open on the machine"; override val saved = "Saved"
     override val language = "Language"; override val systemDefault = "Phone language"
+    override val importTitle = "Import a recipe"
+    override val importHelp = "Paste the link of a recipe page, or the recipe text. Settings from other machines (\"10 min/100°C/speed 1\") are converted. You can also share a page from the browser to Monsieur Cuisine."
+    override val importGo = "Import"
+    override fun importStage(n: Int, sec: Int) = listOf("Reading the page and writing the recipe…", "Translating…", "Sending to the recipe server…", "Waiting for the server to list it…")[n] + " $sec s"
+    override fun importReady(t: String) = "Recipe ready: $t"
+    override fun importSummary(ingredients: Int, steps: Int, machine: Int) = "$ingredients ingredients · $steps steps, $machine on the machine"
+    override val publish = "Add to the recipe server"; override val keepOnPhone = "Keep on this phone only"; override val discard = "Discard"
+    override val publishHelp = "Goes to the recipe repository in Portuguese and English, so the machine and every phone get it."
+    override val publishOff = "Set the upload service in Settings → Recipe import to add recipes to the server."
+    override fun publishFailed(m: String) = "Could not add it to the server: $m"
+    override fun published(t: String) = "Added to the recipe server: $t"
+    override fun publishedPending(t: String) = "Sent: $t. The server hasn't listed it yet; it shows up after the next sync."
+    override fun savedOnPhone(t: String) = "Saved on this phone: $t"
+    override val noSecondLanguage = "The translation failed, so it can't go to the server (it needs both languages). Keep it on this phone or try again."
+    override val importNotSet = "Set the AI server first: Settings → Recipe import."
+    override val openSettings = "Open Settings"
+    override val importSettings = "Recipe import"
+    override val importSettingsHelp = "The AI turns recipe pages into machine recipes (it only writes recipes: it can't run the machine). The upload service adds them to the recipe server."
+    override val publishAddress = "Upload service address"; override val publishToken = "Upload token"
+    override val testAi = "Save and test"
     override val greetMorning = "Good morning"; override val greetAfternoon = "Good afternoon"; override val greetEvening = "Good evening"
     override val cookMode = "Cook along"; override val cookModeHelp = "Big steps, screen stays on"
     override fun bought(n: Int, total: Int) = "$n of $total bought"; override val featured = "Try today"
@@ -135,6 +162,26 @@ object PhonePt : PhoneStrings() {
     override val testConnection = "Ligação"; override val connectedOk = "Ligado"; override val stepNow = "Agora"
     override val machineHere = "Na máquina"; override val noRecipeLoaded = "Nenhuma receita aberta na máquina"; override val saved = "Guardado"
     override val language = "Idioma"; override val systemDefault = "Idioma do telemóvel"
+    override val importTitle = "Importar uma receita"
+    override val importHelp = "Cole o endereço de uma página de receita, ou o texto da receita. As definições de outras máquinas (\"10 min/100°C/vel 1\") são convertidas. Também pode partilhar uma página do navegador para o Monsieur Cuisine."
+    override val importGo = "Importar"
+    override fun importStage(n: Int, sec: Int) = listOf("A ler a página e a escrever a receita…", "A traduzir…", "A enviar para o servidor de receitas…", "À espera que o servidor a mostre…")[n] + " $sec s"
+    override fun importReady(t: String) = "Receita pronta: $t"
+    override fun importSummary(ingredients: Int, steps: Int, machine: Int) = "$ingredients ingredientes · $steps passos, $machine na máquina"
+    override val publish = "Adicionar ao servidor de receitas"; override val keepOnPhone = "Guardar só neste telemóvel"; override val discard = "Descartar"
+    override val publishHelp = "Vai para o repositório de receitas em português e inglês, para a máquina e todos os telemóveis a receberem."
+    override val publishOff = "Configure o serviço de envio em Definições → Importar receitas para adicionar receitas ao servidor."
+    override fun publishFailed(m: String) = "Não foi possível adicionar ao servidor: $m"
+    override fun published(t: String) = "Adicionada ao servidor de receitas: $t"
+    override fun publishedPending(t: String) = "Enviada: $t. O servidor ainda não a mostra; aparece na próxima sincronização."
+    override fun savedOnPhone(t: String) = "Guardada neste telemóvel: $t"
+    override val noSecondLanguage = "A tradução falhou, por isso não pode ir para o servidor (precisa das duas línguas). Guarde-a neste telemóvel ou tente de novo."
+    override val importNotSet = "Configure primeiro o servidor de IA: Definições → Importar receitas."
+    override val openSettings = "Abrir Definições"
+    override val importSettings = "Importar receitas"
+    override val importSettingsHelp = "A IA transforma páginas de receitas em receitas para a máquina (só escreve receitas: não pode ligar a máquina). O serviço de envio adiciona-as ao servidor de receitas."
+    override val publishAddress = "Endereço do serviço de envio"; override val publishToken = "Token de envio"
+    override val testAi = "Guardar e testar"
     override val greetMorning = "Bom dia"; override val greetAfternoon = "Boa tarde"; override val greetEvening = "Boa noite"
     override val cookMode = "Cozinhar passo a passo"; override val cookModeHelp = "Passos em grande, ecrã sempre ligado"
     override fun bought(n: Int, total: Int) = "$n de $total comprados"; override val featured = "Para hoje"

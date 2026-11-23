@@ -126,6 +126,8 @@ sealed class Command {
     object Start : Command()
     /** Closes the loaded recipe on the machine (stops it first if it runs). Only ever stops things. */
     object Cancel : Command()
+    /** Re-reads the recipe server's index (a recipe was just published). Changes nothing else. */
+    object Refresh : Command()
     /**
      * Opens a recipe on the machine's Cook screen (needs the machine's opt-in; refused while one is in progress).
      * [servings] scales its amounts for that many people (null: as written).
@@ -133,7 +135,7 @@ sealed class Command {
     data class Load(val recipeId: String, val servings: Int? = null) : Command()
 
     fun encode(): String = when (this) {
-        Stop -> "stop"; Pause -> "pause"; Tare -> "tare"; Start -> "start"; Cancel -> "cancel"
+        Stop -> "stop"; Pause -> "pause"; Tare -> "tare"; Start -> "start"; Cancel -> "cancel"; Refresh -> "refresh"
         is Load -> """{"command":"load","recipe":${JsonPrimitive(recipeId)}""" + (servings?.let { ""","servings":$it""" } ?: "") + "}"
     }
 
@@ -150,7 +152,7 @@ sealed class Command {
                 servings = (o["servings"] as? JsonPrimitive)?.content?.toIntOrNull()?.takeIf { it in 1..99 }
             }
             return when (word.lowercase()) {
-                "stop" -> Stop; "pause" -> Pause; "tare" -> Tare; "start" -> Start; "cancel" -> Cancel
+                "stop" -> Stop; "pause" -> Pause; "tare" -> Tare; "start" -> Start; "cancel" -> Cancel; "refresh" -> Refresh
                 "load" -> recipe?.takeIf { it.isNotBlank() && it.length <= 200 }?.let { Load(it, servings) }
                 else -> null
             }

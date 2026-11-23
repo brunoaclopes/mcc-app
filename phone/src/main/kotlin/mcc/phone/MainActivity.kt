@@ -31,8 +31,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); handle(intent) }
 
-    /** App shortcuts, the widget and the tile open a given tab. */
-    private fun handle(i: Intent?) { i?.getStringExtra("tab")?.let { pendingTab.value = it } }
+    /** App shortcuts, the widget and the tile open a given tab; a page shared from the browser opens the recipe import. */
+    private fun handle(i: Intent?) {
+        i?.getStringExtra("tab")?.let { pendingTab.value = it }
+        if (i?.action == Intent.ACTION_SEND && i.type?.startsWith("text/") == true) {
+            val text = i.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
+            // browsers share "Title https://…": take the link when there is one, else the text itself (a pasted recipe)
+            val link = Regex("https?://\\S+").find(text)?.value ?: text
+            if (link.isNotBlank()) { pendingTab.value = "recipes"; mcc.phone.Importer.open(link) }
+            i.action = null
+        }
+    }
 
     override fun onStart() { super.onStart(); PhoneApp.app.onVisible(true) }
     override fun onStop() { PhoneApp.app.onVisible(false); super.onStop() }
