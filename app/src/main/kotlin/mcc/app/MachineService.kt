@@ -241,6 +241,9 @@ class MachineService : Service() {
 
     @Volatile private var remoteEnabled = false
 
+    /** Estimated time until the loaded recipe is done, or null (none loaded, or finished). */
+    fun recipeRemainingMillis(): Long? = synchronized(lock) { runner?.remainingRecipeMillis(SystemClock.elapsedRealtime()) }
+
     /** Settings changed hands-free weighing: the loaded recipe follows at once. */
     fun setAutoWeigh(on: Boolean) = synchronized(lock) { prefs.autoWeigh = on; runner?.autoAdvanceWeigh = on }
 
@@ -634,7 +637,7 @@ class MachineService : Service() {
             if (rs.phase == RecipeRunner.Phase.RUNNING) recipeRan = true
             when {
                 rs.phase == RecipeRunner.Phase.DONE && evPhase != RecipeRunner.Phase.DONE && evPhase != null ->
-                    m?.publishEvent(MachineEvent(MachineEvent.FINISHED, recipe = title))
+                    { m?.publishEvent(MachineEvent(MachineEvent.FINISHED, recipe = title)); prefs.addCooked(r.id) }
                 // a machine step ended and the recipe moved on: every next step waits for someone at the machine
                 evPhase == RecipeRunner.Phase.RUNNING && rs.phase == RecipeRunner.Phase.READY && rs.stepIndex != evStepIndex ->
                     m?.publishEvent(MachineEvent(MachineEvent.NEEDS_YOU, recipe = title, step = "${rs.stepIndex + 1}/${r.steps.size}",

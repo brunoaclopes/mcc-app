@@ -17,7 +17,12 @@ import mcc.recipe.Step
 /** Guided cooking: one step at a time, with a live panel for machine and weighing steps. */
 class CookScreen(app: AppUi) : Screen(app) {
     override val title: String get() = MachineService.runnerState?.let { st -> recipe?.let { S.stepOf(st.stepIndex + 1, it.steps.size) } } ?: S.cookTitle
-    override val subtitle: String get() = recipe?.let { r -> r.title + (r.totalMinutes?.let { " · " + S.aboutMinutes(it) } ?: "") } ?: S.guidedCooking
+    override val subtitle: String get() = recipe?.let { r ->
+        // once under way, when it should be done; before that, how long it takes
+        val left = if (MachineService.runnerState?.let { it.stepIndex > 0 || it.phase != mcc.recipe.RecipeRunner.Phase.READY } == true) app.service?.recipeRemainingMillis() else null
+        r.title + (left?.let { " · " + S.recipeReadyAt(java.text.SimpleDateFormat("HH:mm", S.locale).format(java.util.Date(System.currentTimeMillis() + it))) }
+            ?: r.totalMinutes?.let { " · " + S.aboutMinutes(it) } ?: "")
+    } ?: S.guidedCooking
 
     private val recipe: Recipe? get() = app.service?.recipe
 

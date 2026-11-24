@@ -235,4 +235,13 @@ class RecipeRunnerTest {
         run(r, 1_500); board.grossGrams += 300; run(r, 6_000)
         assertEquals(0, r.stepIndex)
     }
+
+    @Test fun recipeTimeLeftCountsMachineTimeAndAMinutePerPreparation() {
+        run(null, 1_000)
+        val r = RecipeRunner(recipe(Step.Instruction("cut"), Step.Machine(segments = listOf(Segment(30, speed = 2), Segment(30, speed = 4))), Step.Weigh("water", 100)), controller)
+        assertEquals(60_000L + 60_000L + 60_000L, r.remainingRecipeMillis(now))
+        r.next(now)
+        assertTrue(r.start(now)); run(r, 10_000)
+        assertEquals(50_000L + 60_000L, r.remainingRecipeMillis(now)!!, "running: the real time left, then the weigh step")
+    }
 }

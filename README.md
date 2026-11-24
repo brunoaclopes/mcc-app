@@ -41,8 +41,9 @@ without the stock cooking app.
   reheating, and **cleaning** programs. They are ordinary guided recipes, so the same limits apply.
 - **Heated steps reach their temperature**: when a step's time runs out before the bowl is hot (a big or cold
   bowl), it keeps heating until it is, within a cap, and says so.
-- **Hands-free weighing** (weigh steps move on by themselves at the amount) and **keep warm** after a heated
-  recipe. What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
+- **Hands-free weighing** (weigh steps move on by themselves at the amount), **keep warm** after a heated
+  recipe, **"what can I make?"** (the search matches ingredients: "chicken, rice"), a **cooking history** ("Cooked
+  lately") and a **"ready about"** time for the whole recipe, also in Home Assistant. What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 - **AI recipe import** (optional): point it at any OpenAI-compatible server (OpenAI, or one on your own network)
   and turn a web page, pasted text or a cooking video into a guided recipe. Settings from other machines ("10 min/100°C/speed 1")
   are converted, and anything outside the machine limits is adjusted and listed. The AI only writes recipes.

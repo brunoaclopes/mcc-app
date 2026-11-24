@@ -99,6 +99,7 @@ object Discovery {
                 cmp("wifi_rssi", "sensor", "Wi-Fi signal") {
                     put("device_class", "signal_strength"); put("unit_of_measurement", "dBm"); put("entity_category", "diagnostic"); put("state_class", "measurement")
                 }
+                cmp("recipe_finish", "sensor", "Recipe ready at") { put("device_class", "timestamp"); put("icon", "mdi:clock-check-outline") }
                 cmp("program", "sensor", "Program") { put("icon", "mdi:pot-steam-outline"); put("value_template", "{{ value_json.program if value_json.program else None }}") }
                 cmp("time_left", "sensor", "Time left") {
                     put("device_class", "duration"); put("unit_of_measurement", "s")

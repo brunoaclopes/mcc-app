@@ -91,6 +91,7 @@ abstract class Strings {
     abstract val soupTexture: String; abstract val soupChunky: String; abstract val soupRustic: String; abstract val soupSmooth: String; abstract val soupVelvety: String
     abstract val soupOnion: String; abstract val soupOnionHelp: String; abstract val soupStart: String; abstract val soupTile: String; abstract val soupTileMeta: String
     abstract fun soupSummary(water: Int, minutes: Int, portions: Int): String
+    abstract fun recipeReadyAt(t: String): String; abstract val tagCooked: String
     abstract val autoWeighSetting: String; abstract val autoWeighHelp: String; abstract val keepWarm: String; abstract val keepWarmOn: String
     abstract val holdToStart: String; abstract val holdToResume: String; abstract val pause: String
     abstract val waitingMachine: String; abstract val closeLidToStart: String
@@ -294,6 +295,7 @@ object En : Strings() {
     override val soupTexture = "Texture"; override val soupChunky = "Chunky"; override val soupRustic = "Rustic"; override val soupSmooth = "Smooth"; override val soupVelvety = "Velvety"
     override val soupOnion = "Onion and garlic base"; override val soupOnionHelp = "Softened in olive oil first: more flavour."
     override val soupStart = "Prepare the soup"; override val soupTile = "Any-vegetable soup"; override val soupTileMeta = "by weight · 100 °C"
+    override fun recipeReadyAt(t: String) = "ready about $t"; override val tagCooked = "Cooked lately"
     override val autoWeighSetting = "Hands-free weighing"
     override val autoWeighHelp = "A weigh step moves on by itself once the amount has been in the bowl for 2 seconds. It never starts the machine."
     override val keepWarm = "Keep warm · 30 min at 70 °C"; override val keepWarmOn = "Keeping warm for 30 minutes"
@@ -311,7 +313,7 @@ object En : Strings() {
     override fun recipesCount(n: Int) = if (n == 1) "1 recipe" else "$n recipes"
     override fun stepsCount(n: Int) = "$n steps"
     override val offlineCopy = "offline copy"; override val serverUnreachable = "server unreachable, offline copy"
-    override val searchHint = "Search recipes or tags"; override val syncing = "Syncing recipes…"; override val all = "All"
+    override val searchHint = "Search recipes, tags or ingredients (chicken, rice)"; override val syncing = "Syncing recipes…"; override val all = "All"
     override val noRecipes = "No recipes yet.\nSet the recipe server in Settings."
     override fun nothingMatches(q: String) = "Nothing matches “$q”."
     override val nothingInFilter = "No recipes with this filter.\nTap here to show all."
@@ -564,6 +566,7 @@ object Pt : Strings() {
     override val soupTexture = "Textura"; override val soupChunky = "Com pedaços"; override val soupRustic = "Rústica"; override val soupSmooth = "Cremosa"; override val soupVelvety = "Aveludada"
     override val soupOnion = "Base de cebola e alho"; override val soupOnionHelp = "Refogada em azeite primeiro: mais sabor."
     override val soupStart = "Preparar a sopa"; override val soupTile = "Sopa de quaisquer legumes"; override val soupTileMeta = "pelo peso · 100 °C"
+    override fun recipeReadyAt(t: String) = "pronta por volta das $t"; override val tagCooked = "Feitas há pouco"
     override val autoWeighSetting = "Pesagem sem mãos"
     override val autoWeighHelp = "Um passo de pesar avança sozinho quando a quantidade está no copo há 2 segundos. Nunca liga a máquina."
     override val keepWarm = "Manter quente · 30 min a 70 °C"; override val keepWarmOn = "A manter quente durante 30 minutos"
@@ -581,7 +584,7 @@ object Pt : Strings() {
     override fun recipesCount(n: Int) = if (n == 1) "1 receita" else "$n receitas"
     override fun stepsCount(n: Int) = "$n passos"
     override val offlineCopy = "cópia local"; override val serverUnreachable = "servidor indisponível, cópia local"
-    override val searchHint = "Procurar receitas ou etiquetas"; override val syncing = "A sincronizar receitas…"; override val all = "Todas"
+    override val searchHint = "Procurar receitas, etiquetas ou ingredientes (frango, arroz)"; override val syncing = "A sincronizar receitas…"; override val all = "Todas"
     override val noRecipes = "Ainda não há receitas.\nIndique o servidor de receitas nas Definições."
     override fun nothingMatches(q: String) = "Nada corresponde a “$q”."
     override val nothingInFilter = "Sem receitas com este filtro.\nToque aqui para ver todas."

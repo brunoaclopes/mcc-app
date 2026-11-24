@@ -126,6 +126,41 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         warning = w
         buildTags()
         filter()
+        indexIngredients()
+    }
+
+    // ---- "what can I make": the search also looks at the ingredients of every recipe
+
+    /** Recipe id -> its ingredients, folded (lower case, no accents). Filled in the background. */
+    private val ingredientsById = java.util.concurrent.ConcurrentHashMap<String, String>()
+    @Volatile private var indexing = false
+
+    /** Reads every recipe once (downloading the ones not cached yet) and keeps its ingredient text for the search. */
+    private fun indexIngredients() {
+        val entries = app.index?.visible(app.prefs.uiLanguage) ?: return
+        if (indexing) return
+        indexing = true
+        Thread({
+            var added = 0
+            for (e in entries) {
+                if (ingredientsById.containsKey(e.id)) continue
+                val r = runCatching { app.store.loadRecipe(e) }.getOrNull() ?: continue
+                ingredientsById[e.id] = fold(r.ingredients.flatMap { g -> g.items.map { it.text } }.joinToString(" | "))
+                added++
+            }
+            indexing = false
+            // a search typed while the ingredients were still being read gets its full results now
+            if (added > 0) view.post { if (search.text.isNotBlank()) filter(animate = false) }
+        }, "mcc-ingredients").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }.start()
+    }
+
+    private fun fold(s: String) = java.text.Normalizer.normalize(s.lowercase(S.locale), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+
+    /** Every comma-separated term must be in the title, a tag or an ingredient: "frango, arroz" = recipes with both. */
+    private fun matches(e: RecipeIndex.Entry, terms: List<String>): Boolean {
+        if (terms.isEmpty()) return true
+        val hay = fold(e.title) + " | " + e.tags.joinToString(" | ") { fold(it) } + " | " + (ingredientsById[e.id] ?: "")
+        return terms.all { it in hay }
     }
 
     private fun buildTags() {
@@ -134,7 +169,8 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         val counts = HashMap<String, Int>()
         idx.visible(app.prefs.uiLanguage).forEach { e -> e.tags.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
         // programs and the user's own recipes always come first
-        val pinned = listOf(S.tagMine, mcc.recipe.Programs.TAG_PT, mcc.recipe.Programs.TAG_EN).filter { it in counts }
+        if (app.prefs.cooked.isNotEmpty()) counts[S.tagCooked] = 1
+        val pinned = listOf(S.tagCooked, S.tagMine, mcc.recipe.Programs.TAG_PT, mcc.recipe.Programs.TAG_EN).filter { it in counts }
         val tags = listOf<String?>(null) + pinned + counts.entries.filter { it.key !in pinned }.sortedByDescending { it.value }.take(14 - pinned.size).map { it.key }
         for (t in tags) {
             val chip = T.text(c, t ?: S.all, 15f, T.TEXT, T.bold).apply {
@@ -159,11 +195,14 @@ class RecipesScreen(app: AppUi) : Screen(app) {
 
     private fun filter(animate: Boolean = true) {
         val q = search.text.toString().trim().lowercase()
+        val terms = q.split(',').map { fold(it.trim()) }.filter { it.isNotEmpty() }
         shown.clear()
+        // "Cooked lately": the recipes from the history, most recent first
+        val cooked = if (selectedTag == S.tagCooked) app.prefs.cooked.map { it.first } else null
         app.index?.visible(app.prefs.uiLanguage)?.filter { e ->
-            (selectedTag == null || selectedTag in e.tags) &&
-                (q.isEmpty() || e.title.lowercase().contains(q) || e.tags.any { it.lowercase().contains(q) })
-        }?.let { shown.addAll(it) }
+            (selectedTag == null || cooked != null || selectedTag in e.tags) &&
+                (cooked == null || mcc.app.recipeKey(e.id) in cooked) && matches(e, terms)
+        }?.let { list -> shown.addAll(if (cooked != null) list.sortedBy { cooked.indexOf(mcc.app.recipeKey(it.id)) } else list) }
         adapter.notifyDataSetChanged()
         if (animate) { grid.setSelection(0); grid.scheduleLayoutAnimation() }
         empty.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
