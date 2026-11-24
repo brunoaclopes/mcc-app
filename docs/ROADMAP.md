@@ -6,8 +6,8 @@ worth doing next, roughly in order of value for the effort.
 
 ## Done
 
-- **Any-vegetable soup** (Programs): weight, how firm, chunky or blended at three levels, optional onion base; water,
-  time and blending are worked out (`recipe/Soup.kt`).
+- **Any-vegetable soup** (Programs): how firm, chunky or blended at three levels, optional onion base; put in as many
+  vegetables as you like and the machine weighs them and works out water, time and portions (`recipe/Soup.kt`).
 - **Heated steps reach their temperature**: a step whose time runs out before the bowl is hot keeps heating, within
   a cap, instead of moving on with a lukewarm bowl (`RecipeRunner`).
 - **Hands-free weighing**: weigh steps move on by themselves once the amount has been in the bowl for 2 s (Settings

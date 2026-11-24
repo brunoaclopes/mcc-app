@@ -79,8 +79,12 @@ sealed class Step {
     @Serializable @SerialName("instruction")
     data class Instruction(override val text: String) : Step()
 
+    /**
+     * [measure]: the amount is up to the cook ([grams] is then the most it expects). The scale measures what goes in,
+     * and a generated program (the automatic soup) works out the following steps from that weight.
+     */
     @Serializable @SerialName("weigh")
-    data class Weigh(override val text: String = "", val grams: Int) : Step()
+    data class Weigh(override val text: String = "", val grams: Int, val measure: Boolean = false) : Step()
 
     @Serializable @SerialName("machine")
     data class Machine(

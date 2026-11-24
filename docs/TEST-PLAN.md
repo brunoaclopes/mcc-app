@@ -22,7 +22,7 @@ Setup: open the app → tap **Unlock** (top right) → confirm. Then **Manual** 
 | T9 | dough / water | knead, roast, steam, one per session, enabled one at a time | like the stock app | compare against stock-app sniffs |
 | T10 | empty | Manual, time 0:00, speed 2, 20 s, then STOP | counts up from 0:00, stops on STOP; Pause from the phone keeps the count | stopwatch run |
 | T11 | 1500 g cold water | a recipe step "100 °C, 2 min, speed 1" | after 2 min it says "heating on to 100°" and moves on once the bowl reads 95 °C or more | heat extension |
-| T12 | vegetables | Programs → Any-vegetable soup, 600 g mixed, smooth, onion base | weigh steps guide to the amounts, cooks, blends 4→10 gradually | automatic soup |
+| T12 | vegetables | Programs → Any-vegetable soup, mixed, smooth, onion base; put in ~800 g of vegetables without weighing them | Next works it out: the water step asks for the matching amount, the ingredients show the weight, cooks, blends 4→10 gradually; with 100 g or 1.5 kg it asks to add or take some out | automatic soup |
 | T13 | 300 g water | a recipe with a 250 g weigh step, hands-free weighing on | moves on 2–3 s after the amount is in; the next machine step waits for Start | hands-free weighing |
 
 **T3 result (2026-11-21):** the board has its own watchdog. With the app killed mid-run (speed 1), the motor stopped almost

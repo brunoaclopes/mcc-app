@@ -244,4 +244,20 @@ class RecipeRunnerTest {
         assertTrue(r.start(now)); run(r, 10_000)
         assertEquals(50_000L + 60_000L, r.remainingRecipeMillis(now)!!, "running: the real time left, then the weigh step")
     }
+
+    @Test fun measuringStepWorksOutTheSoupFromWhatIsInTheBowl() {
+        run(null, 1_000)
+        val r = RecipeRunner(Soup.recipe(Soup.Options(kind = Soup.Kind.MIXED, blend = 2, onionBase = false), "en"), controller)
+        r.autoAdvanceWeigh = true
+        run(r, 1_500)
+        board.grossGrams += 150; run(r, 4_000)
+        assertEquals(0, r.stepIndex, "a measuring step never moves on by itself")
+        assertTrue(!r.next(now), "150 g is too little")
+        assertTrue(r.state(now).event is RecipeRunner.Event.WrongAmount)
+        board.grossGrams += 650; run(r, 1_500)
+        assertTrue(r.next(now))
+        assertEquals(1, r.stepIndex)
+        val water = r.recipe.steps.filterIsInstance<Step.Weigh>().single { !it.measure }
+        assertEquals(Soup.plan(Soup.Options(800, Soup.Kind.MIXED, 2, false)).waterGrams, water.grams)
+    }
 }

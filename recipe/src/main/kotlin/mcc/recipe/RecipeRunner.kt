@@ -18,7 +18,10 @@ import mcc.machine.StopReason
  *
  * Not thread-safe: call everything from the thread that also ticks the machine controller.
  */
-class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
+class RecipeRunner(recipe: Recipe, private val machine: MachineApi) {
+    /** The recipe being cooked. A measuring weigh step may replace it with one worked out for the weighed amount. */
+    var recipe: Recipe = recipe
+        private set
     enum class Phase { READY, RUNNING, PAUSED, DONE }
 
     /** Structured version of [State.message] for translated UIs. */
@@ -28,6 +31,8 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
         object Paused : Event()
         data class Stopped(val reason: StopReason?, val detail: String?) : Event()
         data class CannotStart(val rejected: StartResult.Rejected) : Event()
+        /** A measuring weigh step can't go on with [grams] in the bowl (null: the scale isn't steady yet). */
+        data class WrongAmount(val grams: Int?, val min: Int, val max: Int) : Event()
     }
 
     data class State(
@@ -95,6 +100,8 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
 
     fun next(nowMillis: Long): Boolean {
         if (phase == Phase.RUNNING || phase == Phase.DONE) return false
+        val step = currentStep
+        if (step is Step.Weigh && step.measure && !measured(nowMillis, step)) return false
         if (stepIndex + 1 >= recipe.steps.size) {
             phase = Phase.DONE
             message = "recipe finished"; event = Event.Finished
@@ -171,9 +178,27 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
         }
     }
 
+    /**
+     * Leaving a measuring weigh step: what is on the scale decides the rest of a generated recipe ([Generated]).
+     * False (with a [Event.WrongAmount]) when the amount is unknown or out of range.
+     */
+    private fun measured(nowMillis: Long, step: Step.Weigh): Boolean {
+        val snap = machine.snapshot(nowMillis)
+        val g = snap.scaleGrams?.takeIf { !tareWanted && snap.lastFrame?.scaleStable == true }
+        val range = Generated.range(recipe) ?: return true // nothing to work out
+        if (g == null || g !in range) {
+            message = "amount out of range"; event = Event.WrongAmount(g, range.first, range.last)
+            return false
+        }
+        val adapted = Generated.measured(recipe, g) ?: return true
+        require(adapted.steps.size == recipe.steps.size) { "a measured recipe keeps its steps" }
+        recipe = adapted
+        return true
+    }
+
     private fun autoWeigh(nowMillis: Long) {
         val step = currentStep as? Step.Weigh
-        if (!autoAdvanceWeigh || step == null || tareWanted || step.grams <= 0) { weighHeldSince = null; return }
+        if (!autoAdvanceWeigh || step == null || step.measure || tareWanted || step.grams <= 0) { weighHeldSince = null; return }
         val snap = machine.snapshot(nowMillis)
         val g = snap.scaleGrams
         // 97 %: the scale moves in 5 g steps, and a spoonful short is close enough to move on

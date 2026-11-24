@@ -90,7 +90,8 @@ abstract class Strings {
     abstract val soupKind: String; abstract val soupTender: String; abstract val soupMixed: String; abstract val soupFirm: String; abstract val soupKindHelp: String
     abstract val soupTexture: String; abstract val soupChunky: String; abstract val soupRustic: String; abstract val soupSmooth: String; abstract val soupVelvety: String
     abstract val soupOnion: String; abstract val soupOnionHelp: String; abstract val soupStart: String; abstract val soupTile: String; abstract val soupTileMeta: String
-    abstract fun soupSummary(water: Int, minutes: Int, portions: Int): String
+    abstract fun soupExample(veg: Int, water: Int, minutes: Int, portions: Int): String
+    abstract fun wrongAmount(g: Int?, min: Int, max: Int): String; abstract fun upTo(g: Int): String
     abstract fun recipeReadyAt(t: String): String; abstract val tagCooked: String
     abstract val autoWeighSetting: String; abstract val autoWeighHelp: String; abstract val keepWarm: String; abstract val keepWarmOn: String
     abstract val holdToStart: String; abstract val holdToResume: String; abstract val pause: String
@@ -187,6 +188,7 @@ abstract class Strings {
         RecipeRunner.Event.Paused -> paused
         is RecipeRunner.Event.Stopped -> stopReason(e.reason)
         is RecipeRunner.Event.CannotStart -> reject(e.rejected)
+        is RecipeRunner.Event.WrongAmount -> wrongAmount(e.grams, e.min, e.max)
     }
 
     protected fun runMode(ordinal: Int) = when (mcc.machine.RunMode.values().getOrNull(ordinal)) {
@@ -289,7 +291,7 @@ object En : Strings() {
     override fun bowlTemp(c: Int) = "bowl $c°"; override val bowlBelow37 = "bowl below 37°"
     override val stopwatch = "Stopwatch"; override val elapsed = "elapsed"; override fun waitingForHeat(c: Int) = "heating on to $c°"
     override val soupTitle = "Vegetable soup"; override val soupSubtitle = "Any vegetables, worked out from their weight"; override val soupVeg = "Vegetables, peeled"
-    override val soupVegHelp = "Cooking time and water are worked out from this. The scale guides you to it when you add them."
+    override val soupVegHelp = "No need to weigh anything: put the vegetables in when the recipe asks, as many as you like (300 g to 1.2 kg). The machine weighs them and works out the water, the time and the portions."
     override val soupKind = "Vegetables"; override val soupTender = "Tender"; override val soupMixed = "Mixed"; override val soupFirm = "Firm"
     override val soupKindHelp = "Tender: courgette, leek, spinach, tomato. Firm: potato, carrot, pumpkin, turnip."
     override val soupTexture = "Texture"; override val soupChunky = "Chunky"; override val soupRustic = "Rustic"; override val soupSmooth = "Smooth"; override val soupVelvety = "Velvety"
@@ -299,7 +301,13 @@ object En : Strings() {
     override val autoWeighSetting = "Hands-free weighing"
     override val autoWeighHelp = "A weigh step moves on by itself once the amount has been in the bowl for 2 seconds. It never starts the machine."
     override val keepWarm = "Keep warm · 30 min at 70 °C"; override val keepWarmOn = "Keeping warm for 30 minutes"
-    override fun soupSummary(water: Int, minutes: Int, portions: Int) = "With $water g of water · cooks $minutes min · about $portions portions"
+    override fun soupExample(veg: Int, water: Int, minutes: Int, portions: Int) = "For example, $veg g of vegetables: $water g of water, $minutes min, about $portions portions"
+    override fun wrongAmount(g: Int?, min: Int, max: Int) = when {
+        g == null -> "Wait a moment for the scale to settle, then tap Next."
+        g < min -> "Only $g g in the bowl: add vegetables, at least $min g."
+        else -> "$g g is too much for the bowl: take some out, at most $max g."
+    }
+    override fun upTo(g: Int) = "up to $g g"
     override val holdToStart = "Hold to start"; override val holdToResume = "Hold to resume"; override val pause = "Pause"
     override val waitingMachine = "Waiting for the machine…"; override val closeLidToStart = "Close the lid to start"
     override val unlockToStart = "Controls locked · tap the lock at the top to unlock"
@@ -560,7 +568,7 @@ object Pt : Strings() {
     override fun bowlTemp(c: Int) = "copo $c°"; override val bowlBelow37 = "copo abaixo de 37°"
     override val stopwatch = "Cronómetro"; override val elapsed = "decorrido"; override fun waitingForHeat(c: Int) = "a aquecer até $c°"
     override val soupTitle = "Sopa de legumes"; override val soupSubtitle = "Quaisquer legumes, calculada pelo peso"; override val soupVeg = "Legumes descascados"
-    override val soupVegHelp = "O tempo e a água são calculados a partir daqui. A balança guia-o até este peso quando os juntar."
+    override val soupVegHelp = "Não precisa de pesar nada: junte os legumes quando a receita pedir, os que quiser (300 g a 1,2 kg). A máquina pesa-os e calcula a água, o tempo e as doses."
     override val soupKind = "Legumes"; override val soupTender = "Tenros"; override val soupMixed = "Mistos"; override val soupFirm = "Rijos"
     override val soupKindHelp = "Tenros: courgette, alho-francês, espinafres, tomate. Rijos: batata, cenoura, abóbora, nabo."
     override val soupTexture = "Textura"; override val soupChunky = "Com pedaços"; override val soupRustic = "Rústica"; override val soupSmooth = "Cremosa"; override val soupVelvety = "Aveludada"
@@ -570,7 +578,13 @@ object Pt : Strings() {
     override val autoWeighSetting = "Pesagem sem mãos"
     override val autoWeighHelp = "Um passo de pesar avança sozinho quando a quantidade está no copo há 2 segundos. Nunca liga a máquina."
     override val keepWarm = "Manter quente · 30 min a 70 °C"; override val keepWarmOn = "A manter quente durante 30 minutos"
-    override fun soupSummary(water: Int, minutes: Int, portions: Int) = "Com $water g de água · coze $minutes min · cerca de $portions doses"
+    override fun soupExample(veg: Int, water: Int, minutes: Int, portions: Int) = "Por exemplo, $veg g de legumes: $water g de água, $minutes min, cerca de $portions doses"
+    override fun wrongAmount(g: Int?, min: Int, max: Int) = when {
+        g == null -> "Espere um momento até a balança estabilizar e toque em Seguinte."
+        g < min -> "Só $g g no copo: junte legumes, pelo menos $min g."
+        else -> "$g g é demais para o copo: retire alguns, no máximo $max g."
+    }
+    override fun upTo(g: Int) = "até $g g"
     override val holdToStart = "Mantenha para iniciar"; override val holdToResume = "Mantenha para retomar"; override val pause = "Pausa"
     override val waitingMachine = "À espera da máquina…"; override val closeLidToStart = "Feche a tampa para começar"
     override val unlockToStart = "Comandos bloqueados · toque no cadeado em cima para desbloquear"

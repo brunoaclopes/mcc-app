@@ -36,8 +36,8 @@ without the stock cooking app.
   Time 0:00 runs as a stopwatch until you stop it. Works with the touch screen or the machine's jog knob.
 - **Guided recipes** from a recipe server you control (any static web server). Preparation steps, weighing with a
   live gauge, and machine steps that run only after you hold Start.
-- **Automatic programs**: an **any-vegetable soup** worked out from the weight (firmness, chunky or blended at three
-  levels, optional onion base), boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, proofing dough,
+- **Automatic programs**: an **any-vegetable soup**: put in as many vegetables as you like, the machine weighs them
+  and works out the water, time and portions (firmness, chunky or blended at three levels, optional onion base), boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, proofing dough,
   reheating, and **cleaning** programs. They are ordinary guided recipes, so the same limits apply.
 - **Heated steps reach their temperature**: when a step's time runs out before the bowl is hot (a big or cold
   bowl), it keeps heating until it is, within a cap, and says so.

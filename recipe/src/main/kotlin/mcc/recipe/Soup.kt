@@ -3,9 +3,10 @@ package mcc.recipe
 import kotlin.math.roundToInt
 
 /**
- * The automatic soup: any mix of vegetables, worked out from their weight. It builds an ordinary recipe (weigh steps,
- * machine steps), so it runs through the same runner and machine limits as any other, and a heated step that is
- * not boiling yet when its time ends keeps going until it is ([RecipeRunner]).
+ * The automatic soup: any mix of vegetables, worked out from their weight. The cook just puts the vegetables in: that
+ * step measures them ([Step.Weigh.measure]), and when it ends the runner asks [measured] for the same recipe worked out
+ * for that weight (water, cooking time, portions). It is an ordinary recipe, so it runs through the same runner and
+ * machine limits as any other, and a heated step that is not boiling yet when its time ends keeps going until it is.
  */
 object Soup {
     /** How long the vegetables take: courgette, leek, spinach, tomato... / a mix / potato, carrot, pumpkin, turnip. */
@@ -15,19 +16,22 @@ object Soup {
     const val BLEND_MAX = 3
 
     const val MIN_VEG = 300
-    const val MAX_VEG = 1000
+    const val MAX_VEG = 1200
+    /** What the steps are drafted for before the vegetables are weighed. */
+    private const val DRAFT_VEG = 600
     /** Most the bowl should hold with a boiling soup. */
     const val MAX_TOTAL = 2000
     /** Onion base: onion, garlic and olive oil. */
     private const val BASE_GRAMS = 140
 
-    data class Options(val vegGrams: Int, val kind: Kind = Kind.MIXED, val blend: Int = 2, val onionBase: Boolean = true)
+    /** [vegGrams]: null until the vegetables are weighed. */
+    data class Options(val vegGrams: Int? = null, val kind: Kind = Kind.MIXED, val blend: Int = 2, val onionBase: Boolean = true)
 
     data class Plan(val vegGrams: Int, val waterGrams: Int, val cookSeconds: Int, val portions: Int)
 
     /** Water, cooking time and portions for [o]. */
     fun plan(o: Options): Plan {
-        val veg = o.vegGrams.coerceIn(MIN_VEG, MAX_VEG)
+        val veg = (o.vegGrams ?: DRAFT_VEG).coerceIn(MIN_VEG, MAX_VEG)
         val extras = if (o.onionBase) BASE_GRAMS else 0
         // blended soups are thick with about as much water as vegetables; a chunky soup is more of a broth
         val ratio = if (o.blend > 0) 1.0 else 1.4
@@ -48,9 +52,23 @@ object Soup {
         else -> listOf(Segment(10, 4), Segment(10, 6), Segment(10, 8), Segment(60, 10))
     }
 
+    private const val REF = "soup:"
+
+    fun isSoup(r: Recipe) = r.source?.kind == "program" && r.source.ref?.startsWith(REF) == true
+
+    /** The same soup worked out for [grams] of vegetables (null if [r] isn't one, or [grams] is out of range). */
+    fun measured(r: Recipe, grams: Int): Recipe? {
+        if (!isSoup(r) || grams !in MIN_VEG..MAX_VEG) return null
+        val parts = r.source!!.ref!!.removePrefix(REF).split(':')
+        val kind = runCatching { Kind.valueOf(parts[0]) }.getOrNull() ?: return null
+        val o = Options(grams, kind, parts.getOrNull(1)?.toIntOrNull() ?: 2, parts.getOrNull(2) != "0")
+        return recipe(o, r.language ?: "pt")
+    }
+
     fun recipe(o: Options, lang: String): Recipe {
         fun t(en: String, pt: String) = if (lang == "pt") pt else en
         val p = plan(o)
+        val weighed = o.vegGrams != null
         val blended = o.blend > 0
         val steps = ArrayList<Step>()
         val ingredients = ArrayList<String>()
@@ -63,15 +81,22 @@ object Soup {
             steps += Step.Weigh(t("Scrape down the sides with the spatula and add the olive oil.", "Raspe as paredes com a espátula e junte o azeite."), 30)
             steps += Step.Machine(t("Soften the onion (the blade turns now and then).", "Refogar a cebola (a lâmina roda de vez em quando)."), Mode.ROAST, listOf(Segment(240, 0, 120)))
         }
-        ingredients += t("${p.vegGrams} g vegetables, peeled", "${p.vegGrams} g de legumes descascados")
-        ingredients += t("${p.waterGrams} g water", "${p.waterGrams} g de água")
+        if (weighed) {
+            ingredients += t("${p.vegGrams} g vegetables, peeled", "${p.vegGrams} g de legumes descascados")
+            ingredients += t("${p.waterGrams} g water", "${p.waterGrams} g de água")
+        } else {
+            ingredients += t("Vegetables, peeled: as many as you like (300 g to 1.2 kg)", "Legumes descascados: os que quiser (300 g a 1,2 kg)")
+            ingredients += t("Water: worked out from the vegetables", "Água: calculada a partir dos legumes")
+        }
         ingredients += t("Salt (about 1 tsp per litre) and olive oil to serve", "Sal (cerca de 1 c. chá por litro) e azeite para servir")
+        val weigh = t(" Then tap Next: the machine weighs them and works out the water and the time.",
+            " Depois toque em Seguinte: a máquina pesa-os e calcula a água e o tempo.")
         if (blended) {
-            steps += Step.Weigh(t("Add the vegetables in rough pieces (about 4 cm).", "Junte os legumes em pedaços grosseiros (cerca de 4 cm)."), p.vegGrams)
+            steps += Step.Weigh(t("Add the vegetables in rough pieces (about 4 cm), as many as you like.", "Junte os legumes em pedaços grosseiros (cerca de 4 cm), os que quiser.") + weigh, MAX_VEG, measure = true)
             steps += Step.Machine(t("Chop the vegetables, so they cook faster.", "Picar os legumes, para cozerem mais depressa."), Mode.RUN, listOf(Segment(6, 5)))
         } else {
-            steps += Step.Weigh(t("Add the vegetables cut into small cubes (1 to 2 cm), the firm ones the smallest.",
-                "Junte os legumes cortados em cubos pequenos (1 a 2 cm), os mais rijos mais pequenos."), p.vegGrams)
+            steps += Step.Weigh(t("Add the vegetables cut into small cubes (1 to 2 cm), the firm ones the smallest, as many as you like.",
+                "Junte os legumes cortados em cubos pequenos (1 a 2 cm), os mais rijos mais pequenos, os que quiser.") + weigh, MAX_VEG, measure = true)
         }
         steps += Step.Weigh(t("Add the water and the salt.", "Junte a água e o sal."), p.waterGrams)
         // chunky: reverse at speed 1, the blunt side of the blade stirs without cutting the pieces
@@ -84,12 +109,15 @@ object Soup {
         val total = p.vegGrams + p.waterGrams + (if (o.onionBase) BASE_GRAMS else 0)
         return Recipe(
             format = Recipe.FORMAT, id = "program-soup-$lang", title = t("Vegetable soup", "Sopa de legumes"), language = lang,
-            servings = t("${p.portions} portions", "${p.portions} doses"),
+            servings = if (weighed) t("${p.portions} portions", "${p.portions} doses") else null,
             totalMinutes = (p.cookSeconds / 60) + (if (o.onionBase) 6 else 0) + 5,
-            tags = listOf(if (lang == "pt") Programs.TAG_PT else Programs.TAG_EN), source = Source(kind = "program"),
+            tags = listOf(if (lang == "pt") Programs.TAG_PT else Programs.TAG_EN),
+            source = Source(kind = "program", ref = REF + "${o.kind}:${o.blend}:${if (o.onionBase) 1 else 0}"),
             ingredients = listOf(IngredientGroup(items = ingredients.map { Ingredient(it) })), steps = steps,
-            notes = listOf(t("Worked out for $total g in the bowl. If the vegetables are still firm, cook 5 more minutes at 100 °C, speed 1, in Manual.",
-                "Calculada para $total g no copo. Se os legumes ainda estiverem rijos, coza mais 5 minutos a 100 °C, velocidade 1, no Manual.")),
+            notes = listOf(if (weighed) t("Worked out for $total g in the bowl. If the vegetables are still firm, cook 5 more minutes at 100 °C, speed 1, in Manual.",
+                "Calculada para $total g no copo. Se os legumes ainda estiverem rijos, coza mais 5 minutos a 100 °C, velocidade 1, no Manual.")
+                else t("The water and the cooking time are worked out from the weight of the vegetables when you add them.",
+                "A água e o tempo de cozedura são calculados a partir do peso dos legumes quando os juntar.")),
         )
     }
 }
