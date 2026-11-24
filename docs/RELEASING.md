@@ -23,8 +23,9 @@ versions and pushes a tag.
 The weekly build starts from scratch, so the server always has a recent yt-dlp (YouTube changes often) and current
 Alpine security fixes. Servers that use `latest` get it by pulling the image again (TrueNAS shows an update).
 
-Packages of a private repository are private. After the repository goes public, make each package public once:
-GitHub → your profile → Packages → the package → Package settings → Change visibility.
+Both packages are public: anyone can pull them without logging in. A package first published from a private
+repository (a private fork, say) starts private; make it public once under GitHub → your profile → Packages → the
+package → Package settings → Change visibility.
 
 ## Versions
 

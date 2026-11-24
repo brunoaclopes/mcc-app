@@ -66,8 +66,9 @@ Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.ph
 | `Led.kt` | RGB LED patterns on their own thread |
 | `MqttBridge.kt` | Home Assistant discovery, state and commands ([HOME-ASSISTANT.md](HOME-ASSISTANT.md)) |
 | `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`) |
-| `AiClient.kt` | OpenAI-compatible chat client for the recipe import; output goes through `Recipe.parse` and `RecipeFit` |
+| `AiClient.kt` (in `common/`) | OpenAI-compatible chat client for the recipe import; output goes through `Recipe.parse` and `RecipeFit` |
 | `Prefs.kt` | settings |
+| `Sounds.kt` | small synthesized sounds (start, stop, step, weighed, done, alerts, knob ticks), generated at start-up and played on the alarm stream |
 | `Sun.kt` | sunrise and sunset for the Auto look |
 | `i18n/Strings.kt` (in `common/`) | every user-visible text, English and European Portuguese |
 | `MainActivity.kt` | the shell: rail, top bar with STOP, screen host, dialogs, toasts, sounds |
@@ -79,7 +80,7 @@ Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.ph
 
 - [`recipe-repo/`](../recipe-repo): the template for a recipe repository (format, validator, converters, index
   builder) and the generic recipe server image (`docker/serve.Dockerfile`).
-- [`server/`](../server): Python, standard library only; recipe uploads (commit and push to the recipe repository)
+- [`server/`](../server): Python (standard library, plus yt-dlp and Pillow in the image); recipe uploads (commit and push to the recipe repository)
   and video transcripts (yt-dlp, Wyoming speech-to-text). Docker image `ghcr.io/brunoaclopes/mcc-server`.
 - [`.github/`](../.github): CI, releases and images ([RELEASING.md](RELEASING.md)).
 
@@ -97,10 +98,11 @@ maximum runtime or the requested duration is reached.
 - the temperature is above 130 °C;
 - the duration is above 99 min (15 min above speed 6);
 - heat is requested without a confirmed empty-bowl reference, or with less than 200 g in the bowl (roast: 50 g);
-- the run mode isn't enabled. Only NORMAL (`01`) is enabled by default. Turbo can be switched on in Settings
-  after its supervised test (`SafetyLimits.userEnableableModes`); it runs only while held, at most 10 s, never with
-  heat, reverse or a bowl at 60 °C or more. Knead, roast and steam need `SafetyLimits.enabledModes` and a
-  supervised test first.
+- the run mode isn't enabled. The controller only enables NORMAL (`01`) by itself (`SafetyLimits.enabledModes`);
+  turbo, knead, roast and steam are in `SafetyLimits.userEnableableModes`, and the app enables them
+  (`MachineService.applyModes`) because each passed its supervised test ([TEST-PLAN.md](TEST-PLAN.md)). Their own
+  limits always apply: turbo only while held, at most 10 s, never with heat, reverse or a bowl at 60 °C or more;
+  roast at speed 1 at most. A new mode needs a supervised test before it is added there.
 
 The **tare** shifts the empty-bowl reference, so the content measurement survives a tare. The weight is "unknown"
 for 1.5 s after a tare. The board reports 0 g while the motor runs.
@@ -140,6 +142,10 @@ for 1.5 s after a tare. The board reports 0 g while the motor runs.
 | board error present | red blink |
 | screen off, or no link to the board | off |
 | stock app owns the machine | not touched |
+
+Settings → Light and sound: **Animated light ring** (on by default) follows the blade speed and the heat, fills
+green while you weigh and plays a rainbow when a recipe ends; off keeps the plain colours above. **Ring
+brightness**: 25, 50 or 100 %.
 
 ## UI
 

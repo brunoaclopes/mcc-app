@@ -6,8 +6,8 @@ From a stock Monsieur Cuisine Connect to mcc-app running on it. Allow an afterno
 
 - The machine (SKMC 1200), a small Torx screwdriver, and a USB-A to USB-A cable (or adapter plus extension).
 - A Linux or Windows PC with `adb` and SP Flash Tool. You need these for step 1 only.
-- To build the app: JDK 17, the Android SDK (platform 34) and NDK `26.3.11579264`. Android Studio installs all of
-  them, or you can use the command-line tools.
+- Only to build the app yourself: JDK 17, the Android SDK (platform `android-37.2`, build tools 37) and NDK
+  `26.3.11579264`. Android Studio installs all of them, or you can use the command-line tools.
 
 > [!CAUTION]
 > The service cover has two USB ports. **Only use the right-hand one, labelled "Android USB".** The left one is

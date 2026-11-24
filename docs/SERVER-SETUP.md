@@ -206,6 +206,7 @@ latest yt-dlp, or set `MCC_YTDLP_UPDATE=1` (see `server/README.md`).
 | A new recipe doesn't appear | an invalid recipe or a missing translation: `docker logs <recipe server>` names the file (or run `python3 tools/build_index.py` in the repository) |
 | Phone: "HTTP 401" when publishing | the upload token in the phone doesn't match the service |
 | Phone: "HTTP 422 …" | the service rejected the recipe; the message says why |
+| Phone: "The upload token is wrong" on a video | the same token mismatch, found when fetching the transcript |
 | Published, but "not on the server yet" | the push worked but the recipe server didn't pick it up: its logs (git pull failing: the read-only deploy key), or the redeploy command without git mode |
 | AI test fails | address must end in `/v1`; check the key and that the phone or machine can reach that host |
 | Video import uses only the description | yt-dlp found no subtitles and Whisper isn't set up, or yt-dlp needs updating |

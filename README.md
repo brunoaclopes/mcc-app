@@ -36,14 +36,15 @@ without the stock cooking app.
 - **Automatic programs**: boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, proofing dough,
   reheating, and a **cleaning** program. They are ordinary guided recipes, so the same limits apply.
 - **AI recipe import** (optional): point it at any OpenAI-compatible server (OpenAI, or one on your own network)
-  and turn a web page or pasted text into a guided recipe. Settings from other machines ("10 min/100°C/speed 1")
+  and turn a web page, pasted text or a cooking video into a guided recipe. Settings from other machines ("10 min/100°C/speed 1")
   are converted, and anything outside the machine limits is adjusted and listed. The AI only writes recipes.
 - **Home Assistant** over MQTT: status, temperature, speed, weight, lid, finish time and a Stop button. Home
   Assistant can stop, pause or tare. With the opt-in remote start, it can start one run you prepared and permitted
   at the machine, and nothing else.
 - **Phone app** ([docs/PHONE.md](docs/PHONE.md)): live status, Stop and Pause, notifications when the recipe needs
   you or is ready, a live progress notification, recipes that follow the machine's current step, "open on the
-  machine", and a shopping list. Works on phones without Google services and adapts to foldables.
+  machine", cook-along pages, a shopping list, recipe import (share a page or video to it), a home-screen widget and
+  a Quick Settings tile. Works on phones without Google services and adapts to foldables.
 - **The RGB LED** shows the state (idle, running, heating, done, error), as in the stock app.
 - **Day and night looks** (Auto follows sunrise and sunset), **English and European Portuguese**.
 - Fast on the 2015-era tablet: 1–6 % CPU at idle, a fixed 100 ms machine loop.
@@ -56,8 +57,9 @@ without the stock cooking app.
   more than 130 °C, more than 99 min (15 min above speed 6), and heat without a known empty-bowl weight or with
   less than 200 g in the bowl.
 - It **stops** when the lid opens, the power board reports an error, or no valid board frame arrives for 1.5 s.
-- Only normal runs (work command `01`) are enabled by default. Turbo (hold to run, max 10 s) can be switched on in
-  Settings after its supervised test; knead, roast and steam are implemented but refused until each has had one.
+- Every run mode (normal, turbo, knead, roast, steam) passed a supervised live test before it was turned on, and
+  each keeps its own limits: turbo runs only while held (10 s at most, never with heat, reverse or a bowl at 60 °C or
+  more), roast stirs at speed 1 at most.
 - The app hands the serial port back if the stock machine service is running: never two writers.
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety).

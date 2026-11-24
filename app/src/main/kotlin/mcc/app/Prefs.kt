@@ -44,7 +44,6 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putString("theme", v).apply()
 
 
-    /** Turbo button in Manual. Off until the user has done the supervised turbo test (docs/TEST-PLAN.md, T8). */
     /** Richer LED animations (motor-speed pulse, temperature colour, weighing fill, rainbow). Off = stock-like. */
     var ledAnimated: Boolean
         get() = sp.getBoolean("ledAnimated", true)

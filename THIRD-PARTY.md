@@ -6,9 +6,10 @@
 | [Eclipse Paho MQTT v3](https://github.com/eclipse/paho.mqtt.java) | Gradle dependency, inside the APK | EPL-2.0 / EDL-1.0 |
 | [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | Gradle dependency, inside the APK | Apache-2.0 |
 | Kotlin standard library | Gradle dependency, inside the APK | Apache-2.0 |
+| AndroidX: Jetpack Compose, Material 3, Glance, Activity, Core, Lifecycle, Window, SplashScreen | Gradle dependencies, inside the phone APK | Apache-2.0 |
 | AOSP platform **test** key | `signing/` | Part of AOSP (Apache-2.0); public, not a secret |
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp), [Pillow](https://python-pillow.org), [FFmpeg](https://ffmpeg.org), [Deno](https://deno.com) | installed into the `server/` Docker image when you build it; not in this repository | Unlicense, MIT-CMU, LGPL/GPL, MIT |
-| nginx, Python | base images of the `server/` and `recipe-repo/` Docker images | BSD-2-Clause, PSF |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp), [Pillow](https://python-pillow.org), [FFmpeg](https://ffmpeg.org), [Deno](https://deno.com) | installed into the `server/` Docker image (the published one and your own builds); not in this repository | Unlicense, MIT-CMU, LGPL/GPL, MIT |
+| Alpine Linux, nginx, Python, git, OpenSSH | base images and packages of the `server/` and `recipe-repo/` Docker images | various (MIT, BSD-2-Clause, PSF, GPL-2.0, BSD) |
 
 Not included, on purpose: anything from the stock firmware or the stock cooking app (code, recipes, images).
 The protocol notes in `docs/PROTOCOL.md` describe behaviour; no stock code is copied.
