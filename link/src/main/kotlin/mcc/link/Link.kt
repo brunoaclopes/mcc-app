@@ -71,6 +71,8 @@ data class MachineState(
     val program: String? = null,
     /** Wi-Fi signal of the tablet in dBm (diagnostic), or null when unknown. */
     @SerialName("wifi_rssi") val wifiRssi: Int? = null,
+    /** When the loaded recipe should be done (ISO UTC): machine time left plus about a minute per preparation step. */
+    @SerialName("recipe_finish") val recipeFinish: String? = null,
 ) {
     val running get() = status == Status.RUNNING
     val lidOpen get() = lid == "open"

@@ -14,18 +14,20 @@ worth doing next, roughly in order of value for the effort.
   → Machine; never starts the machine).
 - **Keep warm** after a heated recipe: 30 min at 70 °C, held to start, from the "finished" screen.
 - **Stopwatch runs** in Manual (time 0:00), as on the stock app.
-- **Home Assistant stays connected** with the screen off, and can wake the screen.
+- **Home Assistant stays connected** with the screen off, and can wake the screen; it also gets the Wi-Fi signal
+  and a `keep_warm` program flag.
+- **"What can I make?"**: the Recipes search matches ingredients of every recipe; "chicken, rice" finds recipes
+  with both.
+- **Cooking history**: finished recipes are remembered; "Cooked lately" in Recipes.
+- **"Ready about" for the whole recipe**: on the Cook screen and as `recipe_finish` for Home Assistant.
 
 ## Next
 
-1. **"What can I make?"**: pick what is in the fridge (chips for the most common ingredients) and get the recipes
-   that use them, from the cached recipes, on the machine and the phone. With the AI server, a "make something
-   with these" button that writes a recipe from the list (the same import path, so the same limits apply).
+1. **"Make something with these"**: with the AI server, write a recipe from a list of ingredients (the same import
+   path, so the same limits apply), and ingredient chips for the most common ones. The same search on the phone.
 2. **Suggestions on Home**: three cards chosen for the moment: quick ones on weekdays (under 30 min), the season,
-   favourites not cooked for a while, and never the same as yesterday. Needs a small cooking history (recipe id,
-   date, servings), kept on the machine.
-3. **"Ready at" for the whole recipe**: the remaining machine time plus an estimate for the preparation steps, on
-   the Cook screen, the phone and Home Assistant (`finish` of the recipe, not only of the step).
+   favourites not cooked for a while, never the same as yesterday, using the cooking history.
+3. **"Ready about" on the phone**, from `recipe_finish`.
 4. **More generators like the soup**, where the weight decides the rest: risotto by rice weight (stock, wine,
    stirring in reverse), béchamel and custards by milk weight, bread dough by flour weight (water, salt, yeast,
    kneading time), jam by fruit weight (sugar, setting temperature), yoghurt (37 °C, hours).

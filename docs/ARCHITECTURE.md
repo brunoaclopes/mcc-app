@@ -75,12 +75,12 @@ Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.ph
 | `MqttBridge.kt` | Home Assistant discovery, state and commands ([HOME-ASSISTANT.md](HOME-ASSISTANT.md)) |
 | `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`) |
 | `AiClient.kt` (in `common/`) | OpenAI-compatible chat client for the recipe import; output goes through `Recipe.parse` and `RecipeFit` |
-| `Prefs.kt` | settings |
+| `Prefs.kt` | settings, and the cooking history (recipes finished, newest first; "Cooked lately" in Recipes) |
 | `Sounds.kt` | small synthesized sounds (start, stop, step, weighed, done, alerts, knob ticks), generated at start-up and played on the alarm stream |
 | `Sun.kt` | sunrise and sunset for the Auto look |
 | `i18n/Strings.kt` (in `common/`) | every user-visible text, English and European Portuguese |
 | `MainActivity.kt` | the shell: rail, top bar with STOP, screen host, dialogs, toasts, sounds |
-| `ui/*Screen.kt` | Home, Manual, Recipes, Cook, Settings |
+| `ui/*Screen.kt` | Home, Programs, Manual, Recipes, Cook, Settings, and Soup (the automatic soup's setup, opened from Programs). The Recipes search also matches ingredients: a background thread reads every recipe once and keeps its ingredient text, and comma-separated words must all match ("chicken, rice") |
 | `ui/RunOverlay.kt` | the full-screen countdown shown while the machine runs |
 | `ui/Widgets.kt`, `Glass.kt`, `RoundImage.kt`, `Theme.kt`, `Icons.kt` (in `common/`) | custom Canvas views and design tokens. No AndroidX or Material: plain Views, for speed on this tablet |
 

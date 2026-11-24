@@ -58,6 +58,8 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
     private var lowSince: Long? = null
     /** Finish time in epoch ms; only moved when it drifts more than 2 s, so it does not republish every tick. */
     private var reportedFinish: Long? = null
+    /** Recipe-level finish in epoch ms; only moved when it drifts more than a minute. */
+    private var reportedRecipeFinish: Long? = null
     /** When the board link was last up, for [DISCONNECTED_AFTER_MS]. */
     private var linkUpAt = 0L
     private var thread: Thread? = null
@@ -287,7 +289,15 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             screen = if (service.screenIsOn) "on" else "off",
             program = if (MachineService.keepWarmRun && rs?.phase != RecipeRunner.Phase.RUNNING && (s?.running == true || MachineService.pausedRun != null)) "keep_warm" else null,
             wifiRssi = rssi(nowMs),
+            recipeFinish = recipeFinish()?.let { iso.format(Date(it)) },
         )
+    }
+
+    private fun recipeFinish(): Long? {
+        val left = service.recipeRemainingMillis() ?: return null.also { reportedRecipeFinish = null }
+        val at = System.currentTimeMillis() + left
+        if (reportedRecipeFinish.let { it == null || kotlin.math.abs(it - at) > 60_000 }) reportedRecipeFinish = at
+        return reportedRecipeFinish
     }
 
     private var rssiValue: Int? = null

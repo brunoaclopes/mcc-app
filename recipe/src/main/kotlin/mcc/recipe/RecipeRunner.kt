@@ -58,6 +58,9 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
          * The bowl is at temperature: the board's "near target" flag, or its reading at the target. Food with water
          * boils at about 100 °C whatever the setting, so targets above 95 °C count as reached at 95 °C.
          */
+        /** What a preparation or weigh step is counted as in [remainingRecipeMillis]. */
+        const val PREP_STEP_MILLIS = 60_000L
+
         /** How long the weight must sit at the amount before a hands-free weigh step moves on. */
         const val AUTO_WEIGH_MILLIS = 2_500L
 
@@ -148,6 +151,23 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
                 message = "stopped: ${describe(snap.lastStop, snap.lastStopDetail)}"
                 event = Event.Stopped(snap.lastStop, snap.lastStopDetail)
             }
+        }
+    }
+
+    /**
+     * Estimated time until the recipe is done: what is left of the current step (its real remaining time for a machine
+     * step), the machine time of the steps after it, and [PREP_STEP_MILLIS] for every preparation or weigh step.
+     * Null when finished. For a recipe-level "ready at".
+     */
+    fun remainingRecipeMillis(nowMillis: Long): Long? {
+        if (phase == Phase.DONE) return null
+        val current = when (currentStep) {
+            is Step.Machine -> state(nowMillis).remainingMillis ?: 0
+            null -> 0
+            else -> PREP_STEP_MILLIS
+        }
+        return current + recipe.steps.drop(stepIndex + 1).sumOf { st ->
+            if (st is Step.Machine) MachinePlan.expand(st).sumOf { it.durationMillis } else PREP_STEP_MILLIS
         }
     }
 

@@ -2,6 +2,9 @@ package mcc.app
 
 import android.content.Context
 
+/** A recipe's key: its id without the language ("web-soup-pt" -> "web-soup"). */
+fun recipeKey(id: String) = id.replace(Regex("-(pt|en)$"), "")
+
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("mcc", Context.MODE_PRIVATE)
 
@@ -12,6 +15,22 @@ class Prefs(context: Context) {
     var repoUrl: String
         get() = sp.getString("repoUrl", "") ?: ""
         set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
+
+    /**
+     * Cooking history: recipe keys (the id without its language) and when they were finished, newest first, at most
+     * 60. Programs count too. Shown as "Cooked lately" in Recipes.
+     */
+    val cooked: List<Pair<String, Long>>
+        get() = (sp.getString("cooked", "") ?: "").split(';').mapNotNull { e ->
+            val (k, t) = e.split('|').takeIf { it.size == 2 } ?: return@mapNotNull null
+            t.toLongOrNull()?.let { k to it }
+        }
+
+    fun addCooked(recipeId: String) {
+        val key = recipeKey(recipeId)
+        val list = listOf(key to System.currentTimeMillis()) + cooked.filter { it.first != key }
+        sp.edit().putString("cooked", list.take(60).joinToString(";") { "${it.first}|${it.second}" }).apply()
+    }
 
     /** Weigh steps move on by themselves once the amount is in the bowl (never starts the machine). */
     var autoWeigh: Boolean

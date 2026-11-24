@@ -73,6 +73,7 @@ when the run starts (lid, content for heating, speed, time).
   "run_elapsed": null,
   "screen": "on",
   "program": null,
+  "recipe_finish": "2026-11-20T19:05:00Z",
   "wifi_rssi": -55
 }
 ```
@@ -95,6 +96,7 @@ when the run starts (lid, content for heating, speed, time).
 | `run_total`, `run_left` | length and seconds left of the running machine step or manual run, or `null` when nothing runs (and during a stopwatch run) |
 | `run_elapsed` | seconds a manual run without a set time (Manual, time 0:00: a stopwatch) has been going, also while it is paused; `null` otherwise. Such a run has no `finish` |
 | `screen` | `on`, or `off` (standby; still connected) |
+| `recipe_finish` | when the loaded recipe should be done (UTC): the machine time left plus about a minute per preparation or weigh step; moves only when the estimate shifts by more than a minute; `null` without a recipe or once it is finished |
 | `program` | `keep_warm` while the keep-warm run (offered after a heated recipe) runs or is paused, else `null` |
 | `wifi_rssi` | the tablet's Wi-Fi signal in dBm, rounded to 5 dB and read every 30 s (diagnostic), or `null` |
 
@@ -132,6 +134,7 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `time_left` | sensor (duration, s) | seconds left of the running step or manual run, `0` when idle |
 | `elapsed` | sensor (duration, s) | `run_elapsed`: time so far of a stopwatch run, unknown otherwise |
 | `screen` | binary_sensor | the tablet's screen (diagnostic) |
+| `recipe_finish` | sensor (timestamp) | named "Recipe ready at" |
 | `program` | sensor | `keep_warm` during the keep-warm run, unknown otherwise |
 | `wifi_rssi` | sensor (signal strength, dBm) | named "Wi-Fi signal" (diagnostic) |
 | `progress` | sensor, % | how far the running step or manual run is |
