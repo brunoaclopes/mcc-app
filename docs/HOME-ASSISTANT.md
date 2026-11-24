@@ -31,7 +31,7 @@ when the run starts (lid, content for heating, speed, time).
 
 | Topic | Direction | Retained | Content |
 |---|---|---|---|
-| `homeassistant/device/mcc/config` | machine → HA | yes | discovery for the device and its 15 entities |
+| `homeassistant/device/mcc/config` | machine → HA | yes | discovery for the device and its entities |
 | `mcc/state` | machine → HA | yes | JSON state (below), sent on change, at most every 0.5 s, and at least every 60 s |
 | `mcc/availability` | machine → HA | yes | `online` / `offline` (offline is the MQTT last will) |
 | `mcc/event` | machine → HA | no | one-off events (below), JSON with `event_type` |
@@ -70,7 +70,7 @@ when the run starts (lid, content for heating, speed, time).
 | `target_temperature`, `speed` | the running request, `0` when idle |
 | `reverse` | `on` / `off` |
 | `finish` | UTC time when the current run ends, or `null` |
-| `weight` | grams on the scale for Home Assistant: `null` below 10 g (empty scale, right after a tare, bowl lifted), and a new value only after a change of 10 g or more, so the history only records real weighings. The live reading is on `mcc/scale` |
+| `weight` | grams on the scale for Home Assistant: `null` once the reading has stayed below 10 g for 3 s (empty scale, after a tare, bowl lifted; a brief dip keeps the last value), and a new value only after a change of 10 g or more, so the history only records real weighings. The live reading is on `mcc/scale` |
 | `lid` | `open` / `closed` |
 | `error` | `none`, or the power board's error in lower case (e.g. `motor_overheat`) |
 | `remote_start` | `ready` while a remote-start permit is valid, else `off` |
@@ -97,6 +97,7 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 |---|---|---|
 | `status` | sensor (enum) | |
 | `recipe` | sensor | |
+| `servings` | sensor | who the loaded recipe is cooked for (`"6 doses"`), unknown without a recipe |
 | `step` | sensor | attribute `text` = the step's text |
 | `temperature`, `target_temperature` | sensor, °C | unknown instead of 0 (below 37 °C / not heating) |
 | `speed` | sensor | |

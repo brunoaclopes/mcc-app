@@ -46,7 +46,7 @@ data class MachineState(
     /** "on" / "off" */
     val reverse: String = "off",
     val finish: String? = null,
-    /** Grams for Home Assistant: null below 10 g (empty scale, after a tare, bowl lifted), new value only on a 10 g change. Live readings are on [Topics.SCALE]. */
+    /** Grams for Home Assistant: null once below 10 g for 3 s (empty scale, after a tare, bowl lifted), new value only on a 10 g change. Live readings are on [Topics.SCALE]. */
     val weight: Int? = null,
     /** "open" / "closed" */
     val lid: String = "closed",

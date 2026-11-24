@@ -37,6 +37,8 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
         const val AVAILABILITY = Topics.AVAILABILITY
         const val CMD = Topics.CMD
         const val EVENT = Topics.EVENT
+        /** Readings around 10 g bounce in and out of "empty"; a short dip must not blank Home Assistant's weight. */
+        const val CLEAR_AFTER_MS = 3_000L
     }
 
     @Volatile var status: String = "starting"
@@ -47,6 +49,8 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
     private var lastPublishAt = 0L
     /** The scale flickers by one 5 g step at rest; only report changes larger than that. */
     private var reportedWeight: Int? = null
+    /** When the reading last dropped below 10 g; the weight is only cleared once it has stayed there [CLEAR_AFTER_MS]. */
+    private var lowSince: Long? = null
     /** Finish time in epoch ms; only moved when it drifts more than 2 s, so it does not republish every tick. */
     private var reportedFinish: Long? = null
     private var thread: Thread? = null
@@ -209,10 +213,13 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
         }
 
         val g = MachineService.displayGrams
-        reportedWeight = when {
-            g == null || g < 10 -> null
-            reportedWeight.let { it == null || kotlin.math.abs(it - g) >= 10 } -> g
-            else -> reportedWeight
+        val nowMs = SystemClock.elapsedRealtime()
+        if (g == null || g < 10) {
+            val since = lowSince ?: nowMs.also { lowSince = it }
+            if (nowMs - since >= CLEAR_AFTER_MS) reportedWeight = null
+        } else {
+            lowSince = null
+            if (reportedWeight.let { it == null || kotlin.math.abs(it - g) >= 10 }) reportedWeight = g
         }
 
         val remaining = when {
