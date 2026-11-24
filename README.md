@@ -17,8 +17,11 @@ without the stock cooking app.
 
 | Day | Night |
 |---|---|
+| ![Home, day](docs/screenshots/home-day.png) | ![Home, night](docs/screenshots/home-night.png) |
 | ![Manual control, day](docs/screenshots/manual-day.png) | ![Manual control, night](docs/screenshots/manual-night.png) |
-| ![Cook screen](docs/screenshots/cook-empty-night.png) | ![Settings](docs/screenshots/settings-night.png) |
+| ![Automatic programs, day](docs/screenshots/programs-day.png) | ![Automatic programs, night](docs/screenshots/programs-night.png) |
+
+<sub>Screenshots from the machine, in Portuguese. The recipe photo on Home is blurred: it comes from a private recipe collection.</sub>
 
 > [!WARNING]
 > This software switches a 1000 W heater and a blade motor. It has **hard safety limits** (below), but it is a
