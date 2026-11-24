@@ -1,0 +1,76 @@
+# Docker images on GitHub's container registry:
+#   ghcr.io/<owner>/mcc-server          upload service and video transcripts (server/)
+#   ghcr.io/<owner>/mcc-recipe-server   serves a mounted recipe folder (recipe-repo/docker/serve.Dockerfile)
+# Tags: latest (master), <version> and <major>.<minor> (release tags vX.Y.Z), sha-<commit>.
+# Rebuilt every week as well, so the server always has a recent yt-dlp.
+name: Images
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+    paths:
+      - "server/**"
+      - "recipe-repo/converters/**"
+      - "recipe-repo/tools/**"
+      - "recipe-repo/docker/**"
+      - ".github/workflows/images.yml"
+  schedule:
+    - cron: "17 4 * * 1"   # Mondays 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mcc-server
+            context: server
+            file: server/Dockerfile
+            title: mcc-app server (recipe uploads, video transcripts)
+          - name: mcc-recipe-server
+            context: recipe-repo
+            file: recipe-repo/docker/serve.Dockerfile
+            title: mcc-app recipe server (serves a mounted recipe folder)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+          labels: |
+            org.opencontainers.image.title=${{ matrix.title }}
+            org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          pull: true
+          # the weekly build starts from scratch: newest yt-dlp and Alpine security fixes
+          no-cache: ${{ github.event_name == 'schedule' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

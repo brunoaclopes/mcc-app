@@ -45,9 +45,17 @@ Design tokens (`ui/Theme.kt`), line icons, cover illustrations, the custom Canva
 `Glass.kt`, `RoundImage.kt`), `ImageLoader`, `i18n/Strings.kt` (every machine text, English and European
 Portuguese), `RecipeStore.kt`, the Manrope font and the program photos. The packages are still `mcc.app.*`.
 
+- `AiClient.kt`: recipe import through any OpenAI-compatible chat API: web pages, pasted text, YouTube pages and
+  video transcripts; revisions from the user's feedback; translation. Every result goes through `Recipe.parse` and
+  `RecipeFit`.
+- `RecipePublisher.kt`: the upload service's client: `POST /v1/recipes` ([RECIPE-UPLOAD.md](RECIPE-UPLOAD.md)) and
+  `POST /v1/transcript`.
+
 ### `phone/`: the phone companion app
 
-Compose and Material 3, minSdk 29. See [PHONE.md](PHONE.md).
+Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.phone` (the Kotlin package stays
+`mcc.phone`). `Importer.kt` runs the recipe import (transcript, AI, translation, review, publish). See
+[PHONE.md](PHONE.md).
 
 ### `app/`: Android (minSdk / targetSdk 23)
 
@@ -66,6 +74,14 @@ Compose and Material 3, minSdk 29. See [PHONE.md](PHONE.md).
 | `ui/*Screen.kt` | Home, Manual, Recipes, Cook, Settings |
 | `ui/RunOverlay.kt` | the full-screen countdown shown while the machine runs |
 | `ui/Widgets.kt`, `Glass.kt`, `RoundImage.kt`, `Theme.kt`, `Icons.kt` (in `common/`) | custom Canvas views and design tokens. No AndroidX or Material: plain Views, for speed on this tablet |
+
+### Outside the apps
+
+- [`recipe-repo/`](../recipe-repo): the template for a recipe repository (format, validator, converters, index
+  builder) and the generic recipe server image (`docker/serve.Dockerfile`).
+- [`server/`](../server): Python, standard library only; recipe uploads (commit and push to the recipe repository)
+  and video transcripts (yt-dlp, Wyoming speech-to-text). Docker image `ghcr.io/brunoaclopes/mcc-server`.
+- [`.github/`](../.github): CI, releases and images ([RELEASING.md](RELEASING.md)).
 
 ## Safety
 

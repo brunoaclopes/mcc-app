@@ -34,7 +34,9 @@ whatever asks. Opening recipes from the phone can be switched off on the machine
 
 1. Home Assistant (or any MQTT broker) already connected to the machine: [HOME-ASSISTANT.md](HOME-ASSISTANT.md).
    A separate broker user for the phones is a good idea.
-2. Install the APK (`phone/build/outputs/apk/release/phone-release.apk`, or build it, below).
+2. Install `mcc-phone-<version>.apk` from the [latest release](https://github.com/brunoaclopes/mcc-app/releases/latest)
+   (Android 10 or newer), or build it (below). Android asks to allow installs from your browser or file manager
+   once. See [Installing and updating](#installing-and-updating).
 3. Settings → **Connection**: broker address, port, user and password. **Recipe server**: the same address as on
    the machine.
 4. Allow notifications when asked. For notifications with the app closed, keep **Stay connected in the
@@ -60,11 +62,28 @@ either, use the Home Assistant Companion app and the blueprint in [HOME-ASSISTAN
   the machine's own Manrope font, line icons, cover illustrations, `ClockRing` and `HoldButton` views, and its
   translations for everything both apps say (step sentences, board errors, units).
 
+## Installing and updating
+
+- **Updates**: install the newer `mcc-phone-<version>.apk` over the old one; settings stay. To get updates
+  automatically, add `https://github.com/brunoaclopes/mcc-app` to [Obtainium](https://github.com/ImranR98/Obtainium)
+  (filter the APKs by `mcc-phone`).
+- **Check a download**: the release notes list the phone app's signing certificate (SHA-256);
+  `apksigner verify --print-certs mcc-phone-<version>.apk` must show the same digest.
+- **From 0.6.x or older (one-time reinstall)**: since 0.7.0 the app is `io.github.brunoaclopes.mcc.phone` and signed
+  with the release key; older builds were `mcc.phone`, signed with a local debug key. Android sees a different app:
+  uninstall the old one, install the new one and enter the settings again (Connection, Recipe server, Recipe
+  import).
+- **Your own builds** are signed with your debug key, so they can't update a release build (or the other way
+  round): uninstall first.
+- **Play Protect** may warn because the app is not from Google Play; that is expected for apps installed from
+  GitHub ([RELEASING.md](RELEASING.md#google-play-protect)).
+
 ## Build
 
 ```
 JAVA_HOME=/path/to/jdk17 ./gradlew :phone:assembleRelease
 ```
 
-The release build is minified and signed with your local debug key (fine for installing on your own phones;
-configure your own key to publish it).
+The release build is minified. It is signed with the release key when `~/.mcc-release/keystore.properties` (or the
+`MCC_KEYSTORE_*` variables) exist, which only the maintainer has ([RELEASING.md](RELEASING.md#signing)); otherwise
+with your local debug key, which is fine for your own phones.

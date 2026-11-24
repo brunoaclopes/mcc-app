@@ -4,17 +4,49 @@ plugins {
     kotlin("plugin.compose")
 }
 
+import java.util.Properties
+
 // Phone companion app: watches the machine over the same MQTT broker as Home Assistant, notifies, browses recipes.
+
+/**
+ * The release key (docs/RELEASING.md). GitHub's Release workflow passes it in MCC_KEYSTORE_FILE, MCC_KEYSTORE_PASSWORD,
+ * MCC_KEY_ALIAS and MCC_KEY_PASSWORD; on the maintainer's computer it comes from ~/.mcc-release/keystore.properties
+ * (or the file MCC_SIGNING_PROPERTIES names), with the keys storeFile, storePassword, keyAlias and keyPassword.
+ * Without either, release builds are signed with the local debug key, so anyone can still build and install.
+ */
+val releaseKey: Map<String, String>? = run {
+    System.getenv("MCC_KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file ->
+        return@run mapOf("storeFile" to file, "storePassword" to System.getenv("MCC_KEYSTORE_PASSWORD").orEmpty(),
+            "keyAlias" to System.getenv("MCC_KEY_ALIAS").orEmpty(), "keyPassword" to System.getenv("MCC_KEY_PASSWORD").orEmpty())
+    }
+    val f = file(System.getenv("MCC_SIGNING_PROPERTIES") ?: "${System.getProperty("user.home")}/.mcc-release/keystore.properties")
+    if (!f.isFile) return@run null
+    val p = Properties().apply { f.inputStream().use { load(it) } }
+    listOf("storeFile", "storePassword", "keyAlias", "keyPassword").associateWith { p.getProperty(it).orEmpty() }
+}
+
 android {
     namespace = "mcc.phone"
     compileSdk { version = release(37) { minorApiLevel = 2 } }
 
     defaultConfig {
-        applicationId = "mcc.phone"
+        // the package name Android knows the app by (the Kotlin code stays in package mcc.phone)
+        applicationId = "io.github.brunoaclopes.mcc.phone"
         minSdk = 29
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.6.1"
+        versionCode = 18
+        versionName = "0.7.0"
+    }
+
+    signingConfigs {
+        releaseKey?.let { k ->
+            create("release") {
+                storeFile = file(k.getValue("storeFile"))
+                storePassword = k.getValue("storePassword")
+                keyAlias = k.getValue("keyAlias")
+                keyPassword = k.getValue("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -22,8 +54,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // sideloaded builds: signed with the local debug key unless you configure your own
-            signingConfig = signingConfigs.getByName("debug")
+            // the release key when it is set up (above), else the local debug key
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

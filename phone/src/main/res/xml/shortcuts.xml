@@ -2,19 +2,19 @@
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut android:shortcutId="machine" android:enabled="true" android:icon="@drawable/sc_machine"
         android:shortcutShortLabel="@string/sc_machine">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="mcc.phone" android:targetClass="mcc.phone.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.github.brunoaclopes.mcc.phone" android:targetClass="mcc.phone.MainActivity">
             <extra android:name="tab" android:value="machine" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="recipes" android:enabled="true" android:icon="@drawable/sc_recipes"
         android:shortcutShortLabel="@string/sc_recipes">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="mcc.phone" android:targetClass="mcc.phone.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.github.brunoaclopes.mcc.phone" android:targetClass="mcc.phone.MainActivity">
             <extra android:name="tab" android:value="recipes" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="list" android:enabled="true" android:icon="@drawable/sc_list"
         android:shortcutShortLabel="@string/sc_list">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="mcc.phone" android:targetClass="mcc.phone.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.github.brunoaclopes.mcc.phone" android:targetClass="mcc.phone.MainActivity">
             <extra android:name="tab" android:value="list" />
         </intent>
     </shortcut>

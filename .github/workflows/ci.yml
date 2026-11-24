@@ -1,0 +1,59 @@
+# Every pull request and every push to master: build both apps and run all the tests.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Apps (Kotlin tests, machine and phone builds)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Android SDK packages
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2" "build-tools;37.0.0" "ndk;26.3.11579264" > /dev/null
+      - name: Tests and builds
+        run: ./gradlew --no-daemon :link:test :machine:test :recipe:test :common:testDebugUnitTest :app:assembleDebug :phone:assembleRelease
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: "**/build/reports/tests/"
+          retention-days: 7
+
+  python:
+    name: Recipe template and server tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Recipe template
+        working-directory: recipe-repo
+        run: |
+          python3 -m unittest discover -s tests
+          python3 tools/build_index.py .
+      - name: Server
+        working-directory: server
+        run: |
+          git config --global user.name ci && git config --global user.email ci@localhost
+          python3 -m unittest
