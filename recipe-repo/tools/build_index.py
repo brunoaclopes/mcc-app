@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Validates every recipes/*.json and writes index.json next to the recipes folder.
 
+Every recipe must exist in each of LANGUAGES, as <key>-<language>.json; a missing translation fails the build.
+
 usage: build_index.py [repo_dir]
 """
 from __future__ import annotations
@@ -13,6 +15,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "converters"))
 import mcc_format  # noqa: E402
+
+# every recipe exists in all of these; the app shows the version that matches its own language
+LANGUAGES = ("pt", "en")
+
+
+def missing_translations(entries: list[dict]) -> list[str]:
+    """Returns '<key>: no <language> version' for every key that lacks one of LANGUAGES."""
+    have: dict[str, set[str]] = {}
+    for e in entries:
+        have.setdefault(e["key"], set()).add(e["language"])
+    return [f"{k}: no {lang} version" for k, langs in sorted(have.items()) for lang in LANGUAGES if lang not in langs]
 
 
 def main() -> int:
@@ -30,18 +43,28 @@ def main() -> int:
             print(f"INVALID {p.name}: file name must be <id>.json", file=sys.stderr)
             bad += 1
             continue
+        lang = r.get("language")
+        if lang not in LANGUAGES or not r["id"].endswith(f"-{lang}"):
+            print(f"INVALID {p.name}: language must be one of {', '.join(LANGUAGES)} and the id must end with "
+                  f"-<language>", file=sys.stderr)
+            bad += 1
+            continue
         entries.append({
-            "id": r["id"], "title": r["title"], "language": r.get("language"), "tags": r.get("tags", []),
+            "id": r["id"], "key": r["id"][:-len(lang) - 1], "title": r["title"], "language": lang,
+            "tags": r.get("tags", []),
             "totalMinutes": r.get("totalMinutes"), "image": r.get("image"),
             "file": f"recipes/{p.name}", "sha256": hashlib.sha256(raw).hexdigest(),
         })
-    entries.sort(key=lambda e: (e["language"] or "", e["title"].lower()))
+    missing = missing_translations(entries)
+    for m in missing:
+        print(f"MISSING {m}", file=sys.stderr)
+    entries.sort(key=lambda e: (e["language"], e["title"].lower()))
     index = {"format": "mcc-index/1",
              "generated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
              "recipes": entries}
     (repo / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"index.json: {len(entries)} recipes, {bad} invalid")
-    return 1 if bad else 0
+    print(f"index.json: {len(entries)} recipes, {bad} invalid, {len(missing)} missing translations")
+    return 1 if bad or missing else 0
 
 
 if __name__ == "__main__":

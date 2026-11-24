@@ -1,0 +1,11 @@
+# On your server: git clone your recipes repository, then `docker compose up -d --build`.
+# After pulling new recipes: `git pull && docker compose up -d --build`.
+# On the machine: Settings → Recipe server = http://<server-ip>:8088/
+services:
+  mcc-recipes:
+    build: .
+    image: mcc-recipes:local
+    container_name: mcc-recipes
+    ports:
+      - "8088:80"
+    restart: unless-stopped

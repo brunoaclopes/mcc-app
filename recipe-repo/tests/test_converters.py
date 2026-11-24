@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "converters"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+import build_index  # noqa: E402
 import mc2_bundled  # noqa: E402
 import mcc_format  # noqa: E402
 import web_jsonld  # noqa: E402
@@ -95,6 +97,21 @@ class Repository(unittest.TestCase):
         for p in files:
             r = json.loads(p.read_text(encoding="utf-8"))
             self.assertEqual([], mcc_format.validate(r), p.name)
+
+    def test_every_recipe_in_every_language(self):
+        root = Path(__file__).resolve().parent.parent
+        entries = []
+        for p in (root / "recipes").glob("*.json"):
+            r = json.loads(p.read_text(encoding="utf-8"))
+            self.assertTrue(r["id"].endswith("-" + r["language"]), p.name)
+            entries.append({"key": r["id"][:-len(r["language"]) - 1], "language": r["language"]})
+        self.assertEqual([], build_index.missing_translations(entries))
+
+
+class Languages(unittest.TestCase):
+    def test_missing_translation_reported(self):
+        entries = [{"key": "a", "language": "pt"}, {"key": "a", "language": "en"}, {"key": "b", "language": "pt"}]
+        self.assertEqual(["b: no en version"], build_index.missing_translations(entries))
 
 
 if __name__ == "__main__":
