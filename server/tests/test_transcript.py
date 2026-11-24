@@ -1,6 +1,8 @@
 """Subtitle choice and parsing, and the subtitles -> speech-to-text -> description fallbacks (no network)."""
 import json
+import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -60,20 +62,22 @@ class Fallbacks(unittest.TestCase):
         t = transcript.Transcriber(s)
         t.calls = []
         t.info = lambda url, tmp, deadline: (t.calls.append("info"), dict(info or self.INFO))[1]
-        t.subtitles = lambda track, tmp, deadline: (t.calls.append(("subs", track)), subs)[1]
+        t.subtitles = lambda url, track, tmp, deadline: (t.calls.append(("subs", track)), subs)[1]
 
-        def whisper(i, tmp, deadline):
+        def whisper(url, i, tmp, deadline):
             t.calls.append("whisper")
             if stt_error:
                 raise stt_error
-            return stt
+            return transcript.Speech(*stt)
         t.whisper = whisper
         return t
 
     def run_(self, t, info_tracks=None):
         info = dict(self.INFO, **(info_tracks or {}))
         t.info = lambda url, tmp, deadline: (t.calls.append("info"), info)[1]
-        return t.transcribe("https://example.org/v", Path(tempfile.mkdtemp()), time.monotonic() + 60)
+        result, keep, finish = t.transcribe("https://example.org/v", Path(tempfile.mkdtemp()), time.monotonic() + 60)
+        self.assertIsNone(finish)
+        return result, keep
 
     def test_subtitles_first(self):
         t = self.make(subs="o que é dito")
@@ -120,6 +124,71 @@ class Fallbacks(unittest.TestCase):
         with mock.patch.object(transcript, "public_host", lambda url: False):
             with self.assertRaises(transcript.Problem):
                 t.get("http://192.0.2.1/video")
+
+
+class Pieces(unittest.TestCase):
+    def make(self, stt_seconds=0.0):
+        s = Settings.from_env({"MCC_TOKEN": "x", "MCC_DATA_DIR": tempfile.mkdtemp(), "MCC_WHISPER_HOST": "stt"})
+        t = transcript.Transcriber(s)
+        t.sent = []
+
+        def stt(piece, language, timeout):
+            t.sent.append(piece)
+            time.sleep(stt_seconds)
+            return f"texto {piece.decode()}", "pt"
+        t.stt = stt
+        return t
+
+    def test_all_pieces_in_time(self):
+        t = self.make()
+        sp = t.speech([b"1", b"2", b"3"], "pt", time.monotonic() + 60)
+        self.assertEqual(("texto 1\ntexto 2\ntexto 3", None), (sp.text, sp.finish))
+
+    def test_out_of_time_rest_in_background(self):
+        t = self.make(stt_seconds=0.2)
+        sp = t.speech(iter([b"1", b"2", b"3"]), "pt", time.monotonic() + 0.5)  # room for one piece only
+        self.assertEqual("texto 1", sp.text)
+        self.assertEqual("texto 2\ntexto 3", sp.finish())
+        self.assertEqual([b"1", b"2", b"3"], t.sent)
+
+    def test_partial_reply_then_complete_transcript_cached(self):
+        t = self.make()
+        gate = threading.Event()
+
+        def finish():
+            gate.wait(5)
+            return "o resto"
+        partial = {"title": "Sopa", "transcript": "o início", "source": "whisper", "partial": True}
+        t.transcribe = lambda url, tmp, deadline: (dict(partial), False, lambda: "o início\n" + finish())
+        with mock.patch.object(transcript, "public_host", lambda url: True):
+            first = t.get("https://youtu.be/abcdefghijk")
+            self.assertEqual(partial, first)
+            self.assertFalse(t.lock.acquire(blocking=False))  # still transcribing in the background
+            gate.set()
+            for _ in range(100):
+                if t.cached("youtube-abcdefghijk"):
+                    break
+                time.sleep(0.02)
+            done = t.get("https://www.youtube.com/watch?v=abcdefghijk")
+        self.assertEqual(("o início\no resto", False), (done["transcript"], done["partial"]))
+        self.assertTrue(t.lock.acquire(blocking=False))
+
+    def test_download_retried_with_a_fresh_run(self):
+        t = self.make()
+        tmp = Path(tempfile.mkdtemp())
+        runs = []
+
+        def run(cmd, deadline):
+            runs.append(cmd)
+            if len(runs) == 2:
+                (tmp / "audio.webm").write_bytes(b"x")
+                return subprocess.CompletedProcess(cmd, 0, "", "")
+            return subprocess.CompletedProcess(cmd, 1, "", "ERROR: HTTP Error 403: Forbidden")
+        t.run = run
+        found = t.fetch("https://youtu.be/abcdefghijk", tmp, time.monotonic() + 60, "audio.*", "-f", "bestaudio")
+        self.assertEqual(tmp / "audio.webm", found)
+        self.assertIn("--load-info-json", runs[0])
+        self.assertEqual("https://youtu.be/abcdefghijk", runs[1][-1])
 
 
 if __name__ == "__main__":

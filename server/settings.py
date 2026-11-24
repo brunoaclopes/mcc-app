@@ -33,8 +33,9 @@ class Settings:
     data_dir: Path           # writable: transcript cache and temporary audio
     whisper_host: str        # Wyoming speech-to-text server (e.g. Home Assistant's Whisper add-on); empty = off
     whisper_port: int
-    whisper_language: str    # empty = the server decides
-    transcript_timeout: int  # seconds for one transcript request
+    whisper_language: str    # empty = the video's language when known, else the server decides
+    whisper_chunk_seconds: int  # audio goes to the server in pieces of this length, one after the other
+    transcript_timeout: int  # seconds for one transcript request; longer audio finishes in the background
     max_audio_minutes: int
     cache_hours: int
 
@@ -63,6 +64,7 @@ class Settings:
             whisper_host=(env.get("MCC_WHISPER_HOST") or "").strip(),
             whisper_port=_int(env, "MCC_WHISPER_PORT", 10300),
             whisper_language=(env.get("MCC_WHISPER_LANGUAGE") or "").strip(),
+            whisper_chunk_seconds=_int(env, "MCC_WHISPER_CHUNK_SECONDS", 60),
             transcript_timeout=_int(env, "MCC_TRANSCRIPT_TIMEOUT", 600),
             max_audio_minutes=_int(env, "MCC_MAX_AUDIO_MINUTES", 30),
             cache_hours=_int(env, "MCC_CACHE_HOURS", 24),

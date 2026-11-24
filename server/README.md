@@ -32,7 +32,11 @@ All replies are JSON. Errors are `{"error": "…"}` with a short message the app
 YouTube (watch, `youtu.be`, Shorts) and the other sites yt-dlp supports. The reply:
 
     200 {"title": "…", "author": "…", "description": "…", "language": "pt", "transcript": "plain text",
-         "source": "subtitles" | "whisper" | "none", "thumbnail": "https://…"}
+         "source": "subtitles" | "whisper" | "none", "partial": false, "thumbnail": "https://…"}
+
+`"partial": true` means the transcript covers only the start of the video: speech-to-text ran out of
+`MCC_TRANSCRIPT_TIMEOUT` and is finishing the rest in the background. Asking again for the same video returns the
+complete transcript once it is done (the request waits for it, within the same timeout).
 
 | Code | Meaning |
 |---|---|
@@ -46,13 +50,17 @@ How the transcript is found, in order:
    translation (then Portuguese, then English). They come back as plain text, without timestamps, repeated lines or
    `[Music]` notes. `"source": "subtitles"`.
 2. **Speech-to-text.** No subtitles and `MCC_WHISPER_HOST` set: the audio only (at most `MCC_MAX_AUDIO_MINUTES`)
-   is converted to 16 kHz mono 16-bit PCM with ffmpeg and sent to the Wyoming server. The audio is deleted right
-   after. `"source": "whisper"`.
+   is converted to 16 kHz mono 16-bit PCM with ffmpeg and sent to the Wyoming server in pieces of
+   `MCC_WHISPER_CHUNK_SECONDS`, one after the other (pieces are faster than one long request, and two at once are
+   slower than one after the other on a typical Home Assistant). Before each piece the server checks it still fits
+   in the timeout; if not, it answers with what it has (`"partial": true`) and carries on in the background. The
+   audio is deleted when it is done. `"source": "whisper"`.
 3. **Description only.** `"source": "none"`, `"transcript": ""`.
 
 The description, title and author come back in every case. Results are cached per video for `MCC_CACHE_HOURS` (a
-speech-to-text failure is not cached, so a later try can still work). One transcription runs at a time; another
-request waits for it.
+speech-to-text failure or a partial transcript is not cached, so a later try can still work). When a download
+fails (YouTube sometimes answers 403), it is tried once more with a fresh yt-dlp run. One transcription runs at a
+time, background completions included; another request waits for it.
 
 ## Settings
 
@@ -74,8 +82,9 @@ Environment variables; copy [`.env.example`](.env.example) to `.env`.
 | `MCC_WHISPER_HOST` | (none) | Wyoming speech-to-text server. Empty = skip speech-to-text. |
 | `MCC_WHISPER_PORT` | `10300` | |
 | `MCC_WHISPER_LANGUAGE` | (none) | e.g. `pt`. Empty = the video's language when yt-dlp knows it, else the server's own setting. |
+| `MCC_WHISPER_CHUNK_SECONDS` | `60` | Length of each piece of audio sent to the speech-to-text server. |
 | `MCC_MAX_AUDIO_MINUTES` | `30` | Longer videos without subtitles get the description only. |
-| `MCC_TRANSCRIPT_TIMEOUT` | `600` | Seconds per transcript request, waiting included. |
+| `MCC_TRANSCRIPT_TIMEOUT` | `600` | Seconds per transcript request, waiting included. Speech-to-text that needs longer answers `"partial": true` and finishes in the background. |
 | `MCC_CACHE_HOURS` | `24` | |
 | `MCC_YTDLP_UPDATE` | `0` | `1` = install the newest yt-dlp into `$MCC_DATA_DIR/pip` at every start (below). |
 
@@ -164,8 +173,9 @@ phone polls `<recipe server>/index.json` for up to 5 minutes after an upload.
 
 The add-on only listens inside Home Assistant until you open its port: Settings → Add-ons → Whisper →
 Configuration → Network → `10300/tcp` = `10300` → Save → restart the add-on. Then `MCC_WHISPER_HOST` is Home
-Assistant's address. Transcribing takes roughly as long as the add-on's model and hardware need for the length of
-the video; raise `MCC_TRANSCRIPT_TIMEOUT` for a slow machine.
+Assistant's address. How fast it transcribes depends on the add-on's model and the hardware: on a small Home
+Assistant box expect roughly 2–4 times faster than real time, so a long video can come back `"partial": true` first.
+Pick the add-on's model for the language you need (the smallest ones are weak outside English).
 
 ## Test it
 

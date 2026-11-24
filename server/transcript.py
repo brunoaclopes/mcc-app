@@ -3,7 +3,10 @@
 1. yt-dlp reads the video's details and subtitles: subtitles written by people before automatic ones, and the
    video's own language before a translation.
 2. No subtitles: the audio (at most MCC_MAX_AUDIO_MINUTES) goes through ffmpeg to a Wyoming speech-to-text server
-   (MCC_WHISPER_HOST, e.g. Home Assistant's Whisper add-on). The audio is deleted afterwards.
+   (MCC_WHISPER_HOST, e.g. Home Assistant's Whisper add-on) in pieces of MCC_WHISPER_CHUNK_SECONDS, one after the
+   other. When the next piece would not fit in MCC_TRANSCRIPT_TIMEOUT, the reply has what is done so far with
+   "partial": true and the rest is transcribed in the background; the complete transcript then goes to the cache,
+   so asking again returns it. The audio is deleted afterwards.
 3. Otherwise only the description comes back, with "source": "none".
 Results are cached per video for MCC_CACHE_HOURS, and one transcription runs at a time.
 """
@@ -11,6 +14,8 @@ from __future__ import annotations
 
 import hashlib
 import html
+import io
+import itertools
 import json
 import os
 import re
@@ -28,6 +33,7 @@ from common import Problem, log, public_host
 
 YOUTUBE_ID = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|embed/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})")
 ANNOTATION = re.compile(r"^[\[(♪].*[\])♪]$|^♪+$")  # [Music], (risos), ♪ ... ♪
+PIECE_TIMEOUT = 600  # seconds for one piece in the background, where the request's deadline no longer applies
 
 
 def video_key(url: str) -> str:
@@ -100,10 +106,17 @@ def subtitle_text(path: Path) -> str:
     return parse_json3(raw) if path.suffix == ".json3" else parse_vtt(raw)
 
 
+class Speech:
+    """The outcome of speech-to-text: the text so far, and finish() when the rest still has to be done."""
+
+    def __init__(self, text: str, language: str, finish=None):
+        self.text, self.language, self.finish = text, language, finish
+
+
 class Transcriber:
     def __init__(self, s):
         self.s = s
-        self.lock = threading.Lock()  # one transcription at a time
+        self.lock = threading.Lock()  # one transcription at a time (background completions included)
         self.cache_dir = s.data_dir / "cache" / "transcripts"
         self.env = {**os.environ, "HOME": "/tmp", "XDG_CACHE_HOME": str(s.data_dir / "cache")}
 
@@ -140,50 +153,70 @@ class Transcriber:
         deadline = time.monotonic() + self.s.transcript_timeout
         if not self.lock.acquire(timeout=self.s.transcript_timeout):
             raise Problem(504, "another video is being transcribed; try again in a moment")
+        background = False
+        tmp = None
         try:
             hit = self.cached(key)
             if hit:
                 return hit
             tmp = self.s.data_dir / "tmp" / uuid.uuid4().hex
             tmp.mkdir(parents=True)
-            try:
-                result, keep = self.transcribe(url, tmp, deadline)
-            finally:
-                shutil.rmtree(tmp, ignore_errors=True)  # audio, subtitles and details are never kept
-            if keep:
+            result, keep, finish = self.transcribe(url, tmp, deadline)
+            if finish:
+                background = True  # the thread finishes the transcript, caches it, cleans up and releases the lock
+                threading.Thread(target=self.complete, args=(key, result, finish, tmp), daemon=True).start()
+            elif keep:
                 self.store(key, result)
             return result
         finally:
+            if not background:
+                if tmp:
+                    shutil.rmtree(tmp, ignore_errors=True)  # audio, subtitles and details are never kept
+                self.lock.release()
+
+    def complete(self, key: str, partial: dict, finish, tmp: Path):
+        try:
+            text = finish()
+            self.store(key, {**partial, "transcript": text, "partial": False})
+            log(f"{key}: transcript completed in the background ({len(text.split())} words)")
+        except Exception as e:  # noqa: BLE001 - the next request transcribes again
+            log(f"{key}: background transcript failed: {type(e).__name__}: {str(e)[:200]}")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
             self.lock.release()
 
     def transcribe(self, url: str, tmp: Path, deadline: float):
-        """Returns (result, whether to cache it)."""
+        """Returns (result, whether to cache it, finish-in-background callable or None)."""
         info = self.info(url, tmp, deadline)
         result = {"title": info.get("title") or "", "author": info.get("uploader") or info.get("channel") or "",
                   "description": info.get("description") or "", "language": _base(info.get("language") or ""),
-                  "transcript": "", "source": "none", "thumbnail": info.get("thumbnail") or ""}
+                  "transcript": "", "source": "none", "partial": False, "thumbnail": info.get("thumbnail") or ""}
         track = choose_track(info)
         if track:
-            text = self.subtitles(track, tmp, deadline)
+            text = self.subtitles(url, track, tmp, deadline)
             if text:
-                return {**result, "language": _base(track[0]), "transcript": text, "source": "subtitles"}, True
+                return {**result, "language": _base(track[0]), "transcript": text, "source": "subtitles"}, True, None
         if not self.s.whisper_host:
-            return result, True
+            return result, True, None
         duration = info.get("duration") or 0
         if duration > self.s.max_audio_minutes * 60:
             log(f"no subtitles and {duration // 60} min of audio (limit {self.s.max_audio_minutes}): description only")
-            return result, True
+            return result, True, None
         try:
-            text, lang = self.whisper(info, tmp, deadline)
+            speech = self.whisper(url, info, tmp, deadline)
         except Problem:
             raise
         except Exception as e:  # noqa: BLE001 - the server may be back soon, so this answer is not cached
             log(f"speech-to-text failed: {type(e).__name__}: {str(e)[:200]}")
-            return result, False
-        if text:
-            return {**result, "language": _base(lang) or result["language"], "transcript": text,
-                    "source": "whisper"}, True
-        return result, True
+            return result, False, None
+        if not speech.text and not speech.finish:
+            return result, True, None
+        result = {**result, "language": _base(speech.language) or result["language"], "transcript": speech.text,
+                  "source": "whisper", "partial": bool(speech.finish)}
+        if speech.finish:
+            done = speech.text
+            return result, False, lambda: "\n".join(t for t in (done, speech.finish()) if t)
+        return result, True, None
 
     # ------------------------------------------------------------ steps
 
@@ -200,6 +233,18 @@ class Transcriber:
         return [sys.executable, "-m", "yt_dlp", "--ignore-config", "--no-playlist", "--no-progress",
                 "--socket-timeout", "30", *args]
 
+    def fetch(self, url: str, tmp: Path, deadline: float, pattern: str, *args) -> Path | None:
+        """Downloads with the details read earlier; when that fails (YouTube sometimes answers 403), once more with
+        a fresh yt-dlp run. Returns the first file matching pattern, or None."""
+        for source in (("--load-info-json", str(tmp / "info.json")), (url,)):
+            r = self.run(self.ytdlp(*args, "--paths", f"temp:{tmp}", *source), deadline)
+            found = sorted(tmp.glob(pattern))
+            if r.returncode == 0 and found:
+                return found[0]
+            log(f"download failed ({'saved details' if len(source) == 2 else 'fresh run'}): "
+                f"{r.stderr.strip()[-200:]}")
+        return None
+
     def info(self, url: str, tmp: Path, deadline: float) -> dict:
         r = self.run(self.ytdlp("--dump-single-json", "--skip-download", url), deadline)
         if r.returncode:
@@ -212,39 +257,69 @@ class Transcriber:
         (tmp / "info.json").write_text(r.stdout, encoding="utf-8")
         return info
 
-    def subtitles(self, track, tmp: Path, deadline: float) -> str:
+    def subtitles(self, url: str, track, tmp: Path, deadline: float) -> str:
         key, auto = track
-        r = self.run(self.ytdlp("--load-info-json", str(tmp / "info.json"), "--skip-download",
-                                "--write-auto-subs" if auto else "--write-subs", "--sub-langs", key,
-                                "--sub-format", "json3/vtt/best", "--paths", f"temp:{tmp}",
-                                "-o", str(tmp / "sub.%(ext)s")), deadline)
-        files = sorted(tmp.glob("sub.*.json3")) + sorted(tmp.glob("sub.*.vtt"))
-        if r.returncode or not files:
-            log(f"subtitles {key} not downloaded: {r.stderr.strip()[-200:]}")
-            return ""
-        return subtitle_text(files[0])
+        found = self.fetch(url, tmp, deadline, "sub.*", "--skip-download",
+                           "--write-auto-subs" if auto else "--write-subs", "--sub-langs", key,
+                           "--sub-format", "json3/vtt/best", "-o", str(tmp / "sub.%(ext)s"))
+        return subtitle_text(found) if found and found.suffix in (".json3", ".vtt") else ""
 
-    def whisper(self, info: dict, tmp: Path, deadline: float):
+    def whisper(self, url: str, info: dict, tmp: Path, deadline: float) -> Speech:
         # is the speech-to-text server there at all? (no point downloading the audio otherwise)
         socket.create_connection((self.s.whisper_host, self.s.whisper_port), timeout=10).close()
-        r = self.run(self.ytdlp("--load-info-json", str(tmp / "info.json"), "-f", "bestaudio/best",
-                                "--max-filesize", "200M", "--no-part", "--paths", f"temp:{tmp}",
-                                "-o", str(tmp / "audio.%(ext)s")), deadline)
-        audio = next(iter(sorted(tmp.glob("audio.*"))), None)
-        if r.returncode or not audio:
-            raise OSError(f"audio not downloaded: {r.stderr.strip()[-200:]}")
+        audio = self.fetch(url, tmp, deadline, "audio.*", "-f", "bestaudio/best", "--max-filesize", "200M",
+                           "--no-part", "-o", str(tmp / "audio.%(ext)s"))
+        if not audio:
+            raise OSError("audio not downloaded")
         language = self.s.whisper_language or _base(info.get("language") or "")
+        return self.speech(self.pieces(audio), language, deadline)
+
+    def pieces(self, audio: Path):
+        """The audio as 16 kHz mono 16-bit PCM, MCC_WHISPER_CHUNK_SECONDS at a time."""
+        size = max(5, self.s.whisper_chunk_seconds) * wyoming.RATE * wyoming.WIDTH * wyoming.CHANNELS
         ff = subprocess.Popen(["ffmpeg", "-nostdin", "-v", "error", "-i", str(audio),
                                "-t", str(self.s.max_audio_minutes * 60), "-ac", "1", "-ar", str(wyoming.RATE),
                                "-f", "s16le", "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         try:
-            left = deadline - time.monotonic()
-            if left <= 0:
-                raise Problem(504, "reading the video took too long")
-            return wyoming.transcribe(self.s.whisper_host, self.s.whisper_port, wyoming.chunks(ff.stdout),
-                                      language, timeout=left)
-        except socket.timeout:
-            raise Problem(504, "speech-to-text took too long") from None
+            while True:
+                piece = ff.stdout.read(size)
+                if not piece:
+                    return
+                yield piece
         finally:
             ff.kill()
             ff.wait()
+
+    def stt(self, piece: bytes, language: str, timeout: float):
+        return wyoming.transcribe(self.s.whisper_host, self.s.whisper_port, wyoming.chunks(io.BytesIO(piece)),
+                                  language, timeout=timeout)
+
+    def speech(self, pieces, language: str, deadline: float) -> Speech:
+        """Transcribes the pieces one after the other. When the next one would not fit before the deadline (twice
+        the slowest piece so far, plus a little), stops and returns the rest as a finish() for the background."""
+        it = iter(pieces)
+        texts, slowest, lang = [], 0.0, language
+        for piece in it:
+            left = deadline - time.monotonic()
+            if texts and left < slowest * 2 + 5:
+                return Speech("\n".join(t for t in texts if t), lang, self.rest(piece, it, language))
+            started = time.monotonic()
+            try:
+                text, reported = self.stt(piece, language, timeout=max(1.0, left))
+            except (socket.timeout, TimeoutError):
+                if not texts:
+                    raise Problem(504, "speech-to-text took too long") from None
+                return Speech("\n".join(t for t in texts if t), lang, self.rest(piece, it, language))
+            slowest = max(slowest, time.monotonic() - started)
+            texts.append(text)
+            lang = lang or reported
+        return Speech("\n".join(t for t in texts if t), lang)
+
+    def rest(self, first: bytes, it, language: str):
+        def finish():
+            out = []
+            for piece in itertools.chain([first], it):  # one piece in memory at a time
+                text, _ = self.stt(piece, language, timeout=PIECE_TIMEOUT)
+                out.append(text)
+            return "\n".join(t for t in out if t)
+        return finish
