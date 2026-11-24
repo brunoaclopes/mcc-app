@@ -9,6 +9,7 @@ versions and pushes a tag.
 |---|---|---|
 | [CI](../.github/workflows/ci.yml) | every pull request and push to `master` | Kotlin tests (link, machine, recipe, common), machine and phone builds, recipe template and server tests |
 | [Release](../.github/workflows/release.yml) | a tag `vX.Y.Z` on `master` | the tests again, both APKs signed, a GitHub Release with the APKs, `SHA256SUMS.txt`, the signing fingerprints and notes from the merged pull requests |
+| [Release](../.github/workflows/release.yml) (test) | a tag `vX.Y.Z-test.N` on any branch | the same, published as a pre-release ([Test releases](#test-releases)) |
 | [Images](../.github/workflows/images.yml) | push to `master` that touches `server/` or the recipe tools, a tag `vX.Y.Z`, every Monday, or by hand | `ghcr.io/brunoaclopes/mcc-server` and `ghcr.io/brunoaclopes/mcc-recipe-server` for `linux/amd64` and `linux/arm64` |
 | [Dependabot](../.github/dependabot.yml) | weekly | one pull request per ecosystem (Gradle, GitHub Actions, Docker base images) |
 
@@ -18,6 +19,7 @@ versions and pushes a tag.
 |---|---|
 | `latest` | the newest build from `master`, rebuilt every week |
 | `0.7.0`, `0.7` | the release with that version tag |
+| `0.8.1-test.1` | a test release (never `latest` or `0.8`) |
 | `sha-<commit>` | one exact build |
 
 The weekly build starts from scratch, so the server always has a recent yt-dlp (YouTube changes often) and current
@@ -34,7 +36,7 @@ Each app has its own version in its build file; the release tag names the releas
 | What | Where | Example |
 |---|---|---|
 | Machine app | `app/build.gradle.kts`: `versionName`, `versionCode` | 1.4.1, 9 |
-| Phone app | `phone/build.gradle.kts`: `versionName`, `versionCode` | 0.7.1, 19 |
+| Phone app | `phone/build.gradle.kts`: `versionName`, `versionCode` | 0.7.2, 20 |
 | Server | `server/app.py`: `VERSION` | 2.0.0 |
 | Release | the git tag | `v0.7.0` |
 
@@ -62,6 +64,28 @@ the release still carries its APK.
 A tag that is not on `master`, or a release without the release key set up, fails before anything is published.
 To redo a failed release: delete the tag (`git push origin :v0.7.0` and `git tag -d v0.7.0`) and any half-made
 release, fix, and tag again.
+
+## Test releases
+
+A test release puts a change on the phone and the machine before it is released, signed like a real release, so
+it installs over the apps you have. Use it for fixes that only a real device or the real servers can confirm (an
+upload to the recipe server, a cooking run).
+
+1. On the pull request's branch, bump the versions as for the release (step 1 above) and wait for green CI.
+2. Tag the branch's last commit and push the tag:
+
+       git tag -a v0.8.1-test.1 -m "v0.8.1-test.1"
+       git push origin v0.8.1-test.1
+
+3. Actions → Release publishes a pre-release `v0.8.1-test.1 (test)` with `mcc-phone-0.7.2-test.1.apk`,
+   `mcc-machine-<version>-test.1.apk` and `SHA256SUMS.txt`. The images get the tag `0.8.1-test.1` (TrueNAS: set
+   that tag to try a server change, then go back to `latest`).
+4. Another round after a fix: the same with `-test.2`. When it works, merge and cut the real release `v0.8.1`.
+
+The apps show `<version>-test.N` in Settings but keep the release's `versionCode`, so the real release installs over
+a test build. A test release is never marked as the latest release, and Obtainium only offers it when pre-releases
+are switched on. Test tags only exist for testing: delete old ones and their pre-releases once the release is out
+(`gh release delete v0.8.1-test.1 --cleanup-tag`).
 
 ## Signing
 
