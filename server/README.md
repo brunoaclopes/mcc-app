@@ -91,11 +91,18 @@ Environment variables; copy [`.env.example`](.env.example) to `.env`.
 
 ## Run it with Docker Compose
 
+The image is published as **`ghcr.io/brunoaclopes/mcc-server`** for `linux/amd64` and `linux/arm64`: `latest`
+(rebuilt every week, with the newest yt-dlp) and one tag per release (`0.7.0`); see
+[docs/RELEASING.md](../docs/RELEASING.md#image-tags). The image has the users 1000 and 568 (TrueNAS apps).
+
     cd server
     cp .env.example .env          # fill in MCC_TOKEN and MCC_REPO_URL at least
     mkdir -p data ssh             # data must be writable by MCC_UID:MCC_GID (default 1000:1000)
     # put the deploy key and known_hosts in ./ssh (next section)
-    docker compose up -d --build
+    docker compose up -d          # the published image; docker compose pull && docker compose up -d updates it
+
+`docker compose up -d --build` builds the image from this folder instead (for changes of your own; a user ID other
+than 1000 or 568 needs `MCC_UID`/`MCC_GID` and a local build).
 
 The container runs as an ordinary user with a read-only filesystem and no capabilities. It has no access to
 Docker or the host, which matters because it holds a token that people on your network use.
@@ -117,6 +124,9 @@ On GitHub: the recipe repository → Settings → Deploy keys → Add deploy key
 After each push the server runs `MCC_DEPLOY_CMD` (if set), so the recipe appears where the apps look for it. The
 phone polls `<recipe server>/index.json` for up to 5 minutes after an upload.
 
+- **The recipe server pulls the repository itself** (`ghcr.io/brunoaclopes/mcc-recipe-server` with `MCC_GIT_URL`,
+  [docs/SERVER-SETUP.md](../docs/SERVER-SETUP.md#2-recipe-server)): leave `MCC_DEPLOY_CMD` empty; the recipe shows
+  up within its pull interval (a minute). This is the simplest setup.
 - **Your web server serves a clone directly**: leave it empty, or `git -C /path/seen/by/the/server pull`.
 - **The recipe server is a container** (the recipe repository's `docker compose up -d --build`): the upload
   container can't do that itself, by design. Let it leave a note and have the host act on it:
@@ -138,17 +148,11 @@ phone polls `<recipe server>/index.json` for up to 5 minutes after an upload.
 
 1. Datasets, e.g. `<pool>/apps/mcc-server/config` (the deploy key and `known_hosts`, mode 700) and
    `<pool>/apps/mcc-server/data` (writable), owned by `apps` (568:568).
-2. Build the image on the NAS with `APP_UID`/`APP_GID` 568, so the container's user exists (ssh needs that):
-
-       git clone <mcc-app> && cd mcc-app/server
-       sudo docker build --build-arg APP_UID=568 --build-arg APP_GID=568 -t mcc-server:<version> .
-
-3. Apps → Discover → Custom App → **Install via YAML**:
+2. Apps → Discover → Custom App → **Install via YAML** (the published image already has the user 568):
 
        services:
          mcc-server:
-           image: mcc-server:<version>
-           pull_policy: never
+           image: ghcr.io/brunoaclopes/mcc-server:latest
            restart: unless-stopped
            user: "568:568"
            ports: ["<nas-ip>:8080:8080"]
@@ -162,13 +166,17 @@ phone polls `<recipe server>/index.json` for up to 5 minutes after an upload.
              MCC_DATA_DIR: /data
              MCC_SSH_KEY: /config/ssh/id_ed25519
              MCC_SSH_KNOWN_HOSTS: /config/ssh/known_hosts
-             MCC_DEPLOY_CMD: "touch /data/deploy-requested"
+             MCC_DEPLOY_CMD: ""          # with a recipe server that pulls the repository; else "touch /data/deploy-requested"
              MCC_WHISPER_HOST: "<home-assistant-ip>"
            volumes:
              - /mnt/<pool>/apps/mcc-server/config:/config:ro
              - /mnt/<pool>/apps/mcc-server/data:/data
 
-4. System → Advanced → Cron Jobs: the deploy script above every minute, as root.
+3. Only with `MCC_DEPLOY_CMD=touch /data/deploy-requested`: System → Advanced → Cron Jobs, the deploy script above
+   every minute, as root.
+4. Updates: TrueNAS shows when `latest` has a newer image (weekly); update the app to pull it. To build it yourself
+   instead: `sudo docker build -t mcc-server:<version> .` in `server/`, and `image: mcc-server:<version>` with
+   `pull_policy: never`.
 
 ## Home Assistant's Whisper add-on
 
@@ -197,8 +205,9 @@ Remove a test recipe with a normal commit to your recipe repository (`git rm rec
 
 ## Keeping yt-dlp working
 
-YouTube changes often and yt-dlp follows. The image installs the newest yt-dlp when it is built, so rebuilding
-updates it (`docker compose build --pull && docker compose up -d`). With `MCC_YTDLP_UPDATE=1` the container also
+YouTube changes often and yt-dlp follows. The image installs the newest yt-dlp when it is built, and the published
+`latest` image is rebuilt every week, so pulling it updates yt-dlp (`docker compose pull && docker compose up -d`; a
+local build: `docker compose build --pull && docker compose up -d`). With `MCC_YTDLP_UPDATE=1` the container also
 installs the newest one into the data folder at every start, so a restart is enough. yt-dlp is used as published:
 no cookies, no account. A video that needs a login answers `422`.
 

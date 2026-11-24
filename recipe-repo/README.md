@@ -12,8 +12,9 @@ images/                     photos, referenced by relative path
 converters/                 turn other recipe sources into mcc-recipe/1
 tools/                      build_index.py, fetch_images.py
 tests/                      python3 -m unittest discover -s tests
-Dockerfile                  validates everything, then serves the folder with nginx
+Dockerfile                  your recipes built into an nginx image (option C below)
 docker-compose.yml          runs that image on port 8088
+docker/                     nginx settings, and the generic recipe server image (docker/serve.Dockerfile)
 ```
 
 The sample recipes in `recipes/` (`sample-*`) were written for this project and are under the project's licence (PolyForm Noncommercial, see `../LICENSE`).
@@ -59,13 +60,19 @@ publisher, so **keep the converted files in a private repository**. Never commit
 
 ## Serving
 
+The easiest is the published image **`ghcr.io/brunoaclopes/mcc-recipe-server`** (built from
+`docker/serve.Dockerfile`): it pulls your repository every minute (`MCC_GIT_URL`) or serves a mounted folder, checks
+the recipes and keeps the last good `index.json` when one is broken. Set-up, deploy key and compose file:
+[../docs/SERVER-SETUP.md](../docs/SERVER-SETUP.md#2-recipe-server).
+
 ```sh
-docker compose up -d --build         # on any Docker host: http://<host>:8088/
+docker run -d -p 8088:80 -v "$PWD":/recipes:ro ghcr.io/brunoaclopes/mcc-recipe-server   # serve this folder
+docker compose up -d --build         # or build your recipes into your own image (Dockerfile): http://<host>:8088/
 python3 -m http.server 8088          # or a quick test from a laptop, after build_index.py
 ```
 
-The Docker build validates every recipe and regenerates `index.json`, so a broken recipe fails the build instead of
-reaching the machine. After adding recipes: `git pull && docker compose up -d --build`.
+The `Dockerfile` build validates every recipe and regenerates `index.json`, so a broken recipe fails the build
+instead of reaching the machine. After adding recipes: `git pull && docker compose up -d --build`.
 
 The app only does `GET <base>/index.json`, `GET <base>/recipes/<file>` and image requests, so any static web server
 works. It caches everything and keeps working offline.
