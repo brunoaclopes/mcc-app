@@ -18,7 +18,16 @@ as Home Assistant**, so it needs no server on the tablet and no Google services:
   offline use). The recipe page lists ingredients and steps. While the machine cooks that recipe, it highlights
   the current step and follows along. **Open on the machine** shows the recipe on the machine's Cook screen, ready
   to cook: it never starts anything.
+- **Cook along**: one step per page in big type, with the screen kept on. While the recipe is open on the machine,
+  the pages follow the machine's step.
+- **Recipe import**: share a recipe page or a cooking video (YouTube, TikTok, Instagram reels, Vimeo, Facebook) to
+  the app, or paste text. The AI server turns it into a machine recipe in both languages; you review the changes it
+  made to fit the machine, ask for corrections, then **add it to the recipe server** (through the upload service) or
+  keep it on this phone only. Videos are transcribed by the upload service first
+  ([RECIPE-UPLOAD.md](RECIPE-UPLOAD.md#video-transcripts)).
 - **Shopping list** from a recipe's ingredients, grouped by recipe, tick off as you shop, share as text.
+- **Home-screen widget** and **Quick Settings tile**: what the machine is doing and when it is ready, with Stop
+  while it runs (the tile asks first). App shortcuts (long-press the icon) open Machine, Recipes or the list.
 - **Foldables and tablets**: on a wide screen (e.g. Galaxy Z Fold unfolded) a side rail and two panes. The machine
   sits next to the recipe it is cooking, and the recipe list next to the open recipe.
 - Light and dark (follows the phone), English and European Portuguese.
@@ -39,7 +48,9 @@ whatever asks. Opening recipes from the phone can be switched off on the machine
    once. See [Installing and updating](#installing-and-updating).
 3. Settings → **Connection**: broker address, port, user and password. **Recipe server**: the same address as on
    the machine.
-4. Allow notifications when asked. For notifications with the app closed, keep **Stay connected in the
+4. Optional, for recipe import: Settings → **Recipe import** → AI server address, model and key, and the upload
+   service's address and token ([SERVER-SETUP.md](SERVER-SETUP.md)) → **Save and test**.
+5. Allow notifications when asked. For notifications with the app closed, keep **Stay connected in the
    background** on, and tap **Allow running in the background**.
    - *Huawei / Honor*: also Settings → Battery → App launch → Monsieur Cuisine → *Manage manually*, all on.
      Otherwise the phone closes the app and notifications stop.
@@ -58,6 +69,10 @@ either, use the Home Assistant Companion app and the blueprint in [HOME-ASSISTAN
 - `LinkService.kt`: a foreground service that keeps the connection while background mode is on, and owns the
   live notification. Without background mode the connection lives only while the app is open.
 - `Notifier.kt`: the live notification and the alerts.
+- `Importer.kt`: the recipe import (transcript, AI, translation, review, publish), with `AiClient` and
+  `RecipePublisher` from `common/`.
+- `widget/MachineWidget.kt` (Glance), `MachineTile.kt` and `Surfaces.kt`: the widget and the tile, which show the
+  same state as the app.
 - `ui/`: Jetpack Compose with Material 3, coloured with the machine's design tokens (`T` from `common/`). It uses
   the machine's own Manrope font, line icons, cover illustrations, `ClockRing` and `HoldButton` views, and its
   translations for everything both apps say (step sentences, board errors, units).

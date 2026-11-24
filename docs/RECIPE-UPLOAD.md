@@ -23,7 +23,7 @@ phones). The phone sets its address and token in Settings → Recipe import. Set
 
 | Code | Body | Meaning |
 |------|------|---------|
-| 201 | `{"key": "…", "ids": ["…-pt", "…-en"]}` | committed; the server is being rebuilt and redeployed |
+| 201 | `{"key": "…", "ids": ["…-pt", "…-en"]}` | committed and pushed; the recipe server picks it up within a minute (git mode), or `MCC_DEPLOY_CMD` redeploys it |
 | 401 | `{"error": "…"}` | missing or wrong token |
 | 409 | `{"error": "…"}` | the key already exists |
 | 413 | `{"error": "…"}` | body over 1 MB |

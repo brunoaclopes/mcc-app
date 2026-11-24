@@ -28,9 +28,10 @@ steps, grams and machine settings; only the text differs. The app shows the one 
 
 ## Adding a recipe
 
-1. **From the phone app** (easiest): share a recipe page or a YouTube video to the app, review what the AI made,
-   send corrections if needed, and tap Publish. Needs an AI server and the upload service
-   ([../server/](../server)); the service writes both languages here, commits and redeploys.
+1. **From the phone app** (easiest): share a recipe page or a cooking video to the app, review what the AI made,
+   send corrections if needed, and add it to the recipe server. Needs an AI server and the upload service
+   ([../server/](../server)); the service writes both languages here, commits and pushes, and the recipe server
+   picks it up.
 2. **By hand**: copy a pair of `sample-*` files, give them a new key (`my-soup-pt.json` with id `my-soup-pt`, and the
    same for `en`), and follow [FORMAT.md](FORMAT.md). Steps are `instruction`, `weigh` (with a target in grams) or
    `machine` (time, speed, temperature and reverse per segment, or a `knead`, `roast` or `steam` preset).
