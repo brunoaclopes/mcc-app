@@ -16,6 +16,8 @@ android {
         targetSdk = 23
         versionCode = 9
         versionName = "1.4.1"
+        // test releases (tags vX.Y.Z-test.N) add "-test.N"; the versionCode stays, so the final release installs over it
+        versionNameSuffix = providers.gradleProperty("mccVersionSuffix").orNull
         ndk { abiFilters += "armeabi-v7a" }
     }
 

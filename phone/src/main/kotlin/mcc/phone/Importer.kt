@@ -23,8 +23,11 @@ object Importer {
     sealed class State {
         object Idle : State()
         data class Working(val stage: Stage, val since: Long) : State()
-        /** [imp] is the recipe in the phone's language (with what the AI was given, for feedback); [other] its translation. */
-        data class Ready(val imp: AiClient.Import, val other: Recipe?, val revisions: Int = 0) : State() {
+        /**
+         * [imp] is the recipe in the phone's language (with what the AI was given, for feedback); [other] its translation.
+         * [error]: why the last publish or revision failed, shown in the sheet (a snackbar would be hidden behind it).
+         */
+        data class Ready(val imp: AiClient.Import, val other: Recipe?, val revisions: Int = 0, val error: String? = null) : State() {
             val main get() = imp.recipe
             val changes get() = imp.changes
         }
@@ -107,8 +110,9 @@ object Importer {
                 }
             }
             _state.value = res.getOrElse { e ->
-                message.value = mcc.app.i18n.L.s.aiFailed(e.message ?: e.javaClass.simpleName)
-                ready   // keep the recipe as it was
+                val why = mcc.app.i18n.L.s.aiFailed(e.message ?: e.javaClass.simpleName)
+                if (!sheet.value) message.value = why
+                ready.copy(error = why)   // keep the recipe as it was
             }
             if (!sheet.value && res.isSuccess) message.value = P.s.importReady(ready.main.title)
         }
@@ -124,8 +128,9 @@ object Importer {
             val pt = if (ready.main.language == "pt") ready.main else other
             val sent = withContext(Dispatchers.IO) { runCatching { pub.publish(RecipePublisher.keyFor(pt.title), listOf(ready.main, other)) } }
             val key = sent.getOrElse { e ->
-                _state.value = ready
-                message.value = P.s.publishFailed(e.message ?: e.javaClass.simpleName)
+                val why = P.s.publishFailed(e.message ?: e.javaClass.simpleName)
+                _state.value = ready.copy(error = why)
+                if (!sheet.value) message.value = why
                 return@launch
             }
             _state.value = State.Working(Stage.WAITING, System.currentTimeMillis())

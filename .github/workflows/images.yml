@@ -2,6 +2,7 @@
 #   ghcr.io/<owner>/mcc-server          upload service and video transcripts (server/)
 #   ghcr.io/<owner>/mcc-recipe-server   serves a mounted recipe folder (recipe-repo/docker/serve.Dockerfile)
 # Tags: latest (master), <version> and <major>.<minor> (release tags vX.Y.Z), sha-<commit>.
+# A test release tag vX.Y.Z-test.N only gets <version>-test.N and sha-<commit> (never latest or <major>.<minor>).
 # Rebuilt every week as well, so the server always has a recent yt-dlp.
 name: Images
 

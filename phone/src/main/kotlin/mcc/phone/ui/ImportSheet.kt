@@ -123,6 +123,11 @@ private fun Ready(s: Importer.State.Ready) {
     val r = if (showOther && s.other != null) s.other else s.main
     var feedback by remember(s) { mutableStateOf("") }
 
+    // why the last publish or revision failed, at the top: after the progress view the sheet is scrolled to the top
+    s.error?.let {
+        Text(it, style = MaterialTheme.typography.bodyMedium, color = Mc.danger,
+            modifier = Modifier.fillMaxWidth().background(Mc.danger.copy(alpha = 0.12f), RoundedCornerShape(14.dp)).padding(12.dp))
+    }
     Text(r.title, style = MaterialTheme.typography.titleLarge, color = Mc.text)
     Text(S.importSummary(r.ingredients.sumOf { it.items.size }, r.steps.size, r.steps.count { it is Step.Machine }) +
         (r.servings?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = Mc.text2)

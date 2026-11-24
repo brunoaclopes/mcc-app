@@ -74,7 +74,8 @@ class RecipePublisherTest {
     private fun recipe(lang: String) = Recipe(
         format = Recipe.FORMAT, id = "my-sopa-123-$lang", title = if (lang == "pt") "Sopa" else "Soup", language = lang,
         tags = listOf(if (lang == "pt") mcc.app.i18n.Pt.tagMine else mcc.app.i18n.En.tagMine, "Sopas"),
-        ingredients = listOf(IngredientGroup(null, listOf(Ingredient("1 cebola")))), steps = listOf(Step.Instruction("Corte.")),
+        ingredients = listOf(IngredientGroup(null, listOf(Ingredient("1 cebola")))),
+        steps = listOf(Step.Instruction("Corte."), Step.Machine("Coza.", segments = listOf(mcc.recipe.Segment(600, 1, 100)))),
     )
 
     @Test fun keyFollowsTheRepoStyle() {
@@ -89,6 +90,8 @@ class RecipePublisherTest {
         val sent = Json.parseToJsonElement(bodies.last()).jsonObject["recipes"]!!.jsonArray.map { it.jsonObject }
         assertEquals(listOf("web-sopa-2-pt", "web-sopa-2-en"), sent.map { it["id"]!!.jsonPrimitive.content })
         assertTrue(sent.all { r -> r["tags"]!!.jsonArray.map { it.jsonPrimitive.content } == listOf("Sopas") })
+        // the repository's validator requires mode, also for the default (run)
+        assertTrue(sent.all { r -> r["steps"]!!.jsonArray[1].jsonObject["mode"]?.jsonPrimitive?.content == "run" })
     }
 
     @Test fun rejectionCarriesTheServersReason() {
