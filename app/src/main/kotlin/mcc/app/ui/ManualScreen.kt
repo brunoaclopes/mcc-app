@@ -8,12 +8,16 @@ import mcc.app.MachineService
 import mcc.machine.RunRequest
 import mcc.machine.TemperatureTable
 
-/** Manual control: time / speed / temperature dials, reverse, scale helpers, hold-to-start. */
+/**
+ * Manual control: time / speed / temperature dials, reverse, scale helpers, hold-to-start.
+ * Time 0:00 means no set time, as on the stock app: the run counts up like a stopwatch until it is stopped (the
+ * machine layer still ends it at its maximum run time: 99 min, 15 min above speed 6).
+ */
 class ManualScreen(app: AppUi) : Screen(app) {
     override val title get() = S.navManual
     override val subtitle: String get() = if (snap?.running == true) S.runningTapStop else S.manualSubtitle
 
-    private val timeSteps: List<Int> = (5..55 step 5) + (60..285 step 15) + (300..5940 step 60)
+    private val timeSteps: List<Int> = listOf(0) + (5..55 step 5) + (60..285 step 15) + (300..5940 step 60)
     private var timeIdx = timeSteps.indexOf(60)
     private var speed = 2
     private var tempLevel = 0
@@ -115,6 +119,9 @@ class ManualScreen(app: AppUi) : Screen(app) {
     // ------------------------------------------------------------------ model
 
     private val seconds get() = timeSteps[timeIdx]
+    /** No set time: a stopwatch run. */
+    private val open get() = seconds == 0
+    private fun request() = RunRequest(speed, tempC, seconds * 1000L, reverse, open = open)
     private val tempC get() = TemperatureTable.celsius(tempLevel)
     private val running get() = snap?.running == true
 
@@ -194,7 +201,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
         if (!MachineService.armed) { app.requestUnlock(); return }
         val what = describe()
         app.confirm(S.remoteTitle, S.remoteBody(what, app.prefs.remoteMinutes), S.remoteAllow) {
-            val e = s.allowRemote(RunRequest(speed, tempC, seconds * 1000L, reverse), what)
+            val e = s.allowRemote(request(), what)
             app.notify(e ?: S.remoteArmed(app.prefs.remoteMinutes), if (e == null) Notice.OK else Notice.WARN)
         }
     }
@@ -205,7 +212,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
         if (!MachineService.armed) { app.requestUnlock(); return }
         if (MachineService.pausedRun != null) { s.resumeManual()?.let { app.notify(it, Notice.WARN) }; return }
         if (tempLevel > 0 && snap?.hasEmptyReference == false) { app.askEmptyBowl(S.emptyBowlNeeded); return }
-        val e = s.startManual(RunRequest(speed, tempC, seconds * 1000L, reverse))
+        val e = s.startManual(request())
         if (e != null) app.notify(e, Notice.WARN)
     }
 
@@ -213,8 +220,8 @@ class ManualScreen(app: AppUi) : Screen(app) {
 
     private fun refreshDials(animate: Boolean) {
         val sec = seconds
-        timeDial.value = if (sec < 60) "$sec" else if (sec % 60 == 0 && sec >= 600) "${sec / 60}" else "%d:%02d".format(sec / 60, sec % 60)
-        timeDial.unit = if (sec < 60) S.seconds else S.minutes
+        timeDial.value = if (sec == 0) "0:00" else if (sec < 60) "$sec" else if (sec % 60 == 0 && sec >= 600) "${sec / 60}" else "%d:%02d".format(sec / 60, sec % 60)
+        timeDial.unit = if (sec == 0) S.stopwatch else if (sec < 60) S.seconds else S.minutes
         timeDial.setFraction(timeIdx / timeSteps.lastIndex.toFloat(), animate)
         speedDial.value = "$speed"
         speedDial.unit = if (speed == 0) S.stirringOff else if (reverse) "${S.reverse.lowercase(S.locale)} · ${S.ofMax(maxSpeed())}" else S.ofMax(maxSpeed())
@@ -235,16 +242,23 @@ class ManualScreen(app: AppUi) : Screen(app) {
         if (paused != null) {
             // a paused run: show what it will continue with; PARAR (top right) ends it
             val p = paused.request
-            timeDial.value = fmtClock(p.durationMillis); timeDial.unit = S.paused.lowercase(S.locale)
-            timeDial.progress = 1f - p.durationMillis / paused.totalMillis.toFloat()
+            if (p.open) { timeDial.value = fmtElapsed(paused.elapsedMillis); timeDial.progress = null }
+            else { timeDial.value = fmtClock(p.durationMillis); timeDial.progress = 1f - p.durationMillis / paused.totalMillis.toFloat() }
+            timeDial.unit = S.paused.lowercase(S.locale)
             speedDial.value = "${p.speedLevel}"; speedDial.unit = if (p.reverse) S.reverse.lowercase(S.locale) else S.speed.lowercase(S.locale)
             speedDial.setFraction(p.speedLevel / 10f)
             tempDial.value = if (p.temperatureC == 0) S.off else "${p.temperatureC}"
             tempDial.unit = if (p.temperatureC == 0) S.noHeat else "°C ${S.target}"
             dials.forEach { it.interactive = false }
         } else if (run && req != null) {
-            timeDial.value = fmtClock(s.remainingMillis); timeDial.unit = S.remaining
-            timeDial.progress = 1f - s.remainingMillis / req.durationMillis.toFloat()
+            if (req.open) {
+                val ms = MachineService.stopwatchMillis(s)
+                timeDial.value = fmtElapsed(ms); timeDial.unit = S.elapsed
+                timeDial.progress = (ms % 60_000) / 60_000f // a sweeping second hand
+            } else {
+                timeDial.value = fmtClock(s.remainingMillis); timeDial.unit = S.remaining
+                timeDial.progress = 1f - s.remainingMillis / req.durationMillis.toFloat()
+            }
             speedDial.value = "${req.speedLevel}"; speedDial.unit = if (req.reverse) S.reverse.lowercase(S.locale) else S.speed.lowercase(S.locale)
             speedDial.setFraction(req.speedLevel / 10f)
             tempDial.value = if (req.temperatureC == 0) S.off else "${req.temperatureC}"
@@ -313,7 +327,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
     }
 
     private fun describe(): String = buildString {
-        append(S.duration(seconds)); append(" · ${S.speed.lowercase(S.locale)} $speed")
+        append(if (open) S.stopwatch else S.duration(seconds)); append(" · ${S.speed.lowercase(S.locale)} $speed")
         if (reverse) append(" · ${S.reverse.lowercase(S.locale)}")
         if (tempLevel > 0) append(" · $tempC °C")
     }

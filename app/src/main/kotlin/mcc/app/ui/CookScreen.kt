@@ -376,9 +376,13 @@ class CookScreen(app: AppUi) : Screen(app) {
             else -> S.modeUnit(step.mode)
         }
         val f = MachineService.snapshot?.lastFrame
-        ring.sub = if (f != null && f.temperatureStepC > 0) S.bowlTemp(f.temperatureStepC) else ""
-        ring.setFraction(if (total > 0) (total - left) / total.toFloat() else 0f)
-        ring.progress = if (st.phase == RecipeRunner.Phase.RUNNING || st.phase == RecipeRunner.Phase.PAUSED) (total - left) / total.toFloat() else null
+        val bowl = if (f != null && f.temperatureStepC > 0) S.bowlTemp(f.temperatureStepC) else ""
+        // the time ran out before the bowl got hot: it keeps heating, and says so
+        ring.sub = st.heatingTo?.let { S.waitingForHeat(it) + (if (bowl.isNotEmpty()) " · $bowl" else "") } ?: bowl
+        if (st.heatingTo != null) ring.value = "${f?.temperatureStepC?.takeIf { it > 0 } ?: "<37"}°"
+        val done = if (st.heatingTo != null) 1f else if (total > 0) (total - left) / total.toFloat() else 0f
+        ring.setFraction(done)
+        ring.progress = if (st.phase == RecipeRunner.Phase.RUNNING || st.phase == RecipeRunner.Phase.PAUSED) done else null
         val enabled = MachinePlan.expand(step).all { app.service?.modeEnabled(it.mode) ?: (it.mode in mcc.machine.SafetyLimits().enabledModes) }
 
         val armed = MachineService.armed

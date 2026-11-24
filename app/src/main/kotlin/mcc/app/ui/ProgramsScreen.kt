@@ -19,19 +19,20 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
     private val tiles = ArrayList<View>()
     private var focus = 0
     private lateinit var scroll: android.widget.ScrollView
-    private lateinit var list: List<Recipe>
+    /** null = the automatic soup tile (opens its own screen), then the programs. */
+    private lateinit var list: List<Recipe?>
 
     override val view: View = build()
 
     private fun build(): View {
         val lang = app.prefs.uiLanguage
-        list = Programs.cooking().filter { it.language == lang } + Programs.cleanings(lang)
+        list = listOf<Recipe?>(null) + Programs.cooking().filter { it.language == lang } + Programs.cleanings(lang)
         val page = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(T.dp(16), T.dp(6), T.dp(16), T.dp(16)) }
         scroll = android.widget.ScrollView(c).apply { isVerticalScrollBarEnabled = false; isVerticalFadingEdgeEnabled = true; setFadingEdgeLength(T.dp(24)); addView(page) }
         val cols = 5
         list.chunked(cols).forEachIndexed { row, items ->
             val line = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL }
-            items.forEachIndexed { i, r -> line.addView(tile(r), LinearLayout.LayoutParams(0, -1, 1f).apply { if (i > 0) leftMargin = T.dp(12) }) }
+            items.forEachIndexed { i, r -> line.addView(if (r == null) soupTile() else tile(r), LinearLayout.LayoutParams(0, -1, 1f).apply { if (i > 0) leftMargin = T.dp(12) }) }
             repeat(cols - items.size) { line.addView(View(c), LinearLayout.LayoutParams(0, -1, 1f).apply { leftMargin = T.dp(12) }) }
             page.addView(line, LinearLayout.LayoutParams(-1, T.dp(232)).apply { if (row > 0) topMargin = T.dp(12) })
         }
@@ -64,8 +65,26 @@ class ProgramsScreen(app: AppUi) : Screen(app) {
         return card
     }
 
-    private fun open(r: Recipe) {
-        app.cook(r)
+    private fun open(r: Recipe?) {
+        if (r == null) app.go("soup") else app.cook(r)
+    }
+
+    /** The automatic soup: any vegetables, worked out from their weight (photo shared with Reheat soup). */
+    private fun soupTile(): View {
+        val card = FrameLayout(c)
+        val img = RoundImage(c, 20f).apply { scrim = 0.7f; placeholder(0xFF8A3F12.toInt(), 0xFF3A1406.toInt()); art = Covers.iconFor("soup", S.soupTile, emptyList()) }
+        card.addView(img, FrameLayout.LayoutParams(-1, -1))
+        ImageLoader.load(app.store, Programs.ASSET + "reheat.jpg", img, T.dp(240))
+        val info = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(T.dp(14), 0, T.dp(12), T.dp(14)) }
+        info.addView(T.text(c, S.soupTile, 17f, T.ON_PHOTO, T.heavy).apply { maxLines = 2; setShadowLayer(6f, 0f, 1f, 0xAA000000.toInt()) })
+        info.addView(T.text(c, S.soupTileMeta, 13f, T.ON_PHOTO_2, T.semibold).apply { setPadding(0, T.dp(5), 0, 0); maxLines = 1 })
+        card.addView(info, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        val badge = T.text(c, "AUTO", 11f, T.ON_ACCENT, T.heavy).apply { letterSpacing = 0.08f; background = T.round(T.AMBER, 10); setPadding(T.dp(9), T.dp(4), T.dp(9), T.dp(4)) }
+        card.addView(badge, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply { setMargins(T.dp(10), T.dp(10), 0, 0) })
+        card.setOnClickListener { open(null) }
+        T.press(card)
+        tiles.add(card)
+        return card
     }
 
     /** "Ovos cozidos, moles" -> "Ovos moles", "Boiled eggs, soft" -> "Soft eggs". */

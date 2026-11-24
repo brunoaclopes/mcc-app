@@ -87,6 +87,15 @@ object Discovery {
                     put("device_class", "problem")
                     put("value_template", "{{ 'ON' if value_json.error != 'none' else 'OFF' }}")
                 }
+                // a manual run without a set time counts up; null otherwise
+                cmp("elapsed", "sensor", "Elapsed") {
+                    put("device_class", "duration"); put("unit_of_measurement", "s"); put("icon", "mdi:timer-outline")
+                    put("value_template", "{{ value_json.run_elapsed if value_json.run_elapsed is not none else None }}")
+                }
+                cmp("screen", "binary_sensor", "Screen") {
+                    put("payload_on", "on"); put("payload_off", "off"); put("icon", "mdi:tablet"); put("entity_category", "diagnostic")
+                    put("value_template", "{{ value_json.get('screen', 'on') }}")
+                }
                 cmp("time_left", "sensor", "Time left") {
                     put("device_class", "duration"); put("unit_of_measurement", "s")
                     put("value_template", "{{ value_json.run_left if value_json.run_left is not none else 0 }}")
@@ -116,6 +125,7 @@ object Discovery {
                 cmp("stop", "button", "Stop") { put("command_topic", Topics.CMD); put("payload_press", "stop"); put("icon", "mdi:stop-circle") }
                 cmp("cancel", "button", "Cancel recipe") { put("command_topic", Topics.CMD); put("payload_press", "cancel"); put("icon", "mdi:close-circle") }
                 cmp("tare", "button", "Tare scale") { put("command_topic", Topics.CMD); put("payload_press", "tare"); put("icon", "mdi:scale-balance") }
+                cmp("wake", "button", "Wake screen") { put("command_topic", Topics.CMD); put("payload_press", "wake"); put("icon", "mdi:tablet-dashboard") }
             }
             put("qos", 1)
         }

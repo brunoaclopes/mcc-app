@@ -208,6 +208,11 @@ private fun StatusCard(s: MachineState, online: Boolean, big: Boolean = false) {
                         r.value = fmtLeft(s.runLeft!!); r.unit = L.s.left
                         r.fraction = s.runTotal?.takeIf { it > 0 }?.let { 1f - s.runLeft!! / it.toFloat() } ?: 0f
                         r.colorA = if (hot) T.AMBER else T.TEAL; r.colorB = if (hot) T.EMBER_HOT else T.TEAL_DEEP
+                    } else if (online && s.running && s.runElapsed != null) {
+                        // a manual run without a set time counts up (stopwatch)
+                        r.value = fmtLeft(s.runElapsed!!); r.unit = L.s.elapsed
+                        r.fraction = (s.runElapsed!! % 60) / 60f
+                        r.colorA = if (hot) T.AMBER else T.TEAL; r.colorB = if (hot) T.EMBER_HOT else T.TEAL_DEEP
                     } else {
                         r.value = "%02d:%02d".format(c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE))
                         r.unit = SimpleDateFormat("EEE d MMM", L.s.locale).format(c.time)
