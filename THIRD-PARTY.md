@@ -7,6 +7,8 @@
 | [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) | Gradle dependency, inside the APK | Apache-2.0 |
 | Kotlin standard library | Gradle dependency, inside the APK | Apache-2.0 |
 | AOSP platform **test** key | `signing/` | Part of AOSP (Apache-2.0); public, not a secret |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp), [Pillow](https://python-pillow.org), [FFmpeg](https://ffmpeg.org), [Deno](https://deno.com) | installed into the `server/` Docker image when you build it; not in this repository | Unlicense, MIT-CMU, LGPL/GPL, MIT |
+| nginx, Python | base images of the `server/` and `recipe-repo/` Docker images | BSD-2-Clause, PSF |
 
 Not included, on purpose: anything from the stock firmware or the stock cooking app (code, recipes, images).
 The protocol notes in `docs/PROTOCOL.md` describe behaviour; no stock code is copied.
