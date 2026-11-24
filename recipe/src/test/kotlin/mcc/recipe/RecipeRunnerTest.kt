@@ -17,6 +17,8 @@ private class FakeBoard {
     var grossGrams = 2000
     private var tareOffset = 0
     var running = false
+    /** Bowl temperature the board reports (quantised °C, 0 = below 37). */
+    var tempC = 0
     val sentCommands = ArrayList<TxCommand>()
 
     fun receive(frame: ByteArray) {
@@ -32,6 +34,7 @@ private class FakeBoard {
         f[3] = ((if (running) 1 else 0) or 4 or (if (lidOpen) 0x80 else 0)).toByte()
         val w = if (running) 0 else grossGrams - tareOffset
         f[16] = (w ushr 24).toByte(); f[17] = (w ushr 16).toByte(); f[18] = (w ushr 8).toByte(); f[19] = w.toByte()
+        f[14] = (tempC ushr 8).toByte(); f[15] = tempC.toByte()
         f[20] = 0x13; f[21] = 0x39
         f[25] = Protocol.checksum(f, 25).toByte()
         return f
@@ -165,5 +168,48 @@ class RecipeRunnerTest {
             }
         }
         println("parsed ${files.size} recipes, $machineSteps machine steps")
+    }
+
+    /** Empty-bowl reference with 1000 g of content, so heated steps may start. */
+    private fun readyToHeat() {
+        board.grossGrams = 500; run(null, 1_000)
+        assertTrue(controller.setEmptyBowlReference(now))
+        board.grossGrams = 1500; run(null, 1_000)
+    }
+
+    @Test fun heatedStepRunsOnUntilTheBowlIsHot() {
+        readyToHeat()
+        val r = RecipeRunner(recipe(Step.Machine(segments = listOf(Segment(60, speed = 1, tempC = 100))), Step.Instruction("next")), controller)
+        assertTrue(r.start(now))
+        board.tempC = 80
+        run(r, 61_000)
+        assertEquals(0, r.stepIndex, "still heating: the bowl is at 80 °C")
+        assertEquals(RecipeRunner.Phase.RUNNING, r.phase)
+        assertEquals(100, r.state(now).heatingTo)
+        board.tempC = 95
+        run(r, 2_000)
+        assertEquals(1, r.stepIndex, "moves on as soon as the bowl is at temperature, without waiting for the chunk")
+        assertEquals(null, r.state(now).heatingTo)
+    }
+
+    @Test fun heatExtensionIsCapped() {
+        readyToHeat()
+        val r = RecipeRunner(recipe(Step.Machine(segments = listOf(Segment(60, speed = 1, tempC = 100))), Step.Instruction("next")), controller)
+        assertTrue(r.start(now))
+        board.tempC = 60
+        run(r, 60_000 + 120_000 + 3_000)
+        assertEquals(1, r.stepIndex, "gives up after the cap (2 min for a 1 min step)")
+    }
+
+    @Test fun noExtensionWhenHotOrUnheated() {
+        readyToHeat()
+        board.tempC = 100
+        val r = RecipeRunner(recipe(Step.Machine(segments = listOf(Segment(30, speed = 1, tempC = 100))), Step.Instruction("next")), controller)
+        assertTrue(r.start(now)); run(r, 31_000)
+        assertEquals(1, r.stepIndex)
+        board.tempC = 0
+        val r2 = RecipeRunner(recipe(Step.Machine(segments = listOf(Segment(10, speed = 4))), Step.Instruction("next")), controller)
+        assertTrue(r2.start(now)); run(r2, 11_000)
+        assertEquals(1, r2.stepIndex)
     }
 }

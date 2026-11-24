@@ -201,4 +201,31 @@ class MachineControllerTest {
         c.feed(rx(tempC = 60), 0)
         assertIs<StartResult.Rejected>(c.start(RunRequest(10, 0, 2_000, mode = RunMode.TURBO), 0))
     }
+
+    @Test fun openRunCountsUpAndStopsAtTheCapForItsSpeed() {
+        val c = controller()
+        c.feed(rx(), 0)
+        assertIs<StartResult.Started>(c.start(RunRequest(7, 0, 0, open = true), 0))
+        assertEquals(15 * 60_000L, c.snapshot(0).request!!.durationMillis, "speed 7: 15 min cap")
+        var t = 0L
+        while (t < 15 * 60_000L) {
+            if (t % 500 == 0L) c.feed(rx(running = true), t)
+            assertEquals(WorkCommand.RUN, decode(c.tick(t)).command)
+            t += 100
+        }
+        assertEquals(15 * 60_000L - 100, c.snapshot(t - 100).elapsedMillis)
+        c.feed(rx(running = true), t)
+        assertEquals(TxCommand.STOP, decode(c.tick(t)))
+        assertEquals(listOf(StopReason.MAX_RUNTIME), stops, "an open run ends by its cap, never as 'completed'")
+    }
+
+    @Test fun openRunKeepsHeatLimitsAndOnlyNormalMode() {
+        val c = controller()
+        c.feed(rx(), 0)
+        assertIs<StartResult.Rejected>(c.start(RunRequest(2, 90, 0, open = true), 0), "heat still needs the empty-bowl reference")
+        assertIs<StartResult.Rejected>(c.start(RunRequest(5, 90, 0, open = true), 0))
+        assertIs<StartResult.Rejected>(c.start(RunRequest(10, 0, 0, mode = RunMode.TURBO, open = true), 0))
+        assertIs<StartResult.Started>(c.start(RunRequest(1, 0, 120_000, open = true), 0))
+        assertEquals(120_000L, c.snapshot(0).request!!.durationMillis, "a resumed open run keeps its lower cap")
+    }
 }
