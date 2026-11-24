@@ -1,0 +1,5 @@
+# local settings and secrets of a running server (see .env.example and README.md)
+.env
+ssh/
+data/
+__pycache__/
