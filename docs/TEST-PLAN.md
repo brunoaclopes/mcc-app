@@ -23,6 +23,7 @@ Setup: open the app → tap **Unlock** (top right) → confirm. Then **Manual** 
 | T10 | empty | Manual, time 0:00, speed 2, 20 s, then STOP | counts up from 0:00, stops on STOP; Pause from the phone keeps the count | stopwatch run |
 | T11 | 1500 g cold water | a recipe step "100 °C, 2 min, speed 1" | after 2 min it says "heating on to 100°" and moves on once the bowl reads 95 °C or more | heat extension |
 | T12 | vegetables | Programs → Any-vegetable soup, 600 g mixed, smooth, onion base | weigh steps guide to the amounts, cooks, blends 4→10 gradually | automatic soup |
+| T13 | 300 g water | a recipe with a 250 g weigh step, hands-free weighing on | moves on 2–3 s after the amount is in; the next machine step waits for Start | hands-free weighing |
 
 **T3 result (2026-11-21):** the board has its own watchdog. With the app killed mid-run (speed 1), the motor stopped almost
 immediately, so a crashed or killed tablet app does not leave the motor running.

@@ -41,6 +41,8 @@ without the stock cooking app.
   reheating, and **cleaning** programs. They are ordinary guided recipes, so the same limits apply.
 - **Heated steps reach their temperature**: when a step's time runs out before the bowl is hot (a big or cold
   bowl), it keeps heating until it is, within a cap, and says so.
+- **Hands-free weighing** (weigh steps move on by themselves at the amount) and **keep warm** after a heated
+  recipe. What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 - **AI recipe import** (optional): point it at any OpenAI-compatible server (OpenAI, or one on your own network)
   and turn a web page, pasted text or a cooking video into a guided recipe. Settings from other machines ("10 min/100°C/speed 1")
   are converted, and anything outside the machine limits is adjusted and listed. The AI only writes recipes.
@@ -113,6 +115,7 @@ The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 - [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md): MQTT topics, payloads, events and commands
 - [docs/PHONE.md](docs/PHONE.md): the phone companion app
 - [docs/TEST-PLAN.md](docs/TEST-PLAN.md): the supervised live tests
+- [docs/ROADMAP.md](docs/ROADMAP.md): what is done and what comes next
 - [recipe-repo/README.md](recipe-repo/README.md) and [recipe-repo/FORMAT.md](recipe-repo/FORMAT.md): recipes
 
 ## Status

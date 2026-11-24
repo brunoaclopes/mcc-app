@@ -212,4 +212,27 @@ class RecipeRunnerTest {
         assertTrue(r2.start(now)); run(r2, 11_000)
         assertEquals(1, r2.stepIndex)
     }
+
+    @Test fun handsFreeWeighingMovesOnWhenSteadyButNeverStartsTheMachine() {
+        run(null, 1_000)
+        val r = RecipeRunner(recipe(Step.Weigh("rice", 250), Step.Machine(segments = listOf(Segment(10, speed = 2)))), controller)
+        r.autoAdvanceWeigh = true
+        run(r, 1_500) // the step's tare settles
+        board.grossGrams += 200; run(r, 4_000)
+        assertEquals(0, r.stepIndex, "200 g of 250 g: stays")
+        board.grossGrams += 50; run(r, 1_500)
+        assertEquals(0, r.stepIndex, "not steady long enough yet")
+        run(r, 2_000)
+        assertEquals(1, r.stepIndex, "moves on at the amount")
+        run(r, 5_000)
+        assertEquals(RecipeRunner.Phase.READY, r.phase, "the machine step waits for Start")
+        assertTrue(board.sentCommands.none { it.command == WorkCommand.RUN })
+    }
+
+    @Test fun weighingWaitsForNextWhenHandsFreeIsOff() {
+        run(null, 1_000)
+        val r = RecipeRunner(recipe(Step.Weigh("rice", 250), Step.Instruction("next")), controller)
+        run(r, 1_500); board.grossGrams += 300; run(r, 6_000)
+        assertEquals(0, r.stepIndex)
+    }
 }

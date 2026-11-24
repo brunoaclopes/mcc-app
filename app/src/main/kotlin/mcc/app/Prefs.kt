@@ -13,6 +13,11 @@ class Prefs(context: Context) {
         get() = sp.getString("repoUrl", "") ?: ""
         set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
 
+    /** Weigh steps move on by themselves once the amount is in the bowl (never starts the machine). */
+    var autoWeigh: Boolean
+        get() = sp.getBoolean("autoWeigh", true)
+        set(v) = sp.edit().putBoolean("autoWeigh", v).apply()
+
     /** Last choices on the soup screen: vegetables (TENDER/MIXED/FIRM), blend level (0-3), onion base. */
     var soupKind: String
         get() = sp.getString("soupKind", "MIXED") ?: "MIXED"

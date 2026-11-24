@@ -58,6 +58,9 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
          * The bowl is at temperature: the board's "near target" flag, or its reading at the target. Food with water
          * boils at about 100 °C whatever the setting, so targets above 95 °C count as reached at 95 °C.
          */
+        /** How long the weight must sit at the amount before a hands-free weigh step moves on. */
+        const val AUTO_WEIGH_MILLIS = 2_500L
+
         fun reached(targetC: Int, f: RxFrame?): Boolean = f != null && (f.aboveTarget || f.temperatureStepC >= minOf(targetC, 95))
     }
 
@@ -71,6 +74,12 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
     private var resumeMillis: Long? = null
     private var lastSegmentRemaining: Long = 0
     private var tareWanted = false
+    /**
+     * Hands-free weighing: a weigh step moves on by itself once the scale has been steady at (or just under) its
+     * amount for [AUTO_WEIGH_MILLIS]. It never starts the machine: a machine step still waits for Start.
+     */
+    var autoAdvanceWeigh = false
+    private var weighHeldSince: Long? = null
     /** Extending the current segment because the bowl is not at temperature yet. */
     private var heatWaiting = false
     private var heatWaited = 0L
@@ -119,6 +128,7 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
     /** Call after every machine controller tick. */
     fun tick(nowMillis: Long) {
         if (tareWanted && machine.requestTare(nowMillis)) tareWanted = false
+        if (phase == Phase.READY) autoWeigh(nowMillis)
         if (phase != Phase.RUNNING) return
         val snap = machine.snapshot(nowMillis)
         if (snap.running) {
@@ -139,6 +149,17 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
                 event = Event.Stopped(snap.lastStop, snap.lastStopDetail)
             }
         }
+    }
+
+    private fun autoWeigh(nowMillis: Long) {
+        val step = currentStep as? Step.Weigh
+        if (!autoAdvanceWeigh || step == null || tareWanted || step.grams <= 0) { weighHeldSince = null; return }
+        val snap = machine.snapshot(nowMillis)
+        val g = snap.scaleGrams
+        // 97 %: the scale moves in 5 g steps, and a spoonful short is close enough to move on
+        if (g == null || snap.lastFrame?.scaleStable != true || g < step.grams * 0.97) { weighHeldSince = null; return }
+        val since = weighHeldSince ?: nowMillis.also { weighHeldSince = it }
+        if (nowMillis - since >= AUTO_WEIGH_MILLIS) { weighHeldSince = null; next(nowMillis) }
     }
 
     private fun segmentCompleted(nowMillis: Long, f: RxFrame?) {
@@ -226,7 +247,7 @@ class RecipeRunner(val recipe: Recipe, private val machine: MachineApi) {
         plan = emptyList()
         segmentIndex = 0
         resumeMillis = null
-        heatWaiting = false; heatWaited = 0
+        heatWaiting = false; heatWaited = 0; weighHeldSince = null
         if (!keepMessage) { message = null; event = null }
         tareWanted = currentStep is Step.Weigh
         if (tareWanted && machine.requestTare(nowMillis)) tareWanted = false

@@ -91,6 +91,7 @@ abstract class Strings {
     abstract val soupTexture: String; abstract val soupChunky: String; abstract val soupRustic: String; abstract val soupSmooth: String; abstract val soupVelvety: String
     abstract val soupOnion: String; abstract val soupOnionHelp: String; abstract val soupStart: String; abstract val soupTile: String; abstract val soupTileMeta: String
     abstract fun soupSummary(water: Int, minutes: Int, portions: Int): String
+    abstract val autoWeighSetting: String; abstract val autoWeighHelp: String; abstract val keepWarm: String; abstract val keepWarmOn: String
     abstract val holdToStart: String; abstract val holdToResume: String; abstract val pause: String
     abstract val waitingMachine: String; abstract val closeLidToStart: String
     abstract val unlockToStart: String
@@ -293,6 +294,9 @@ object En : Strings() {
     override val soupTexture = "Texture"; override val soupChunky = "Chunky"; override val soupRustic = "Rustic"; override val soupSmooth = "Smooth"; override val soupVelvety = "Velvety"
     override val soupOnion = "Onion and garlic base"; override val soupOnionHelp = "Softened in olive oil first: more flavour."
     override val soupStart = "Prepare the soup"; override val soupTile = "Any-vegetable soup"; override val soupTileMeta = "by weight · 100 °C"
+    override val autoWeighSetting = "Hands-free weighing"
+    override val autoWeighHelp = "A weigh step moves on by itself once the amount has been in the bowl for 2 seconds. It never starts the machine."
+    override val keepWarm = "Keep warm · 30 min at 70 °C"; override val keepWarmOn = "Keeping warm for 30 minutes"
     override fun soupSummary(water: Int, minutes: Int, portions: Int) = "With $water g of water · cooks $minutes min · about $portions portions"
     override val holdToStart = "Hold to start"; override val holdToResume = "Hold to resume"; override val pause = "Pause"
     override val waitingMachine = "Waiting for the machine…"; override val closeLidToStart = "Close the lid to start"
@@ -560,6 +564,9 @@ object Pt : Strings() {
     override val soupTexture = "Textura"; override val soupChunky = "Com pedaços"; override val soupRustic = "Rústica"; override val soupSmooth = "Cremosa"; override val soupVelvety = "Aveludada"
     override val soupOnion = "Base de cebola e alho"; override val soupOnionHelp = "Refogada em azeite primeiro: mais sabor."
     override val soupStart = "Preparar a sopa"; override val soupTile = "Sopa de quaisquer legumes"; override val soupTileMeta = "pelo peso · 100 °C"
+    override val autoWeighSetting = "Pesagem sem mãos"
+    override val autoWeighHelp = "Um passo de pesar avança sozinho quando a quantidade está no copo há 2 segundos. Nunca liga a máquina."
+    override val keepWarm = "Manter quente · 30 min a 70 °C"; override val keepWarmOn = "A manter quente durante 30 minutos"
     override fun soupSummary(water: Int, minutes: Int, portions: Int) = "Com $water g de água · coze $minutes min · cerca de $portions doses"
     override val holdToStart = "Mantenha para iniciar"; override val holdToResume = "Mantenha para retomar"; override val pause = "Pausa"
     override val waitingMachine = "À espera da máquina…"; override val closeLidToStart = "Feche a tampa para começar"

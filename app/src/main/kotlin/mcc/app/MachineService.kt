@@ -158,6 +158,8 @@ class MachineService : Service() {
 
     /** A paused manual run is dropped after this long (food sitting warm; start again on purpose). */
     private val PAUSE_LIMIT_MS = 60 * 60_000L
+    private val KEEP_WARM_C = 70
+    private val KEEP_WARM_MS = 30 * 60_000L
 
     /** Returns null when permitted, else a message for the user. */
     fun allowRemote(manual: RunRequest?, label: String): String? = synchronized(lock) {
@@ -235,6 +237,15 @@ class MachineService : Service() {
     }
 
     @Volatile private var remoteEnabled = false
+
+    /** Settings changed hands-free weighing: the loaded recipe follows at once. */
+    fun setAutoWeigh(on: Boolean) = synchronized(lock) { prefs.autoWeigh = on; runner?.autoAdvanceWeigh = on }
+
+    /**
+     * Keep warm after a heated recipe: 30 min at 70 °C, speed 1 in reverse (stirs without cutting, nothing sticks).
+     * An ordinary manual run: the user holds Start for it, and every heating check applies.
+     */
+    fun keepWarm(): String? = startManual(RunRequest(1, KEEP_WARM_C, KEEP_WARM_MS, reverse = true))
 
     /** Turbo runs while the button is held: start on press (capped by the controller), [turboEnd] on release. */
     fun turboStart(): String? = startManual(RunRequest(MachinePlan.TURBO_SPEED, 0, controller.limits.maxTurboMillis, false, RunMode.TURBO))
@@ -426,7 +437,7 @@ class MachineService : Service() {
     fun loadRecipe(recipe: Recipe?): String? = synchronized(lock) {
         val now = SystemClock.elapsedRealtime()
         if (snapshot?.running == true) return L.s.stopMachineFirst
-        runner = recipe?.let { RecipeRunner(it, controller) }
+        runner = recipe?.let { RecipeRunner(it, controller).apply { autoAdvanceWeigh = prefs.autoWeigh } }
         recipeRan = false
         runnerState = runner?.state(now)
         null

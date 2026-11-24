@@ -37,7 +37,9 @@
 - `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
   time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above
   95 °C count as reached at 95 °C, since food with water boils at about 100 °C), at most half the step's time longer
-  (2 to 10 min); each extension is a normal start, checked by the machine layer. It never starts a
+  (2 to 10 min); each extension is a normal start, checked by the machine layer. With hands-free weighing on
+  (Settings → Machine), a weigh step moves on once the scale has been steady at 97 % of its amount or more for
+  2.5 s; that only changes the step shown. It never starts a
   machine step by itself: the user presses Start. It reports `Event`s; the app turns them into text.
 
 ### `link/`: pure Kotlin
@@ -123,6 +125,8 @@ for 1.5 s after a tare. The board reports 0 g while the motor runs.
   weighing gauge use the raw reading. The jog knob never starts anything and is ignored while the running view is
   shown.
 - Any stop other than completion pauses a recipe step and keeps its remaining time.
+- Keep warm (offered when a heated recipe finishes) is an ordinary manual run, 30 min at 70 °C, speed 1 in reverse,
+  held to start like any other.
 - MQTT accepts `stop`, `pause`, `tare` and `start`. `start` only runs what was permitted at the machine (opt-in,
   single use, time-limited, cancelled by lid, weight change, lock or STOP). The AI client can only produce recipe files.
 - The service holds a partial wake lock and a Wi-Fi lock for as long as it runs (the machine is mains powered): the

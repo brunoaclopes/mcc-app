@@ -23,6 +23,7 @@ class CookScreen(app: AppUi) : Screen(app) {
 
     private lateinit var emptyState: LinearLayout
     private lateinit var doneState: LinearLayout
+    private lateinit var keepWarmBtn: HoldButton
     private lateinit var main: LinearLayout
     private lateinit var stepBar: StepBar
     private lateinit var stepCard: LinearLayout
@@ -151,6 +152,15 @@ class CookScreen(app: AppUi) : Screen(app) {
         doneTitle = GradientText(c, T.AMBER, T.EMBER_HOT).apply { text = S.bomApetite; textSize = 44f; typeface = T.heavy; includeFontPadding = false }
         doneText.addView(doneTitle)
         doneText.addView(T.text(c, S.allDone, 18f, T.TEXT_2, T.semibold).apply { setPadding(0, T.dp(12), 0, T.dp(30)) })
+        // after a heated recipe: keep it warm until people sit down (an ordinary manual run, held to start)
+        keepWarmBtn = HoldButton(c).apply {
+            label = S.keepWarm; icon = Icon.PLAY; holdMillis = 900; style(T.AMBER, T.EMBER_HOT)
+            onConfirm = {
+                if (!MachineService.armed) app.requestUnlock()
+                else app.service?.keepWarm()?.let { app.notify(it, Notice.WARN) } ?: app.notify(S.keepWarmOn, Notice.OK)
+            }
+        }
+        doneText.addView(keepWarmBtn, LinearLayout.LayoutParams(T.dp(340), T.dp(60)).apply { bottomMargin = T.dp(12) })
         doneText.addView(HoldButton(c).apply { label = S.cookElse; icon = Icon.BOOK; holdMillis = 0; style(T.AMBER, T.EMBER); onConfirm = { app.service?.loadRecipe(null); app.go("recipes") } },
             LinearLayout.LayoutParams(T.dp(340), T.dp(60)))
         doneText.addView(HoldButton(c).apply { label = S.backToLast; icon = Icon.BACK; holdMillis = 0; style(T.SURFACE_3, T.SURFACE_3); onConfirm = { app.service?.recipeBack() } },
@@ -267,6 +277,8 @@ class CookScreen(app: AppUi) : Screen(app) {
         } else if (!done) doneState.visibility = View.GONE
         main.visibility = if (done) View.GONE else View.VISIBLE
         if (done) {
+            val hot = r.steps.lastOrNull { it is Step.Machine }?.let { m -> (m as Step.Machine).segments.any { it.tempC >= 60 } } == true
+            keepWarmBtn.visibility = if (hot && MachineService.snapshot?.running != true) View.VISIBLE else View.GONE
             if (doneImage.tag != "${r.image}@${T.dp(500)}") ImageLoader.load(app.store, r.image, doneImage, T.dp(500))
             return
         }
