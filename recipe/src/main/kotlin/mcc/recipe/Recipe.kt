@@ -1,5 +1,7 @@
 package mcc.recipe
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -89,7 +91,8 @@ sealed class Step {
     @Serializable @SerialName("machine")
     data class Machine(
         override val text: String = "",
-        val mode: Mode = Mode.RUN,
+        // always written: FORMAT.md requires it, and the encoder would leave out the default (RUN) otherwise
+        @OptIn(ExperimentalSerializationApi::class) @EncodeDefault val mode: Mode = Mode.RUN,
         val segments: List<Segment>,
     ) : Step()
 }

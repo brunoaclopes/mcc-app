@@ -97,7 +97,8 @@ class Handler(BaseHTTPRequestHandler):
             status, result = work()
             return self.reply(status, result, note)
         except Problem as e:
-            return self.reply(e.status, {"error": str(e)}, note)
+            # the reason goes to the log too, so a rejected upload can be explained from the server side
+            return self.reply(e.status, {"error": str(e)}, f"{note} ({str(e)[:300]})")
         except Exception as e:  # noqa: BLE001
             log(f"{route} failed for {note}: {type(e).__name__}: {str(e)[:300]}")
             return self.reply(502, {"error": "the server could not finish this; try again later"}, note)

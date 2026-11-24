@@ -27,7 +27,7 @@ phones). The phone sets its address and token in Settings → Recipe import. Set
 | 401 | `{"error": "…"}` | missing or wrong token |
 | 409 | `{"error": "…"}` | the key already exists |
 | 413 | `{"error": "…"}` | body over 1 MB |
-| 422 | `{"error": "…"}` | invalid: the message is shown to the user, so make it short and specific |
+| 422 | `{"error": "…"}` | invalid: the message is shown to the user (and written to the service's log), so make it short and specific |
 
 After a 201, the phone polls `<recipe server>/index.json` every 10 s (up to 5 min) until `<key>-<lang>` is listed,
 then sends `refresh` on `mcc/cmd` so the machine re-reads the index, and opens the recipe.

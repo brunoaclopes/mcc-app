@@ -24,7 +24,8 @@ as Home Assistant**, so it needs no server on the tablet and no Google services:
 - **Recipe import**: share a recipe page or a cooking video (YouTube, TikTok, Instagram reels, Vimeo, Facebook) to
   the app, or paste text. The AI server turns it into a machine recipe in both languages; you review the changes it
   made to fit the machine, ask for corrections, then **add it to the recipe server** (through the upload service) or
-  keep it on this phone only. Videos are transcribed by the upload service first
+  keep it on this phone only. If adding it or a correction fails, the reason is shown at the top of the review, and
+  the recipe stays there to try again. Videos are transcribed by the upload service first
   ([RECIPE-UPLOAD.md](RECIPE-UPLOAD.md#video-transcripts)).
 - **Shopping list** from a recipe's ingredients, grouped by recipe, tick off as you shop, share as text.
 - **Home-screen widget** and **Quick Settings tile**: what the machine is doing and when it is ready, with Stop

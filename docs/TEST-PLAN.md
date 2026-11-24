@@ -24,6 +24,7 @@ Setup: open the app → tap **Unlock** (top right) → confirm. Then **Manual** 
 | T11 | 1500 g cold water | a recipe step "100 °C, 2 min, speed 1" | after 2 min it says "heating on to 100°" and moves on once the bowl reads 95 °C or more | heat extension |
 | T12 | vegetables | Programs → Any-vegetable soup, mixed, smooth, onion base; put in ~800 g of vegetables without weighing them | Next works it out: the water step asks for the matching amount, the ingredients show the weight, cooks, blends 4→10 gradually; with 100 g or 1.5 kg it asks to add or take some out | automatic soup |
 | T13 | 300 g water | a recipe with a 250 g weigh step, hands-free weighing on | moves on 2–3 s after the amount is in; the next machine step waits for Start | hands-free weighing |
+| T14 | none (phone only) | phone: import a recipe with normal cooking steps (a page or video), Add to the recipe server | accepted (no "bad mode"), shows on the machine within about a minute; a failed add shows its reason at the top of the review | phone upload |
 
 **T3 result (2026-11-21):** the board has its own watchdog. With the app killed mid-run (speed 1), the motor stopped almost
 immediately, so a crashed or killed tablet app does not leave the motor running.
