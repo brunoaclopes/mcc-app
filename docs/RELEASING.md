@@ -37,6 +37,9 @@ Each app has its own version in its build file; the release tag names the releas
 | Server | `server/app.py`: `VERSION` | 2.0.0 |
 | Release | the git tag | `v0.7.0` |
 
+`master` only changes through pull requests with green CI ([Repository protections](#repository-protections)),
+so a release tag always points at tested code.
+
 Rules: raise `versionCode` by one for every release of that app (Android refuses an update with a lower or equal
 code), and use [semantic versions](https://semver.org) for the tag. An app that didn't change keeps its version;
 the release still carries its APK.
@@ -109,6 +112,23 @@ must show the same `SHA-256 digest`. Obtainium and AppVerifier can pin it.
 Phones with Google services may warn when installing an app that is not from Play. Registering the package name
 and the release key with Google's Android developer verification (a free limited-distribution account covers up to
 20 devices) makes the app known to Google; it is optional and not needed for the app to work.
+
+## Repository protections
+
+Applied by [`tools/protect-repo.sh`](../tools/protect-repo.sh) (run it again after changing anything here; it
+updates what is there).
+
+| Guard | What it does |
+|---|---|
+| `master` ruleset | no direct pushes, force pushes or deletion; changes come through pull requests, and both CI jobs must pass. Admins may merge a pull request with failing checks in an emergency, never push directly. |
+| `release tags` ruleset | only admins can create, move or delete `v*` tags, so only they can start a release |
+| `release` environment | the signing secrets are only given to workflows running on a `v*` tag |
+| Actions | only GitHub's own actions, verified creators' and `gradle/*`, `docker/*`, each pinned to a commit SHA (Dependabot updates the pins); workflows get a read-only token unless they ask for more, and can't approve pull requests; outside contributors' pull requests run CI only after approval |
+| Security | Dependabot alerts and security updates, secret scanning with push protection (a push containing a known secret format is refused), private vulnerability reporting ([SECURITY.md](../SECURITY.md)) |
+| Merging | merge commits only, branches deleted after merging |
+
+The only repository secrets are the four signing secrets above; image publishing uses the workflow's own
+`GITHUB_TOKEN`.
 
 ## CI on your fork
 

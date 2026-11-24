@@ -18,6 +18,9 @@ By sending a pull request you agree that your contribution is published under th
 - Keep the UI cheap: the tablet is a 2015 MT6580 with a Mali-400 GPU. See "Performance rules" in
   `docs/ARCHITECTURE.md`.
 
+`master` is protected: every change is a pull request, and it can only be merged when CI passes. Security or
+safety problems: report them privately ([SECURITY.md](SECURITY.md)), not in an issue.
+
 GitHub Actions runs all of this on every pull request ([docs/RELEASING.md](docs/RELEASING.md)); run it locally
 first to save a round trip:
 

@@ -15,7 +15,7 @@ From a stock Monsieur Cuisine Connect to mcc-app running on it. Allow an afterno
 
 ## 1. Get ADB on the machine
 
-Follow the community guide:
+This is the one step this project doesn't cover itself. Follow the community guide this project builds on:
 **[EliasKotlyar/Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack)**
 ([English](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/blob/master/install_en/readme.md),
 [Deutsch](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/blob/master/install_de/readme.md)).

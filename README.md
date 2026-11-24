@@ -7,6 +7,14 @@ An open replacement app for the **Silvercrest Monsieur Cuisine Connect** (SKMC 1
 It runs on the machine's own tablet and talks to the motor, heater and scale directly, without the cloud and
 without the stock cooking app.
 
+> [!IMPORTANT]
+> **Start here:** this app needs ADB access to the machine's tablet first. That part is the community hack
+> **[EliasKotlyar/Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack)**
+> ([English guide](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/blob/master/install_en/readme.md),
+> [Deutsch](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/blob/master/install_de/readme.md)):
+> follow it, with its backups, then come back for [docs/SETUP.md](docs/SETUP.md). Thanks to its authors: this
+> project would not exist without their work.
+
 | Day | Night |
 |---|---|
 | ![Manual control, day](docs/screenshots/manual-day.png) | ![Manual control, night](docs/screenshots/manual-night.png) |
@@ -83,7 +91,7 @@ The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 | [`recipe-repo/`](recipe-repo) | Template for your own recipes repository: format spec, converters (recipe websites, stock-app JSON), index builder, sample recipes, and the Docker image that serves it. |
 | [`server/`](server) | Upload service (Docker): the phone publishes imported recipes to your recipes repository through it, and it transcribes cooking videos (yt-dlp subtitles, Whisper). |
 | [`signing/`](signing) | The public AOSP platform test key (why: [signing/README.txt](signing/README.txt)). |
-| [`tools/`](tools) | Maintainer scripts: program photos, the phone app's release key ([docs/RELEASING.md](docs/RELEASING.md)). |
+| [`tools/`](tools) | Maintainer scripts: program photos, the phone app's release key, repository protections ([docs/RELEASING.md](docs/RELEASING.md)). |
 | [`.github/`](.github) | CI, releases (APKs), server images on `ghcr.io`, Dependabot ([docs/RELEASING.md](docs/RELEASING.md)). |
 | [`docs/`](docs) | Setup, architecture, protocol, Home Assistant, test plan. |
 
@@ -118,3 +126,4 @@ Tested on power-board firmware 4921 and stock app v292 (Android 6, MT6580).
 service, is not allowed without the author's permission; open an issue to ask.
 
 Third-party parts keep their own licences: [THIRD-PARTY.md](THIRD-PARTY.md). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
+Security and safety problems: [SECURITY.md](SECURITY.md).
