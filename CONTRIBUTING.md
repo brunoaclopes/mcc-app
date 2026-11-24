@@ -18,7 +18,8 @@ By sending a pull request you agree that your contribution is published under th
 - Keep the UI cheap: the tablet is a 2015 MT6580 with a Mali-400 GPU. See "Performance rules" in
   `docs/ARCHITECTURE.md`.
 
-Run before sending a pull request:
+GitHub Actions runs all of this on every pull request ([docs/RELEASING.md](docs/RELEASING.md)); run it locally
+first to save a round trip:
 
     ./gradlew :link:test :machine:test :recipe:test :common:testDebugUnitTest :app:assembleDebug :phone:assembleRelease
     (cd recipe-repo && python3 -m unittest discover -s tests && python3 tools/build_index.py)

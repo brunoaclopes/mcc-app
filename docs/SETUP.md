@@ -36,23 +36,28 @@ Tips from doing it on firmware 4921 / app v292:
 - The stock updaters (`com.adups.tgifota`, `de.silpion.mcupdater`) can overwrite the system. Consider blocking
   them on your router.
 
-## 2. Build
+## 2. Download or build the app
+
+**Download**: `mcc-machine-<version>.apk` from the [latest release](https://github.com/brunoaclopes/mcc-app/releases/latest).
+Check it against `SHA256SUMS.txt` from the same page: `sha256sum -c SHA256SUMS.txt --ignore-missing`.
+
+**Or build it** (JDK 17 and the Android SDK; the build fetches the NDK it needs):
 
 ```sh
-git clone <this repository> && cd mcc-app
+git clone https://github.com/brunoaclopes/mcc-app.git && cd mcc-app
 echo "sdk.dir=$HOME/Android/Sdk" > local.properties     # or set ANDROID_HOME
 ./gradlew :machine:test :recipe:test                     # pure Kotlin tests, no device needed
-./gradlew :app:assembleDebug                             # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease                           # app/build/outputs/apk/release/app-release.apk
 ```
 
-The APK is signed with the **public AOSP platform test key** in `signing/`. The machine's firmware is signed with
+Either way the APK is signed with the **public AOSP platform test key** in `signing/`. The machine's firmware is signed with
 the same key, so the app may run as `android.uid.system`, which can open `/dev/ttyMT0` and the LED files
 without root. That key is public knowledge and gives no access to anything else; see `signing/README.txt`.
 
 ## 3. Install and run
 
 ```sh
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r mcc-machine-<version>.apk       # or app/build/outputs/apk/release/app-release.apk
 adb shell am force-stop de.silpion.mc2         # the stock app must not hold the serial port
 adb shell am start -n mcc.app/.MainActivity
 ```
@@ -90,8 +95,8 @@ On the machine: Settings → **Recipe server** → `http://<server-ip>:8088/` �
 downloaded is cached, so it keeps working offline. To add recipes, write your own or convert them (see
 [../recipe-repo/README.md](../recipe-repo/README.md)).
 
-For a permanent server, your own recipes repository, AI import and adding recipes from the phone, follow
-[SERVER-SETUP.md](SERVER-SETUP.md).
+For a permanent server (a ready-made Docker image that serves or pulls your recipes), your own recipes
+repository, AI import and adding recipes from the phone, follow [SERVER-SETUP.md](SERVER-SETUP.md).
 
 ## 6. Home Assistant (optional)
 

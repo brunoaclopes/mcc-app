@@ -1,5 +1,8 @@
 # mcc-app
 
+[![CI](https://github.com/brunoaclopes/mcc-app/actions/workflows/ci.yml/badge.svg)](https://github.com/brunoaclopes/mcc-app/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/brunoaclopes/mcc-app)](https://github.com/brunoaclopes/mcc-app/releases/latest)
+
 An open replacement app for the **Silvercrest Monsieur Cuisine Connect** (SKMC 1200) kitchen machine.
 It runs on the machine's own tablet and talks to the motor, heater and scale directly, without the cloud and
 without the stock cooking app.
@@ -58,9 +61,12 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety).
    ([English guide](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/blob/master/install_en/readme.md)).
    Make the backups it tells you to make. **Only ever connect the right-hand "Android USB" port**; the left port
    belongs to the power board.
-2. **Build and install** this app over ADB. No root needed: the app is signed with the public AOSP test key that
-   the firmware trusts.
-3. Optional: **serve recipes** ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md)) and **connect Home Assistant**.
+2. **Install the app** over ADB: download `mcc-machine-<version>.apk` from the
+   [latest release](https://github.com/brunoaclopes/mcc-app/releases/latest), or build it yourself. No root needed:
+   the app is signed with the public AOSP test key that the firmware trusts.
+3. Optional: the **phone app** (`mcc-phone-<version>.apk` from the same release, [docs/PHONE.md](docs/PHONE.md)).
+4. Optional: **serve recipes** and import them from the web and videos, with the ready-made server images
+   ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md)), and **connect Home Assistant**.
 
 The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 
@@ -77,12 +83,15 @@ The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 | [`recipe-repo/`](recipe-repo) | Template for your own recipes repository: format spec, converters (recipe websites, stock-app JSON), index builder, sample recipes, and the Docker image that serves it. |
 | [`server/`](server) | Upload service (Docker): the phone publishes imported recipes to your recipes repository through it, and it transcribes cooking videos (yt-dlp subtitles, Whisper). |
 | [`signing/`](signing) | The public AOSP platform test key (why: [signing/README.txt](signing/README.txt)). |
+| [`tools/`](tools) | Maintainer scripts: program photos, the phone app's release key ([docs/RELEASING.md](docs/RELEASING.md)). |
+| [`.github/`](.github) | CI, releases (APKs), server images on `ghcr.io`, Dependabot ([docs/RELEASING.md](docs/RELEASING.md)). |
 | [`docs/`](docs) | Setup, architecture, protocol, Home Assistant, test plan. |
 
 ## Documentation
 
 - [docs/SETUP.md](docs/SETUP.md): from a stock machine to this app running, step by step
 - [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md): recipe server, AI server, upload service and Whisper, for recipes and phone/video import
+- [docs/RELEASING.md](docs/RELEASING.md): CI, releases, server images, versions and the signing keys
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code fits together, safety, LED, knob, UI and performance rules
 - [docs/PROTOCOL.md](docs/PROTOCOL.md): the tablet ↔ power-board serial protocol
 - [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md): MQTT topics, payloads, events and commands

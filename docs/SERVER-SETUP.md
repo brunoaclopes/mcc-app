@@ -4,9 +4,9 @@ Everything here is optional. The machine works without a server. Add the parts y
 
 | Part | What it gives you | Needs |
 |---|---|---|
-| **Recipe server** | guided recipes on the machine and the phone | any static web server (Docker image included) |
+| **Recipe server** | guided recipes on the machine and the phone | Docker (image `ghcr.io/brunoaclopes/mcc-recipe-server`), or any static web server |
 | **AI server** | importing recipes from web pages, pasted text and videos, on the machine and the phone | any OpenAI-compatible API |
-| **Upload service** ([`server/`](../server)) | the phone publishes imported recipes to your recipe server; video transcripts | Docker, a git repository you can push to |
+| **Upload service** ([`server/`](../server)) | the phone publishes imported recipes to your recipe server; video transcripts | Docker (image `ghcr.io/brunoaclopes/mcc-server`), a git repository you can push to |
 | **Whisper** | transcripts of videos that have no subtitles | a Wyoming Whisper server (Home Assistant add-on or container) |
 
 ```
@@ -15,9 +15,13 @@ Everything here is optional. The machine works without a server. Add the parts y
    ├──POST /v1/transcript──► upload service ──► yt-dlp subtitles, or audio ──► Whisper
    │
    └──POST /v1/recipes────► upload service ──► git commit + push ──► your recipes repo
-                                    │
-                                    └──► redeploy ──► recipe server ◄── GET index.json ── machine, phone
+                                                                               │ git pull, every minute
+                                                    machine, phone ──GET──► recipe server
 ```
+
+Both images are built by this repository's GitHub Actions for `linux/amd64` and `linux/arm64`, tagged `latest`
+(rebuilt weekly) and with each release's version ([RELEASING.md](RELEASING.md#image-tags)). Pin a version tag if
+you prefer updating by hand.
 
 Keep all of it on your home network. None of these services is meant to be reachable from the internet.
 
@@ -45,22 +49,57 @@ When the template gets new tools, copy `tools/`, `converters/`, `tests/`, `docke
 
 ## 2. Recipe server
 
-On any machine with Docker (a NAS, a Raspberry Pi, a home server):
+Use the ready-made image **`ghcr.io/brunoaclopes/mcc-recipe-server`** (about 70 MB, for PCs, NAS boxes and
+Raspberry Pi). It never contains recipes: it serves yours, checks them with the template's tools and writes
+`index.json`. A broken recipe or a missing translation is reported in its log and the last good `index.json` stays,
+so the machine never gets a broken recipe.
+
+**A. It pulls your repository (recommended).** New recipes appear about a minute after they are pushed, also the
+ones the phone publishes through the upload service, so nothing has to be rebuilt or redeployed.
+
+For a private repository, make a **read-only** deploy key for the recipe server (GitHub: the repository →
+Settings → Deploy keys → Add, without write access):
 
 ```sh
-git clone git@github.com:<you>/my-recipes.git && cd my-recipes
-docker compose up -d --build                 # http://<server-ip>:8088/
-curl http://<server-ip>:8088/index.json      # should list the recipes
+mkdir -p mcc-recipes/ssh && cd mcc-recipes
+ssh-keygen -t ed25519 -N "" -C "mcc-recipe-server" -f ssh/id_ed25519      # add ssh/id_ed25519.pub as the deploy key
+ssh-keyscan -t ed25519 github.com > ssh/known_hosts                        # compare with GitHub's published fingerprints
 ```
 
-The image is about 60 MB: nginx serving `index.json`, `recipes/` and `images/`. The build runs
-`tools/build_index.py`, so an invalid recipe or a missing translation fails the build and the old version keeps
-running. To update after new recipes: `git pull && docker compose up -d --build`.
+`docker-compose.yml`:
 
-- **TrueNAS SCALE**: Apps → Discover → Custom App, or install with the YAML from `docker-compose.yml`, with the
-  repository cloned to a dataset and a free host port.
-- **No Docker**: run `python3 tools/build_index.py`, then serve the folder with any web server (for a quick test,
-  `python3 -m http.server 8088`).
+```yaml
+services:
+  recipes:
+    image: ghcr.io/brunoaclopes/mcc-recipe-server:latest
+    restart: unless-stopped
+    ports: ["8088:80"]
+    environment:
+      MCC_GIT_URL: git@github.com:<you>/my-recipes.git    # a public repository can use its https:// address, no key
+      MCC_GIT_BRANCH: main
+      MCC_REINDEX_SECONDS: "60"
+    volumes:
+      - ./ssh:/ssh:ro
+```
+
+**B. It serves a folder** you keep up to date yourself (a clone, a synced folder):
+
+```sh
+docker run -d --name recipes --restart unless-stopped -p 8088:80 \
+  -v /path/to/my-recipes:/recipes:ro ghcr.io/brunoaclopes/mcc-recipe-server:latest
+```
+
+It checks the folder again every 60 s (`MCC_REINDEX_SECONDS`, `0` = only at start).
+
+**C. Recipes built into your own image**: `docker compose up -d --build` in your recipes repository (its
+`Dockerfile`). The build fails on an invalid recipe; after new recipes, `git pull && docker compose up -d --build`.
+
+**D. No Docker**: `python3 tools/build_index.py`, then serve the folder with any web server (for a quick test,
+`python3 -m http.server 8088`).
+
+Check it: `curl http://<server-ip>:8088/index.json` lists the recipes; `docker logs recipes` shows what was
+checked. On **TrueNAS SCALE**: Apps → Discover → Custom App → Install via YAML, with the compose file above and the
+`ssh` folder on a dataset.
 
 Then on the **machine**: Settings → **Recipe server** → `http://<server-ip>:8088/` → **Save & sync**.
 On the **phone**: Settings → **Recipe server** → the same address.
@@ -89,19 +128,21 @@ shown.
 
 ## 4. Upload service
 
-The upload service lets the phone add recipes to your repository: it checks them, writes both languages, commits,
-pushes and redeploys the recipe server. It also fetches video transcripts for the import. It is in
-[`server/`](../server); its README has the full list of settings and a `docker-compose.yml` example.
+The upload service lets the phone add recipes to your repository: it checks them, writes both languages, commits
+and pushes. It also fetches video transcripts for the import. Use the ready-made image
+**`ghcr.io/brunoaclopes/mcc-server`** (rebuilt every week, so yt-dlp stays current), or build it from
+[`server/`](../server).
 
 Everything about running it is in **[server/README.md](../server/README.md)**: the settings (`.env.example`),
-Docker Compose, the deploy key with write access, TrueNAS, and how the recipe server gets redeployed after an upload.
-In short, you need:
+Docker Compose, the deploy key with write access and TrueNAS. In short, you need:
 
-1. **A deploy key** with write access to your recipes repository only (not your personal key).
+1. **A deploy key** with **write** access to your recipes repository only (not your personal key, and not the
+   recipe server's read-only one).
 2. **A token** for the phone: a long random string (`openssl rand -base64 32`), only in the service's `.env` and in
    the phone.
-3. **A way to redeploy** the recipe server after a push (`MCC_DEPLOY_CMD`; nothing if a web server serves the clone
-   directly).
+3. **Nothing to redeploy** when the recipe server pulls the repository itself (option A above): leave
+   `MCC_DEPLOY_CMD` empty. With options B or C, `MCC_DEPLOY_CMD` updates the folder or rebuilds the image
+   ([server/README.md](../server/README.md#deploying-after-an-upload)).
 4. Check it answers: `curl http://<server-ip>:<port>/health`.
 
 The request and response format is in [RECIPE-UPLOAD.md](RECIPE-UPLOAD.md).
@@ -154,16 +195,17 @@ latest yt-dlp, or set `MCC_YTDLP_UPDATE=1` (see `server/README.md`).
 | Machine | AI assistant | AI address, model, machine key |
 | Phone | Recipe server | `http://<server-ip>:8088/` |
 | Phone | Recipe import | AI address, model, phone key, upload service address, upload token |
-| Upload service | `.env` ([server/README.md](../server/README.md)) | `MCC_TOKEN`, `MCC_REPO_URL` and the deploy key, `MCC_DEPLOY_CMD`, `MCC_WHISPER_HOST` (optional) |
+| Recipe server | compose file | `MCC_GIT_URL` and a read-only deploy key (or a mounted folder) |
+| Upload service | `.env` ([server/README.md](../server/README.md)) | `MCC_TOKEN`, `MCC_REPO_URL` and a write deploy key, `MCC_WHISPER_HOST` (optional); `MCC_DEPLOY_CMD` only without git mode |
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
 | Machine shows no recipes | wrong address, or `index.json` not reachable: open `http://<server-ip>:8088/index.json` in a browser |
-| Recipe server build fails | an invalid recipe or a missing translation: run `python3 tools/build_index.py` in the repository, it names the file |
+| A new recipe doesn't appear | an invalid recipe or a missing translation: `docker logs <recipe server>` names the file (or run `python3 tools/build_index.py` in the repository) |
 | Phone: "HTTP 401" when publishing | the upload token in the phone doesn't match the service |
 | Phone: "HTTP 422 …" | the service rejected the recipe; the message says why |
-| Published, but "not on the server yet" | the push worked but the redeploy didn't: check the redeploy command and the recipe server's logs |
+| Published, but "not on the server yet" | the push worked but the recipe server didn't pick it up: its logs (git pull failing: the read-only deploy key), or the redeploy command without git mode |
 | AI test fails | address must end in `/v1`; check the key and that the phone or machine can reach that host |
 | Video import uses only the description | yt-dlp found no subtitles and Whisper isn't set up, or yt-dlp needs updating |
