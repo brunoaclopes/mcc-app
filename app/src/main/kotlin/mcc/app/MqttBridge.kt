@@ -24,7 +24,7 @@ import java.util.TimeZone
  *  - homeassistant/device/mcc/config  device discovery (retained)
  *  - mcc/state                         one JSON object with all fields (retained)
  *  - mcc/availability                  online / offline (offline is the last will)
- *  - mcc/cmd                           stop | pause | tare | start
+ *  - mcc/cmd                           stop | pause | tare | start | cancel | load | refresh | wake
  *  - mcc/event                         one-off events, not retained: {"event_type": "finished", ...}
  * "start" only starts a run that someone prepared and permitted at the machine (opt-in, single use, time-limited,
  * cancelled when the lid opens or the bowl contents change). Home Assistant can never choose what runs.
@@ -39,6 +39,11 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
         const val EVENT = Topics.EVENT
         /** Readings around 10 g bounce in and out of "empty"; a short dip must not blank Home Assistant's weight. */
         const val CLEAR_AFTER_MS = 3_000L
+        /**
+         * Home Assistant only hears "disconnected" after the board has been silent this long. The machine layer still
+         * stops a run after 1.5 s; this only keeps a few late frames from flapping Home Assistant's status.
+         */
+        const val DISCONNECTED_AFTER_MS = 5_000L
     }
 
     @Volatile var status: String = "starting"
@@ -53,6 +58,8 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
     private var lowSince: Long? = null
     /** Finish time in epoch ms; only moved when it drifts more than 2 s, so it does not republish every tick. */
     private var reportedFinish: Long? = null
+    /** When the board link was last up, for [DISCONNECTED_AFTER_MS]. */
+    private var linkUpAt = 0L
     private var thread: Thread? = null
     private val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
 
@@ -151,6 +158,7 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             Command.Cancel -> service.cancelRecipe(remote = true)
             is Command.Load -> service.remoteLoad(cmd.recipeId, cmd.servings)
             Command.Refresh -> service.refreshRecipes()
+            Command.Wake -> service.wakeFromRemote()
             null -> Log.w(MachineService.TAG, "ignored mqtt command '${raw.take(200)}'")
         }
         lastPayload = null
@@ -203,8 +211,10 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
         val recipe = service.recipe
         val nul = JsonPrimitive(null as String?)
 
+        val nowLink = SystemClock.elapsedRealtime()
+        if (s?.connected == true) linkUpAt = nowLink
         val st = when {
-            s == null || !s.connected -> "disconnected"
+            s == null || (!s.connected && nowLink - linkUpAt > DISCONNECTED_AFTER_MS) -> "disconnected"
             f?.error != null -> "error"
             s.running -> "running"
             rs?.phase == RecipeRunner.Phase.PAUSED || MachineService.pausedRun != null -> "paused"
@@ -222,8 +232,16 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             if (reportedWeight.let { it == null || kotlin.math.abs(it - g) >= 10 }) reportedWeight = g
         }
 
+        // an open (stopwatch) manual run has no end: no finish, time left or total, but the time so far
+        val open = (s?.running == true && s.request?.open == true) || MachineService.pausedRun?.request?.open == true
+        val elapsed = when {
+            s?.running == true && s.request?.open == true -> MachineService.stopwatchMillis(s)
+            !(s?.running == true) && MachineService.pausedRun?.request?.open == true -> MachineService.pausedRun!!.elapsedMillis
+            else -> null
+        }
         val remaining = when {
             rs?.phase == RecipeRunner.Phase.RUNNING -> rs.remainingMillis
+            open -> null
             s?.running == true -> s.remainingMillis
             else -> null
         }
@@ -235,6 +253,7 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
 
         val step = rs?.step as? mcc.recipe.Step.Machine
         val total = when {
+            open -> null
             (rs?.phase == RecipeRunner.Phase.RUNNING || rs?.phase == RecipeRunner.Phase.PAUSED) && step != null -> step.segments.sumOf { it.seconds }
             s?.running == true -> ((MachineService.resumedTotalMillis ?: s.request?.durationMillis ?: 0L) / 1000).toInt()
             MachineService.pausedRun != null -> (MachineService.pausedRun!!.totalMillis / 1000).toInt()
@@ -262,9 +281,29 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
             runTotal = total,
             // whole seconds, so the payload only changes once a second
             // while paused the time left stays put (and finish is null)
-            runLeft = (remaining ?: MachineService.pausedRun?.request?.durationMillis
+            runLeft = if (open) null else (remaining ?: MachineService.pausedRun?.request?.durationMillis
                 ?: rs?.takeIf { it.phase == RecipeRunner.Phase.PAUSED }?.remainingMillis)?.let { ((it + 999) / 1000).toInt() },
+            runElapsed = elapsed?.let { (it / 1000).toInt() },
+            screen = if (service.screenIsOn) "on" else "off",
+            program = if (MachineService.keepWarmRun && rs?.phase != RecipeRunner.Phase.RUNNING && (s?.running == true || MachineService.pausedRun != null)) "keep_warm" else null,
+            wifiRssi = rssi(nowMs),
         )
+    }
+
+    private var rssiValue: Int? = null
+    private var rssiAt = 0L
+
+    /** Wi-Fi signal, read every 30 s (rounded to 5 dB, so the state doesn't change on every small wobble). */
+    private fun rssi(now: Long): Int? {
+        if (now - rssiAt >= 30_000 || rssiAt == 0L) {
+            rssiAt = now
+            rssiValue = try {
+                @Suppress("DEPRECATION")
+                (service.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager).connectionInfo?.rssi
+                    ?.takeIf { it in -120..0 }?.let { Math.round(it / 5f) * 5 }
+            } catch (_: Exception) { null }
+        }
+        return rssiValue
     }
 
     /** A URL Home Assistant can fetch: remote images as they are, repository paths joined to the repository URL. */

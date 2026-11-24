@@ -42,13 +42,19 @@ enum class RunMode(val command: WorkCommand) {
     STEAM(WorkCommand.STEAM),
 }
 
-/** What the user or a recipe step asks for. Temperatures in °C, 0 = no heat. */
+/**
+ * What the user or a recipe step asks for. Temperatures in °C, 0 = no heat.
+ * [open]: no set time, like the stock app's time 0:00. It runs until stopped, counting up, and the controller caps it
+ * at the maximum run time for its speed ([durationMillis], when above 0, lowers that cap, e.g. for a resumed run).
+ * Only normal runs can be open.
+ */
 data class RunRequest(
     val speedLevel: Int,
     val temperatureC: Int,
     val durationMillis: Long,
     val reverse: Boolean = false,
     val mode: RunMode = RunMode.NORMAL,
+    val open: Boolean = false,
 )
 
 sealed class StartResult {
@@ -72,6 +78,8 @@ data class MachineSnapshot(
     val running: Boolean,
     val request: RunRequest?,
     val remainingMillis: Long,
+    /** Time since the running request started (0 when idle); what an open run shows. */
+    val elapsedMillis: Long,
     /** Grams above the empty-bowl reference; null if unknown (no reference, running, or tare settling). */
     val contentGrams: Int?,
     /** Board weight since the last tare; null while running or while a tare is settling. */
@@ -176,8 +184,11 @@ class MachineController(
         return true
     }
 
-    override fun start(req: RunRequest, nowMillis: Long): StartResult {
+    override fun start(asked: RunRequest, nowMillis: Long): StartResult {
         val f = lastFrame
+        if (asked.open && asked.mode != RunMode.NORMAL) return StartResult.Rejected("only normal runs can be open", RejectCode.BAD_DURATION)
+        val cap = maxRunFor(asked.speedLevel)
+        val req = if (asked.open) asked.copy(durationMillis = if (asked.durationMillis > 0) minOf(asked.durationMillis, cap) else cap) else asked
         fun reject(r: String, code: RejectCode, v: Int = 0) = StartResult.Rejected(r, code, v)
         when {
             request != null -> return reject("already running", RejectCode.BUSY)
@@ -258,6 +269,7 @@ class MachineController(
             f.errorFlag || f.errorCode != 0 -> StopReason.BOARD_ERROR to "${f.error} (code ${f.errorCode})"
             elapsed > maxRunFor(req.speedLevel) -> StopReason.MAX_RUNTIME to null
             req.mode == RunMode.TURBO && elapsed > limits.maxTurboMillis -> StopReason.MAX_RUNTIME to "turbo"
+            req.open && elapsed >= req.durationMillis -> StopReason.MAX_RUNTIME to "open run"
             elapsed >= req.durationMillis -> StopReason.COMPLETED to null
             else -> null
         }
@@ -279,6 +291,7 @@ class MachineController(
         running = request != null,
         request = request,
         remainingMillis = request?.let { (it.durationMillis - (nowMillis - startedAt)).coerceAtLeast(0) } ?: 0,
+        elapsedMillis = if (request != null) nowMillis - startedAt else 0,
         contentGrams = contentGrams(nowMillis),
         scaleGrams = if (weightUsable(nowMillis)) lastFrame!!.weightGrams else null,
         hasEmptyReference = emptyReferenceGrams != null,

@@ -129,6 +129,7 @@ class MainActivity : Activity(), AppUi {
         screens["recipes"] = RecipesScreen(this)
         screens["cook"] = CookScreen(this)
         screens["settings"] = SettingsScreen(this)
+        screens["soup"] = mcc.app.ui.SoupScreen(this) // opened from Programs; not on the rail
 
         window.setBackgroundDrawable(Backdrop.create(this)) // aurora, rendered once; the only full-screen layer
         root = FrameLayout(this).apply { isFocusableInTouchMode = true } // takes initial focus so no text field grabs it
@@ -425,7 +426,7 @@ class MainActivity : Activity(), AppUi {
         val recipeWasRunning = lastPhase == RecipeRunner.Phase.RUNNING
         val turbo = snap?.request?.mode == mcc.machine.RunMode.TURBO
         if (running && !wasRunning && !turbo) play(Sounds.Cue.START)
-        if (running && !turbo && snap != null) { // soft ticks for the last three seconds of a timed run
+        if (running && !turbo && snap != null && snap.request?.open != true) { // soft ticks for the last three seconds of a timed run
             val left = (snap.remainingMillis + 999) / 1000
             if (left in 1..3 && left != lastTick) { lastTick = left; play(Sounds.Cue.TICK) }
         } else lastTick = -1
@@ -701,7 +702,7 @@ class MainActivity : Activity(), AppUi {
         closeDialog?.let { it(); return }
         if (runOverlay.isShown()) { runOverlay.minimise(); return }
         if (screens[current]?.onBack() == true) return
-        if (current != "home") go("home") else super.onBackPressed()
+        if (current == "soup") go("programs") else if (current != "home") go("home") else super.onBackPressed()
     }
 
     private fun hideKeyboard() {

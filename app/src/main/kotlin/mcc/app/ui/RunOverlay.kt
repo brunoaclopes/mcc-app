@@ -89,7 +89,8 @@ class RunOverlay(private val app: AppUi) {
         val step = rs?.step as? Step.Machine
         val hot = req.temperatureC > 0
         val left = if (rs?.phase == RecipeRunner.Phase.RUNNING && rs.remainingMillis != null) rs.remainingMillis!! else s.remainingMillis
-        digits.put(fmtClock(left))
+        val watch = if (req.open && rs?.phase != RecipeRunner.Phase.RUNNING) MachineService.stopwatchMillis(s) else null
+        digits.put(if (watch != null) fmtElapsed(watch) else fmtClock(left))
         digits.colors(T.TEXT, if (hot) T.AMBER else T.TEAL)
         mode.put(if (step != null) S.modeName(step.mode, step.segments.maxOf { it.tempC }, step.segments[0].speed, step.segments.size > 1) + " · " + (app.service?.recipe?.title ?: "")
             else S.running)
@@ -99,9 +100,11 @@ class RunOverlay(private val app: AppUi) {
             if (req.reverse) append(" · ").append(S.reverse.lowercase())
             if (hot) append(" · ").append(S.heatingTo(req.temperatureC).lowercase())
             if (f != null && f.temperatureStepC > 0) append(" · ").append(S.bowlTemp(f.temperatureStepC))
+            rs?.heatingTo?.let { append(" · ").append(S.waitingForHeat(it)) }
+            if (watch != null) append(" · ").append(S.stopwatch.lowercase(S.locale))
         })
         val total = if (step != null) mcc.recipe.MachinePlan.expand(step).sumOf { it.durationMillis } else req.durationMillis
-        bar.scaleX = (1f - left / total.toFloat().coerceAtLeast(1f)).coerceIn(0f, 1f)
+        bar.scaleX = if (watch != null) (watch % 60_000) / 60_000f else (1f - left / total.toFloat().coerceAtLeast(1f)).coerceIn(0f, 1f)
         bar.background = if (hot) T.gradient(T.AMBER, T.EMBER_HOT, 6, android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT)
             .takeIf { bar.tag != "hot" }?.also { bar.tag = "hot" } ?: bar.background
         else if (bar.tag == "hot") T.gradient(T.TEAL, T.TEAL_DEEP, 6, android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT).also { bar.tag = null } else bar.background

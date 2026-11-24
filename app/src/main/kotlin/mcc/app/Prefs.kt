@@ -13,6 +13,22 @@ class Prefs(context: Context) {
         get() = sp.getString("repoUrl", "") ?: ""
         set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
 
+    /** Weigh steps move on by themselves once the amount is in the bowl (never starts the machine). */
+    var autoWeigh: Boolean
+        get() = sp.getBoolean("autoWeigh", true)
+        set(v) = sp.edit().putBoolean("autoWeigh", v).apply()
+
+    /** Last choices on the soup screen: vegetables (TENDER/MIXED/FIRM), blend level (0-3), onion base. */
+    var soupKind: String
+        get() = sp.getString("soupKind", "MIXED") ?: "MIXED"
+        set(v) = sp.edit().putString("soupKind", v).apply()
+    var soupBlend: Int
+        get() = sp.getInt("soupBlend", 2)
+        set(v) = sp.edit().putInt("soupBlend", v).apply()
+    var soupOnion: Boolean
+        get() = sp.getBoolean("soupOnion", true)
+        set(v) = sp.edit().putBoolean("soupOnion", v).apply()
+
     /** UI language: "pt" (European Portuguese) or "en". */
     var uiLanguage: String
         get() = sp.getString("uiLanguage", systemLang) ?: systemLang

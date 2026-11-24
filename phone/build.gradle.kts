@@ -34,8 +34,8 @@ android {
         applicationId = "io.github.brunoaclopes.mcc.phone"
         minSdk = 29
         targetSdk = 36
-        versionCode = 18
-        versionName = "0.7.0"
+        versionCode = 19
+        versionName = "0.7.1"
     }
 
     signingConfigs {

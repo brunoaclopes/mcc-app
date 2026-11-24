@@ -66,6 +66,14 @@ class MachineService : Service() {
         /** Full length of a resumed manual run (its request only holds what was left), for progress; null otherwise. */
         @Volatile var resumedTotalMillis: Long? = null
             private set
+        /** Time an open (stopwatch) manual run had already counted before it was paused and resumed; 0 otherwise. */
+        @Volatile var resumedElapsedMillis: Long = 0
+            private set
+        /** The manual run going (or last started) is the keep-warm run; reported to Home Assistant as `program`. */
+        @Volatile var keepWarmRun = false
+            private set
+        /** What a running open manual run shows: its time so far, across pauses. */
+        fun stopwatchMillis(s: MachineSnapshot): Long = s.elapsedMillis + resumedElapsedMillis
         /** Title of the last recipe the phone opened here, and a counter the UI watches to show it. */
         @Volatile var remoteLoaded: Pair<Int, String>? = null
             private set
@@ -84,12 +92,13 @@ class MachineService : Service() {
     private var worker: Thread? = null
     private var mqtt: MqttBridge? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
     private val led = Led()
     private val scaleFilter = ScaleFilter()
     private var ledWasRunning = false
     private var ledPhase: RecipeRunner.Phase? = null
     private val prefs by lazy { Prefs(this) }
-    private var screenOn = true
+    @Volatile private var screenOn = true
     private var screenCheckedAt = 0L
 
     val recipe: Recipe? get() = runner?.recipe
@@ -108,6 +117,7 @@ class MachineService : Service() {
             .setContentIntent(open)
             .build()
         startForeground(1, n)
+        acquireWake()
         worker = Thread(::loop, "mcc-machine").also { it.start() }
         led.start()
         restartMqtt()
@@ -146,10 +156,13 @@ class MachineService : Service() {
                             /** resumes [pausedRun] instead of starting [manual] afresh */ val resume: Boolean = false)
 
     /** [request] holds the time that was left; [totalMillis] the run's full length. */
-    data class PausedRun(val request: RunRequest, val totalMillis: Long, val sinceElapsed: Long)
+    data class PausedRun(val request: RunRequest, val totalMillis: Long, val sinceElapsed: Long,
+                         /** For an open (stopwatch) run: the time it had counted when paused. */ val elapsedMillis: Long = 0)
 
     /** A paused manual run is dropped after this long (food sitting warm; start again on purpose). */
     private val PAUSE_LIMIT_MS = 60 * 60_000L
+    private val KEEP_WARM_C = 70
+    private val KEEP_WARM_MS = 30 * 60_000L
 
     /** Returns null when permitted, else a message for the user. */
     fun allowRemote(manual: RunRequest?, label: String): String? = synchronized(lock) {
@@ -228,6 +241,15 @@ class MachineService : Service() {
 
     @Volatile private var remoteEnabled = false
 
+    /** Settings changed hands-free weighing: the loaded recipe follows at once. */
+    fun setAutoWeigh(on: Boolean) = synchronized(lock) { prefs.autoWeigh = on; runner?.autoAdvanceWeigh = on }
+
+    /**
+     * Keep warm after a heated recipe: 30 min at 70 °C, speed 1 in reverse (stirs without cutting, nothing sticks).
+     * An ordinary manual run: the user holds Start for it, and every heating check applies.
+     */
+    fun keepWarm(): String? = startManual(RunRequest(1, KEEP_WARM_C, KEEP_WARM_MS, reverse = true)).also { if (it == null) keepWarmRun = true }
+
     /** Turbo runs while the button is held: start on press (capped by the controller), [turboEnd] on release. */
     fun turboStart(): String? = startManual(RunRequest(MachinePlan.TURBO_SPEED, 0, controller.limits.maxTurboMillis, false, RunMode.TURBO))
 
@@ -264,7 +286,7 @@ class MachineService : Service() {
             val s = controller.snapshot(now)
             val cutShort = (s.running && s.request?.mode != RunMode.TURBO) || pausedRun != null
             controller.stop(now)
-            pausedRun = null; resumedTotalMillis = null
+            pausedRun = null; resumedTotalMillis = null; resumedElapsedMillis = 0
             if (cutShort) mqtt?.publishEvent(MachineEvent(MachineEvent.STOPPED, reason = reason, recipe = recipe?.title))
         }
         lastEvent = why
@@ -286,7 +308,8 @@ class MachineService : Service() {
         val req = s.request
         if (!s.running || req == null) return false
         if (req.mode == RunMode.TURBO || s.remainingMillis < 1_000) { controller.stop(now); return false }
-        pausedRun = PausedRun(req.copy(durationMillis = s.remainingMillis), resumedTotalMillis ?: req.durationMillis, now)
+        pausedRun = PausedRun(req.copy(durationMillis = s.remainingMillis), resumedTotalMillis ?: req.durationMillis, now,
+            elapsedMillis = if (req.open) stopwatchMillis(s) else 0)
         controller.stop(now)
         lastEvent = "manual run paused ($reason)"
         publishPaused(reason, now)
@@ -297,7 +320,7 @@ class MachineService : Service() {
     fun resumeManual(): String? = synchronized(lock) {
         val p = pausedRun ?: return null
         val e = startManual(p.request, resume = true)
-        if (e == null) { resumedTotalMillis = p.totalMillis; pausedRun = null; lastEvent = "manual run resumed" }
+        if (e == null) { resumedTotalMillis = p.totalMillis; resumedElapsedMillis = p.elapsedMillis; pausedRun = null; lastEvent = "manual run resumed" }
         e
     }
 
@@ -384,12 +407,13 @@ class MachineService : Service() {
 
     fun startManual(req: RunRequest, resume: Boolean = false): String? = synchronized(lock) {
         if (!armed) return L.s.lockedHint
+        if (!resume) keepWarmRun = false
         if (runner?.phase == RecipeRunner.Phase.RUNNING) return L.s.recipeRunning
         when (val r = controller.start(req, SystemClock.elapsedRealtime())) {
             is StartResult.Started -> {
                 lastEvent = "running"
                 // a new manual run replaces a paused one (turbo pulses don't)
-                if (!resume && req.mode != RunMode.TURBO) { pausedRun = null; resumedTotalMillis = null }
+                if (!resume && req.mode != RunMode.TURBO) { pausedRun = null; resumedTotalMillis = null; resumedElapsedMillis = 0 }
                 null
             }
             is StartResult.Rejected -> L.s.reject(r)
@@ -417,7 +441,7 @@ class MachineService : Service() {
     fun loadRecipe(recipe: Recipe?): String? = synchronized(lock) {
         val now = SystemClock.elapsedRealtime()
         if (snapshot?.running == true) return L.s.stopMachineFirst
-        runner = recipe?.let { RecipeRunner(it, controller) }
+        runner = recipe?.let { RecipeRunner(it, controller).apply { autoAdvanceWeigh = prefs.autoWeigh } }
         recipeRan = false
         runnerState = runner?.state(now)
         null
@@ -523,7 +547,6 @@ class MachineService : Service() {
                     keepEmptyBowl()
                     updateLed(s, now)
                     trackEvents(s)
-                    if (s.running || inStandby) acquireWake() else releaseWake() // standby: keep watching lid and scale (mains powered)
                 }
                 mqtt?.publishIfChanged()
                 // fixed-rate 100 ms schedule (not 100 ms + work time); resync after a long stall
@@ -557,6 +580,12 @@ class MachineService : Service() {
 
     /** Screen back on (lid opened or closed, something put on the scale, a board error, a run started). */
     fun wakeScreen() { inStandby = false; power("wakeUp") }
+
+    /** `wake` from Home Assistant: screen on. The controls stay as they were (locked after standby); nothing starts. */
+    fun wakeFromRemote() { wakeScreen(); "screen woken from Home Assistant".let { lastEvent = it; Log.i(TAG, it) } }
+
+    /** Whether the tablet's screen is on (checked once a second by the loop). */
+    val screenIsOn: Boolean get() = screenOn
 
     private fun power(method: String): Boolean = try {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
@@ -681,16 +710,26 @@ class MachineService : Service() {
         }
     }
 
-    /** Keeps the CPU awake while the motor/heater runs, so the 100 ms command stream never stalls. */
+    /**
+     * Keeps the CPU and Wi-Fi awake for as long as the service runs (the machine is mains powered): the 100 ms command
+     * stream never stalls, the lid and scale are watched in standby, and Home Assistant keeps its connection with the
+     * screen off. An earlier lock with a 100-minute timeout let the tablet fall asleep in a long standby, and Home
+     * Assistant lost the machine until someone touched it.
+     */
     private fun acquireWake() {
-        if (wakeLock?.isHeld == true) return
-        wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
-            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mcc:run").also { it.acquire(100 * 60_000L) }
+        if (wakeLock?.isHeld != true) wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mcc:link").apply { setReferenceCounted(false); acquire() }
+        if (wifiLock?.isHeld != true) wifiLock = try {
+            (applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager)
+                .createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "mcc:link").apply { setReferenceCounted(false); acquire() }
+        } catch (e: Exception) { Log.w(TAG, "no wifi lock", e); null }
     }
 
     private fun releaseWake() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
+        wifiLock?.let { if (it.isHeld) it.release() }
+        wifiLock = null
     }
 
     private fun sleep(ms: Long) = try { Thread.sleep(ms) } catch (_: InterruptedException) {}

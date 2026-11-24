@@ -20,7 +20,7 @@ class DiscoveryTest {
     @Test fun `every command has a button`() {
         val pressed = cmps.values.map { it.jsonObject }.filter { it["p"]!!.jsonPrimitive.content == "button" }
             .map { it["payload_press"]!!.jsonPrimitive.content }.toSet()
-        assertEquals(setOf("start", "pause", "stop", "tare", "cancel"), pressed)
+        assertEquals(setOf("start", "pause", "stop", "tare", "cancel", "wake"), pressed)
         pressed.forEach { assertTrue(Command.parse(it) != null, it) }
     }
 

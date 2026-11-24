@@ -56,5 +56,8 @@ abstract class Screen(val app: AppUi) {
     protected val snap get() = MachineService.snapshot
 }
 
+/** Time counted so far (rounds down, unlike [fmtClock], which counts down to an end). */
+fun fmtElapsed(ms: Long): String = fmtClock((ms / 1000) * 1000)
+
 fun fmtClock(ms: Long): String { val s = (ms + 999) / 1000; return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60) }
 

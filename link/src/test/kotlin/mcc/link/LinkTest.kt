@@ -34,6 +34,8 @@ class LinkTest {
         assertEquals(Command.Load("x", null), Command.parse("""{"command":"load","recipe":"x","servings":500}"""))
         assertEquals(Command.Refresh, Command.parse(Command.Refresh.encode()))
         assertEquals(Command.Refresh, Command.parse("""{"command":"refresh"}"""))
+        assertEquals(Command.Wake, Command.parse(Command.Wake.encode()))
+        assertEquals(Command.Wake, Command.parse("""{"command":"wake"}"""))
         assertNull(Command.parse("""{"command":"load"}"""))
         assertNull(Command.parse("""{"command":"load","recipe":5}"""))
         assertNull(Command.parse("heat 100"))

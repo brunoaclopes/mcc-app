@@ -6,7 +6,8 @@ as Home Assistant**, so it needs no server on the tablet and no Google services:
 
 ## What it does
 
-- **Machine**: live status, temperature, speed, scale, lid, time left and "ready at", the step the recipe is on.
+- **Machine**: live status, temperature, speed, scale, lid, time left and "ready at" (or the time so far of a
+  stopwatch run), the step the recipe is on.
   **Stop** (always) and **Pause**. Zero the scale. When a run was prepared and permitted at the machine (remote
   start), a **hold-to-start** button.
 - **Notifications**, with the app closed:

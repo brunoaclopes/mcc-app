@@ -212,7 +212,7 @@ class HomeScreen(app: AppUi) : Screen(app) {
         if (MachineService.remotePermit != null) { s.cancelRemote("cancelled at the machine"); app.notify(S.remoteCancelled); return }
         if (!MachineService.armed) { app.requestUnlock(); return }
         val p = MachineService.pausedRun ?: return
-        val what = S.paused + " · " + fmtClock(p.request.durationMillis) + " " + S.left
+        val what = S.paused + " · " + (if (p.request.open) fmtElapsed(p.elapsedMillis) + " " + S.elapsed else fmtClock(p.request.durationMillis) + " " + S.left)
         app.confirm(S.remoteTitle, S.remoteBody(what, app.prefs.remoteMinutes), S.remoteAllow) {
             val e = s.allowRemote(null, what)
             app.notify(e ?: S.remoteArmed(app.prefs.remoteMinutes), if (e == null) Notice.OK else Notice.WARN)
@@ -251,13 +251,22 @@ class HomeScreen(app: AppUi) : Screen(app) {
             val hot = (s.request?.temperatureC ?: 0) > 0
             statusRing.colorA = if (hot) T.AMBER else T.TEAL
             statusRing.colorB = if (hot) T.EMBER_HOT else T.TEAL_DEEP
-            statusRing.value = fmtClock(s.remainingMillis); statusRing.unit = S.left
-            statusRing.fraction = 1f - s.remainingMillis / s.request!!.durationMillis.toFloat()
+            if (s.request?.open == true) {
+                val ms = MachineService.stopwatchMillis(s)
+                statusRing.value = fmtElapsed(ms); statusRing.unit = S.elapsed
+                statusRing.fraction = (ms % 60_000) / 60_000f
+            } else {
+                statusRing.value = fmtClock(s.remainingMillis); statusRing.unit = S.left
+                statusRing.fraction = 1f - s.remainingMillis / s.request!!.durationMillis.toFloat()
+            }
         } else if (MachineService.pausedRun != null) {
             val p = MachineService.pausedRun!!
             statusRing.colorA = T.AMBER; statusRing.colorB = T.EMBER
-            statusRing.value = fmtClock(p.request.durationMillis); statusRing.unit = S.left
-            statusRing.fraction = 1f - p.request.durationMillis / p.totalMillis.toFloat()
+            if (p.request.open) { statusRing.value = fmtElapsed(p.elapsedMillis); statusRing.unit = S.paused.lowercase(S.locale); statusRing.fraction = 0f }
+            else {
+                statusRing.value = fmtClock(p.request.durationMillis); statusRing.unit = S.left
+                statusRing.fraction = 1f - p.request.durationMillis / p.totalMillis.toFloat()
+            }
         } else {
             val cal = java.util.Calendar.getInstance()
             statusRing.colorA = T.lerpColor(col, T.TEXT, 0.15f); statusRing.colorB = col

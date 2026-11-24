@@ -63,6 +63,14 @@ data class MachineState(
     /** Total and remaining time of the running step or manual run, in seconds (for progress); null when idle. */
     @SerialName("run_total") val runTotal: Int? = null,
     @SerialName("run_left") val runLeft: Int? = null,
+    /** Seconds a manual run without a set time (stopwatch) has been going, or null; run_total/run_left are null then. */
+    @SerialName("run_elapsed") val runElapsed: Int? = null,
+    /** The tablet's screen: "on", or "off" (standby; still connected, `wake` turns it on). */
+    val screen: String = "on",
+    /** What a manual run is when the app started it for a purpose: "keep_warm" (after a heated recipe), else null. */
+    val program: String? = null,
+    /** Wi-Fi signal of the tablet in dBm (diagnostic), or null when unknown. */
+    @SerialName("wifi_rssi") val wifiRssi: Int? = null,
 ) {
     val running get() = status == Status.RUNNING
     val lidOpen get() = lid == "open"
@@ -128,6 +136,8 @@ sealed class Command {
     object Cancel : Command()
     /** Re-reads the recipe server's index (a recipe was just published). Changes nothing else. */
     object Refresh : Command()
+    /** Turns the machine's screen on (ends standby). Never unlocks the controls or starts anything. */
+    object Wake : Command()
     /**
      * Opens a recipe on the machine's Cook screen (needs the machine's opt-in; refused while one is in progress).
      * [servings] scales its amounts for that many people (null: as written).
@@ -135,7 +145,7 @@ sealed class Command {
     data class Load(val recipeId: String, val servings: Int? = null) : Command()
 
     fun encode(): String = when (this) {
-        Stop -> "stop"; Pause -> "pause"; Tare -> "tare"; Start -> "start"; Cancel -> "cancel"; Refresh -> "refresh"
+        Stop -> "stop"; Pause -> "pause"; Tare -> "tare"; Start -> "start"; Cancel -> "cancel"; Refresh -> "refresh"; Wake -> "wake"
         is Load -> """{"command":"load","recipe":${JsonPrimitive(recipeId)}""" + (servings?.let { ""","servings":$it""" } ?: "") + "}"
     }
 
@@ -152,7 +162,7 @@ sealed class Command {
                 servings = (o["servings"] as? JsonPrimitive)?.content?.toIntOrNull()?.takeIf { it in 1..99 }
             }
             return when (word.lowercase()) {
-                "stop" -> Stop; "pause" -> Pause; "tare" -> Tare; "start" -> Start; "cancel" -> Cancel; "refresh" -> Refresh
+                "stop" -> Stop; "pause" -> Pause; "tare" -> Tare; "start" -> Start; "cancel" -> Cancel; "refresh" -> Refresh; "wake" -> Wake
                 "load" -> recipe?.takeIf { it.isNotBlank() && it.length <= 200 }?.let { Load(it, servings) }
                 else -> null
             }
