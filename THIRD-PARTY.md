@@ -16,7 +16,7 @@ The protocol notes in `docs/PROTOCOL.md` describe behaviour; no stock code is co
 ## Program photos
 
 From Wikimedia Commons and Flickr (found through Openverse), cropped and resized to 640×400, in `common/src/main/assets/programs/`. Each file stays under
-its own licence below (the MIT licence of this project does not apply to them); the CC BY-SA crops are shared
+its own licence below (the licence of this project does not apply to them); the CC BY-SA crops are shared
 under the same CC BY-SA licence.
 
 | File | Photo | Author | Licence |

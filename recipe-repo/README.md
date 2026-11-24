@@ -16,7 +16,7 @@ Dockerfile                  validates everything, then serves the folder with ng
 docker-compose.yml          runs that image on port 8088
 ```
 
-The sample recipes in `recipes/` (`sample-*`) were written for this project and are MIT-licensed like the rest.
+The sample recipes in `recipes/` (`sample-*`) were written for this project and are under the project's licence (PolyForm Noncommercial, see `../LICENSE`).
 Delete them in your own copy if you like.
 
 ## Two languages per recipe
