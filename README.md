@@ -104,4 +104,8 @@ Tested on power-board firmware 4921 and stock app v292 (Android 6, MT6580).
 
 ## Licence
 
-[MIT](LICENSE). Third-party parts: [THIRD-PARTY.md](THIRD-PARTY.md). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
+[PolyForm Noncommercial 1.0.0](LICENSE): free to use, study, change and share for any **non-commercial** purpose
+(personal use, hobby projects, research, schools, charities). Selling it, or using it in a commercial product or
+service, is not allowed without the author's permission; open an issue to ask.
+
+Third-party parts keep their own licences: [THIRD-PARTY.md](THIRD-PARTY.md). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).

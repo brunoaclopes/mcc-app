@@ -2,6 +2,9 @@
 
 Thanks for helping! A few ground rules, because this software drives a motor and a heater.
 
+By sending a pull request you agree that your contribution is published under the project's licence
+([PolyForm Noncommercial 1.0.0](LICENSE)) and that the author may also license it to others on other terms.
+
 - **Safety limits live in one place**: `machine/src/main/kotlin/mcc/machine/MachineController.kt` (`SafetyLimits`).
   Changes there need a test in `machine/src/test` and a clear reason in the pull request.
 - **No machine command without a person present.** Any change that alters the bytes sent to the power board must
