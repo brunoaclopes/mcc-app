@@ -109,6 +109,7 @@ object Soup {
         val total = p.vegGrams + p.waterGrams + (if (o.onionBase) BASE_GRAMS else 0)
         return Recipe(
             format = Recipe.FORMAT, id = "program-soup-$lang", title = t("Vegetable soup", "Sopa de legumes"), language = lang,
+            image = Programs.ASSET + "reheat.jpg", // the bundled vegetable-soup photo (credits in THIRD-PARTY.md)
             servings = if (weighed) t("${p.portions} portions", "${p.portions} doses") else null,
             totalMinutes = (p.cookSeconds / 60) + (if (o.onionBase) 6 else 0) + 5,
             tags = listOf(if (lang == "pt") Programs.TAG_PT else Programs.TAG_EN),

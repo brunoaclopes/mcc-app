@@ -59,6 +59,7 @@ class SoupTest {
         val measure = draft.steps.filterIsInstance<Step.Weigh>().single { it.measure }
         assertEquals(Soup.MAX_VEG, measure.grams)
         assertEquals(null, draft.servings, "no portions before the vegetables are weighed")
+        assertTrue(java.io.File("../common/src/main/assets/" + draft.image!!.removePrefix("asset:")).exists(), "photo is bundled")
         val r = Soup.measured(draft, 900)!!
         assertEquals(draft.steps.size, r.steps.size)
         val p = Soup.plan(Soup.Options(900, Soup.Kind.FIRM, 1, false))
