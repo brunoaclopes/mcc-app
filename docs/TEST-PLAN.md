@@ -20,6 +20,9 @@ Setup: open the app → tap **Unlock** (top right) → confirm. Then **Manual** 
 | T8b | 500 g water | program "Boiled eggs, soft" (speed 0 with heat) | heats without the blade turning, boils | heat with motor off in normal mode |
 | T8c | 1000 g water | program "Clean the bowl" | warm soak, then short bursts up to speed 6, no foam out of the lid | cleaning program |
 | T9 | dough / water | knead, roast, steam, one per session, enabled one at a time | like the stock app | compare against stock-app sniffs |
+| T10 | empty | Manual, time 0:00, speed 2, 20 s, then STOP | counts up from 0:00, stops on STOP; Pause from the phone keeps the count | stopwatch run |
+| T11 | 1500 g cold water | a recipe step "100 °C, 2 min, speed 1" | after 2 min it says "heating on to 100°" and moves on once the bowl reads 95 °C or more | heat extension |
+| T12 | vegetables | Programs → Any-vegetable soup, 600 g mixed, smooth, onion base | weigh steps guide to the amounts, cooks, blends 4→10 gradually | automatic soup |
 
 **T3 result (2026-11-21):** the board has its own watchdog. With the app killed mid-run (speed 1), the motor stopped almost
 immediately, so a crashed or killed tablet app does not leave the motor running.

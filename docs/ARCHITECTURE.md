@@ -30,8 +30,14 @@
 - `MachinePlan.kt`: turns a machine step into `RunRequest`s (speed ramps, and the knead and roast presets that
   mirror the stock app).
 - `Programs.kt`: the built-in automatic programs (eggs, rice, steaming, cleaning…) as recipes in both languages.
+- `Soup.kt`: the automatic soup. From the vegetables' weight, how firm they are, the texture (chunky, or blended at
+  one of three levels) and an optional onion base, it works out the water, the cooking time and the blending ramp,
+  and builds an ordinary recipe.
 - `RecipeFit.kt`: fits a recipe from outside (AI import, other machines) to the machine limits and lists each change.
-- `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). It never starts a
+- `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
+  time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above
+  95 °C count as reached at 95 °C, since food with water boils at about 100 °C), at most half the step's time longer
+  (2 to 10 min); each extension is a normal start, checked by the machine layer. It never starts a
   machine step by itself: the user presses Start. It reports `Event`s; the app turns them into text.
 
 ### `link/`: pure Kotlin
@@ -96,7 +102,8 @@ maximum runtime or the requested duration is reached.
 - there's no communication, the lid is open, or the board reports an error;
 - the speed is above 3 with heat, or above 3 in reverse;
 - the temperature is above 130 °C;
-- the duration is above 99 min (15 min above speed 6);
+- the duration is above 99 min (15 min above speed 6). A manual run without a set time (time 0:00, a stopwatch)
+  gets exactly that limit as its duration and ends there (`MAX_RUNTIME`); only normal runs can be open;
 - heat is requested without a confirmed empty-bowl reference, or with less than 200 g in the bowl (roast: 50 g);
 - the run mode isn't enabled. The controller only enables NORMAL (`01`) by itself (`SafetyLimits.enabledModes`);
   turbo, knead, roast and steam are in `SafetyLimits.userEnableableModes`, and the app enables them
@@ -118,7 +125,9 @@ for 1.5 s after a tare. The board reports 0 g while the motor runs.
 - Any stop other than completion pauses a recipe step and keeps its remaining time.
 - MQTT accepts `stop`, `pause`, `tare` and `start`. `start` only runs what was permitted at the machine (opt-in,
   single use, time-limited, cancelled by lid, weight change, lock or STOP). The AI client can only produce recipe files.
-- A partial wake lock is held while running.
+- The service holds a partial wake lock and a Wi-Fi lock for as long as it runs (the machine is mains powered): the
+  100 ms command stream never stalls, the lid and scale are watched in standby, and Home Assistant stays connected
+  with the screen off.
 
 ## Jog knob
 

@@ -33,11 +33,14 @@ without the stock cooking app.
 ## What it does
 
 - **Manual cooking**: time, speed (1–10) and temperature (37–130 °C) on three big dials, reverse, scale and tare.
-  Works with the touch screen or the machine's jog knob.
+  Time 0:00 runs as a stopwatch until you stop it. Works with the touch screen or the machine's jog knob.
 - **Guided recipes** from a recipe server you control (any static web server). Preparation steps, weighing with a
   live gauge, and machine steps that run only after you hold Start.
-- **Automatic programs**: boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, proofing dough,
-  reheating, and a **cleaning** program. They are ordinary guided recipes, so the same limits apply.
+- **Automatic programs**: an **any-vegetable soup** worked out from the weight (firmness, chunky or blended at three
+  levels, optional onion base), boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, proofing dough,
+  reheating, and **cleaning** programs. They are ordinary guided recipes, so the same limits apply.
+- **Heated steps reach their temperature**: when a step's time runs out before the bowl is hot (a big or cold
+  bowl), it keeps heating until it is, within a cap, and says so.
 - **AI recipe import** (optional): point it at any OpenAI-compatible server (OpenAI, or one on your own network)
   and turn a web page, pasted text or a cooking video into a guided recipe. Settings from other machines ("10 min/100°C/speed 1")
   are converted, and anything outside the machine limits is adjusted and listed. The AI only writes recipes.

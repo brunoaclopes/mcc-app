@@ -7,6 +7,17 @@ appears in Home Assistant with no YAML. The code is in `app/src/main/kotlin/mcc/
 Opening a recipe (`load`) only shows it on the machine; someone still has to start it there.
 With the opt-in *remote start*, it can start one run that a person prepared and permitted at the machine.
 
+## Staying connected, and waking the screen
+
+The machine stays online in Home Assistant while its screen is off (standby): the app keeps the tablet's CPU and
+Wi-Fi awake for as long as it runs (the machine is mains powered), so the state keeps updating and commands still
+arrive. `screen` in the state says whether the screen is on, and the **Wake screen** button (or `wake` on
+`mcc/cmd`) turns it on. Waking never unlocks the controls or starts anything; keep the button out of voice
+assistants anyway.
+
+`status` only becomes `disconnected` after the power board has been silent for 5 s, so a few late frames don't flap
+it (the machine itself still stops a run after 1.5 s without the board).
+
 ## Remote start (opt-in)
 
 1. Settings → Home Assistant → **Allow remote start** (off by default), and pick how long a permit lasts
@@ -35,7 +46,7 @@ when the run starts (lid, content for heating, speed, time).
 | `mcc/state` | machine → HA | yes | JSON state (below), sent on change, at most every 0.5 s, and at least every 60 s |
 | `mcc/availability` | machine → HA | yes | `online` / `offline` (offline is the MQTT last will) |
 | `mcc/event` | machine → HA | no | one-off events (below), JSON with `event_type` |
-| `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare`, `cancel`, `refresh` or `start`, as a bare word or `{"command": "stop"}` |
+| `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare`, `cancel`, `refresh`, `wake` or `start`, as a bare word or `{"command": "stop"}`; and `load` (below) |
 
 ## State payload
 
@@ -58,13 +69,15 @@ when the run starts (lid, content for heating, speed, time).
   "remote_until": null,
   "recipe_id": "sample-vegetable-soup-en",
   "run_total": 1200,
-  "run_left": 712
+  "run_left": 712,
+  "run_elapsed": null,
+  "screen": "on"
 }
 ```
 
 | Key | Values |
 |---|---|
-| `status` | `disconnected`, `idle`, `running`, `paused`, `finished`, `error` |
+| `status` | `disconnected` (no board frames for 5 s), `idle`, `running`, `paused`, `finished`, `error` |
 | `recipe`, `step`, `step_text` | `null` when no recipe is loaded |
 | `temperature` | bowl temperature in °C. The board reports it in the same steps as the temperature dial (37, 45, 50 … 130); `0` means below 37 °C |
 | `target_temperature`, `speed` | the running request, `0` when idle |
@@ -77,7 +90,9 @@ when the run starts (lid, content for heating, speed, time).
 | `remote_program`, `remote_until` | what was permitted (text) and when the permit ends (UTC), or `null` |
 | `recipe_id` | id of the loaded recipe, or `null` (the phone app uses it to show the recipe) |
 | `servings` | who the loaded recipe is cooked for, as the recipe words it (`"6 portions"`); its amounts are already scaled to it. `null` without a recipe |
-| `run_total`, `run_left` | length and seconds left of the running machine step or manual run, or `null` when nothing runs |
+| `run_total`, `run_left` | length and seconds left of the running machine step or manual run, or `null` when nothing runs (and during a stopwatch run) |
+| `run_elapsed` | seconds a manual run without a set time (Manual, time 0:00: a stopwatch) has been going, also while it is paused; `null` otherwise. Such a run has no `finish` |
+| `screen` | `on`, or `off` (standby; still connected) |
 
 The payload is `MachineState` in `link/src/main/kotlin/mcc/link/Link.kt`, the same class the phone app reads.
 
@@ -111,6 +126,8 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `running` | binary_sensor (running) | on while the motor or heater runs |
 | `problem` | binary_sensor (problem) | on while the board reports an error |
 | `time_left` | sensor (duration, s) | seconds left of the running step or manual run, `0` when idle |
+| `elapsed` | sensor (duration, s) | `run_elapsed`: time so far of a stopwatch run, unknown otherwise |
+| `screen` | binary_sensor | the tablet's screen (diagnostic) |
 | `progress` | sensor, % | how far the running step or manual run is |
 | `recipe_progress` | sensor, % | steps done out of the recipe's steps |
 | `recipe_image` | image | the loaded recipe's photo, fetched by Home Assistant from the recipe repository (URL on `mcc/recipe_image`, only set for recipes with a photo) |
@@ -119,6 +136,7 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `pause` | button | publishes `pause` |
 | `stop` | button | publishes `stop` |
 | `tare` | button | publishes `tare` (named "Tare scale") |
+| `wake` | button | publishes `wake` (named "Wake screen") |
 | `cancel` | button | publishes `cancel` (named "Cancel recipe") |
 
 `error` is a diagnostic entity. The payload is built by `Discovery.config()` in `link/src/main/kotlin/mcc/link/Discovery.kt`;
@@ -134,6 +152,7 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `start` | starts the run permitted at the machine (see Remote start); ignored without a valid permit |
 | `cancel` | closes the loaded recipe; stops the machine first if a step runs. Works while the controls are locked, like `stop` |
 | `refresh` | re-reads the recipe server's index (sent by the phone after it publishes a recipe). Changes nothing else |
+| `wake` | turns the screen on (ends standby). The controls stay locked; nothing starts |
 | `{"command":"load","recipe":"<id>","servings":6}` | `servings` is optional (1–99): scales the amounts for that many people; times and temperatures stay as written |
 | `{"command":"load","recipe":"<id>"}` | opens that recipe on the machine's Cook screen, ready to cook; **never starts it**. Refused while the machine runs or another recipe is under way, or when *Recipes from the phone* is off on the machine |
 
