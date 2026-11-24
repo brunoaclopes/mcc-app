@@ -1,5 +1,5 @@
 # mcc-app server: recipe uploads and video transcripts. Build: docker compose build (or docker build .)
-FROM python:3.13-alpine
+FROM python:3.15-alpine
 
 # APP_UID/APP_GID: the user the container runs as. ssh needs it to exist, so it is created here: match it to the
 # owner of your data folder. User 568 (TrueNAS apps) always exists too, so the published image

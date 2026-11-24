@@ -7,7 +7,7 @@
 #   docker run -d -p 8088:80 -e MCC_GIT_URL=git@github.com:<you>/<recipes>.git -v ./ssh:/ssh:ro ghcr.io/...
 #
 # Build it yourself from recipe-repo/:  docker build -f docker/serve.Dockerfile -t mcc-recipe-server .
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 RUN apk add --no-cache python3 git openssh-client
 COPY converters/ /opt/mcc/converters/
 COPY tools/ /opt/mcc/tools/
