@@ -26,7 +26,9 @@ KEY_RE = re.compile(r"^web-[a-z0-9-]{1,60}$")
 MAX_IMAGE = 10 * 1024 * 1024
 W, H = 640, 400  # photo size used by the recipe repository (tools/fetch_images.py)
 
-# obvious tag synonyms -> the repository's own tags (anything else is matched case-insensitively or kept as is)
+# obvious tag synonyms -> a tag the repository may have. A synonym is used only when the repository's index already
+# has that tag (written with "&" or "and"/"e", in any case), so every repository keeps its own tag names; anything
+# else is matched to the repository's tags case-insensitively, or kept as the AI wrote it.
 TAG_SYNONYMS = {
     "en": {"vegetarian": "Vegetarian & Vegan", "vegan": "Vegetarian & Vegan", "dessert": "Desserts",
            "sauce": "Sauces & dips", "sauces": "Sauces & dips", "dip": "Sauces & dips", "dips": "Sauces & dips",
@@ -111,19 +113,25 @@ def check(body, repo: Path):
     return key, by_lang
 
 
+def _loose(tag: str) -> str:
+    """'Vegetarian & Vegan', 'vegetarian and vegan' and 'Vegetariano e vegano' style spellings compare equal."""
+    words = re.sub(r"[^\w&]+", " ", tag.casefold()).split()
+    return " ".join("&" if w in ("&", "and", "e") else w for w in words)
+
+
 def map_tags(by_lang: dict, repo: Path):
     try:
         index = json.loads((repo / "index.json").read_text(encoding="utf-8")).get("recipes") or []
     except (OSError, ValueError, AttributeError):
         index = []
     for lang, r in by_lang.items():
-        known = {t.casefold(): t for e in index if e.get("language") == lang for t in e.get("tags") or []
-                 if isinstance(t, str)}
+        known = {_loose(t): t for e in index if isinstance(e, dict) and e.get("language") == lang
+                 for t in e.get("tags") or [] if isinstance(t, str) and t.strip()}
         out = []
         for t in r.get("tags") or []:
             if isinstance(t, str) and t.strip():
-                c = t.strip().casefold()
-                out.append(known.get(c) or TAG_SYNONYMS[lang].get(c) or t.strip())
+                synonym = TAG_SYNONYMS.get(lang, {}).get(t.strip().casefold())
+                out.append(known.get(_loose(t)) or (synonym and known.get(_loose(synonym))) or t.strip())
         r["tags"] = list(dict.fromkeys(out))[:12]
 
 

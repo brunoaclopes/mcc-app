@@ -63,7 +63,13 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {"error": "not found"})
 
     def do_POST(self):
-        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if length < 0:  # a negative length would make the read below wait until the client hangs up
+            self.close_connection = True
+            return self.reply(400, {"error": "bad Content-Length"})
         route = self.route()
         if route not in ("/v1/recipes", "/v1/transcript"):
             self.drain(length)
