@@ -71,7 +71,9 @@ when the run starts (lid, content for heating, speed, time).
   "run_total": 1200,
   "run_left": 712,
   "run_elapsed": null,
-  "screen": "on"
+  "screen": "on",
+  "program": null,
+  "wifi_rssi": -55
 }
 ```
 
@@ -93,6 +95,8 @@ when the run starts (lid, content for heating, speed, time).
 | `run_total`, `run_left` | length and seconds left of the running machine step or manual run, or `null` when nothing runs (and during a stopwatch run) |
 | `run_elapsed` | seconds a manual run without a set time (Manual, time 0:00: a stopwatch) has been going, also while it is paused; `null` otherwise. Such a run has no `finish` |
 | `screen` | `on`, or `off` (standby; still connected) |
+| `program` | `keep_warm` while the keep-warm run (offered after a heated recipe) runs or is paused, else `null` |
+| `wifi_rssi` | the tablet's Wi-Fi signal in dBm, rounded to 5 dB and read every 30 s (diagnostic), or `null` |
 
 The payload is `MachineState` in `link/src/main/kotlin/mcc/link/Link.kt`, the same class the phone app reads.
 
@@ -128,6 +132,8 @@ Without an Area they are `sensor.monsieur_cuisine_status`, and so on.
 | `time_left` | sensor (duration, s) | seconds left of the running step or manual run, `0` when idle |
 | `elapsed` | sensor (duration, s) | `run_elapsed`: time so far of a stopwatch run, unknown otherwise |
 | `screen` | binary_sensor | the tablet's screen (diagnostic) |
+| `program` | sensor | `keep_warm` during the keep-warm run, unknown otherwise |
+| `wifi_rssi` | sensor (signal strength, dBm) | named "Wi-Fi signal" (diagnostic) |
 | `progress` | sensor, % | how far the running step or manual run is |
 | `recipe_progress` | sensor, % | steps done out of the recipe's steps |
 | `recipe_image` | image | the loaded recipe's photo, fetched by Home Assistant from the recipe repository (URL on `mcc/recipe_image`, only set for recipes with a photo) |

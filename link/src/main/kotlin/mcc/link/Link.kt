@@ -67,6 +67,10 @@ data class MachineState(
     @SerialName("run_elapsed") val runElapsed: Int? = null,
     /** The tablet's screen: "on", or "off" (standby; still connected, `wake` turns it on). */
     val screen: String = "on",
+    /** What a manual run is when the app started it for a purpose: "keep_warm" (after a heated recipe), else null. */
+    val program: String? = null,
+    /** Wi-Fi signal of the tablet in dBm (diagnostic), or null when unknown. */
+    @SerialName("wifi_rssi") val wifiRssi: Int? = null,
 ) {
     val running get() = status == Status.RUNNING
     val lidOpen get() = lid == "open"

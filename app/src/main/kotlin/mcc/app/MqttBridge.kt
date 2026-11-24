@@ -285,7 +285,25 @@ class MqttBridge(private val service: MachineService, private val prefs: Prefs) 
                 ?: rs?.takeIf { it.phase == RecipeRunner.Phase.PAUSED }?.remainingMillis)?.let { ((it + 999) / 1000).toInt() },
             runElapsed = elapsed?.let { (it / 1000).toInt() },
             screen = if (service.screenIsOn) "on" else "off",
+            program = if (MachineService.keepWarmRun && rs?.phase != RecipeRunner.Phase.RUNNING && (s?.running == true || MachineService.pausedRun != null)) "keep_warm" else null,
+            wifiRssi = rssi(nowMs),
         )
+    }
+
+    private var rssiValue: Int? = null
+    private var rssiAt = 0L
+
+    /** Wi-Fi signal, read every 30 s (rounded to 5 dB, so the state doesn't change on every small wobble). */
+    private fun rssi(now: Long): Int? {
+        if (now - rssiAt >= 30_000 || rssiAt == 0L) {
+            rssiAt = now
+            rssiValue = try {
+                @Suppress("DEPRECATION")
+                (service.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager).connectionInfo?.rssi
+                    ?.takeIf { it in -120..0 }?.let { Math.round(it / 5f) * 5 }
+            } catch (_: Exception) { null }
+        }
+        return rssiValue
     }
 
     /** A URL Home Assistant can fetch: remote images as they are, repository paths joined to the repository URL. */

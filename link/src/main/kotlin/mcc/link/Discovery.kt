@@ -96,6 +96,10 @@ object Discovery {
                     put("payload_on", "on"); put("payload_off", "off"); put("icon", "mdi:tablet"); put("entity_category", "diagnostic")
                     put("value_template", "{{ value_json.get('screen', 'on') }}")
                 }
+                cmp("wifi_rssi", "sensor", "Wi-Fi signal") {
+                    put("device_class", "signal_strength"); put("unit_of_measurement", "dBm"); put("entity_category", "diagnostic"); put("state_class", "measurement")
+                }
+                cmp("program", "sensor", "Program") { put("icon", "mdi:pot-steam-outline"); put("value_template", "{{ value_json.program if value_json.program else None }}") }
                 cmp("time_left", "sensor", "Time left") {
                     put("device_class", "duration"); put("unit_of_measurement", "s")
                     put("value_template", "{{ value_json.run_left if value_json.run_left is not none else 0 }}")

@@ -69,6 +69,9 @@ class MachineService : Service() {
         /** Time an open (stopwatch) manual run had already counted before it was paused and resumed; 0 otherwise. */
         @Volatile var resumedElapsedMillis: Long = 0
             private set
+        /** The manual run going (or last started) is the keep-warm run; reported to Home Assistant as `program`. */
+        @Volatile var keepWarmRun = false
+            private set
         /** What a running open manual run shows: its time so far, across pauses. */
         fun stopwatchMillis(s: MachineSnapshot): Long = s.elapsedMillis + resumedElapsedMillis
         /** Title of the last recipe the phone opened here, and a counter the UI watches to show it. */
@@ -245,7 +248,7 @@ class MachineService : Service() {
      * Keep warm after a heated recipe: 30 min at 70 °C, speed 1 in reverse (stirs without cutting, nothing sticks).
      * An ordinary manual run: the user holds Start for it, and every heating check applies.
      */
-    fun keepWarm(): String? = startManual(RunRequest(1, KEEP_WARM_C, KEEP_WARM_MS, reverse = true))
+    fun keepWarm(): String? = startManual(RunRequest(1, KEEP_WARM_C, KEEP_WARM_MS, reverse = true)).also { if (it == null) keepWarmRun = true }
 
     /** Turbo runs while the button is held: start on press (capped by the controller), [turboEnd] on release. */
     fun turboStart(): String? = startManual(RunRequest(MachinePlan.TURBO_SPEED, 0, controller.limits.maxTurboMillis, false, RunMode.TURBO))
@@ -404,6 +407,7 @@ class MachineService : Service() {
 
     fun startManual(req: RunRequest, resume: Boolean = false): String? = synchronized(lock) {
         if (!armed) return L.s.lockedHint
+        if (!resume) keepWarmRun = false
         if (runner?.phase == RecipeRunner.Phase.RUNNING) return L.s.recipeRunning
         when (val r = controller.start(req, SystemClock.elapsedRealtime())) {
             is StartResult.Started -> {
