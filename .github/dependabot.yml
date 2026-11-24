@@ -1,0 +1,18 @@
+# Weekly pull requests for outdated dependencies, one per ecosystem. CI runs on each.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      gradle: { patterns: ["*"] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ["*"] }
+  - package-ecosystem: docker
+    directories: ["/server", "/recipe-repo", "/recipe-repo/docker"]
+    schedule: { interval: weekly }
+    groups:
+      docker: { patterns: ["*"] }

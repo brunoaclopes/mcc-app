@@ -14,8 +14,8 @@ android {
         // The tablet runs API 23; a system-uid app targeting 23 avoids runtime-permission plumbing.
         @Suppress("ExpiredTargetSdkVersion")
         targetSdk = 23
-        versionCode = 4
-        versionName = "1.0"
+        versionCode = 5
+        versionName = "1.1"
         ndk { abiFilters += "armeabi-v7a" }
     }
 
