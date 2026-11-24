@@ -46,6 +46,8 @@ object Discovery {
                     put("icon", "mdi:chef-hat")
                 }
                 cmp("recipe", "sensor", "Recipe") { put("icon", "mdi:book-open-variant") }
+                // who the loaded recipe is cooked for, as the recipe words it ("6 doses"); unknown without a recipe
+                cmp("servings", "sensor", "Servings") { put("icon", "mdi:account-group-outline") }
                 cmp("step", "sensor", "Step") {
                     put("icon", "mdi:format-list-numbered")
                     put("json_attributes_topic", Topics.STATE)
