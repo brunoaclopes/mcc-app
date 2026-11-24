@@ -1,6 +1,6 @@
 # Recipe server for the Monsieur Cuisine app: validates the recipes, rebuilds index.json and serves
 # index.json, recipes/ and images/ over HTTP. Build: docker compose up -d --build
-FROM python:3.13-alpine AS build
+FROM python:3.15-alpine AS build
 WORKDIR /repo
 COPY converters/ converters/
 COPY tools/ tools/
@@ -9,7 +9,7 @@ COPY images/ images/
 # fails the build if any recipe is invalid
 RUN python3 tools/build_index.py /repo
 
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/index.json /usr/share/nginx/html/index.json
 COPY --from=build /repo/recipes/ /usr/share/nginx/html/recipes/

@@ -1,5 +1,5 @@
 # mcc-app server: recipe uploads and video transcripts. Build: docker compose build (or docker build .)
-FROM python:3.13-alpine
+FROM python:3.15-alpine
 
 # APP_UID/APP_GID: the user the container runs as. ssh needs it to exist, so it is created here: match it to the
 # owner of your data folder. User 568 (TrueNAS apps) always exists too, so the published image
@@ -10,7 +10,7 @@ ARG APP_GID=1000
 # git + ssh: push to the recipe repository; ffmpeg: audio for speech-to-text; deno: yt-dlp's JavaScript runtime
 # for YouTube. yt-dlp is unpinned on purpose: rebuilding the image updates it (see README.md).
 RUN apk add --no-cache git openssh-client ffmpeg deno \
- && pip install --no-cache-dir --root-user-action=ignore "pillow==11.3.0" "yt-dlp[default]" \
+ && pip install --no-cache-dir --root-user-action=ignore "pillow==13.0.0" "yt-dlp[default]" \
  && addgroup -g "$APP_GID" mcc && adduser -D -H -u "$APP_UID" -G mcc -h /tmp -s /sbin/nologin mcc \
  && if [ "$APP_UID" != 568 ]; then addgroup -g 568 apps && adduser -D -H -u 568 -G apps -h /tmp -s /sbin/nologin apps; fi
 
