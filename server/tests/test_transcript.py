@@ -127,8 +127,9 @@ class Fallbacks(unittest.TestCase):
 
 
 class Pieces(unittest.TestCase):
-    def make(self, stt_seconds=0.0):
-        s = Settings.from_env({"MCC_TOKEN": "x", "MCC_DATA_DIR": tempfile.mkdtemp(), "MCC_WHISPER_HOST": "stt"})
+    def make(self, stt_seconds=0.0, timeout="600"):
+        s = Settings.from_env({"MCC_TOKEN": "x", "MCC_DATA_DIR": tempfile.mkdtemp(), "MCC_WHISPER_HOST": "stt",
+                               "MCC_TRANSCRIPT_TIMEOUT": timeout})
         t = transcript.Transcriber(s)
         t.sent = []
 
@@ -159,7 +160,7 @@ class Pieces(unittest.TestCase):
             gate.wait(5)
             return "o resto"
         partial = {"title": "Sopa", "transcript": "o início", "source": "whisper", "partial": True}
-        t.transcribe = lambda url, tmp, deadline: (dict(partial), False, lambda: "o início\n" + finish())
+        t.transcribe = lambda url, tmp, deadline: (dict(partial), False, lambda progress: "o início\n" + finish())
         with mock.patch.object(transcript, "public_host", lambda url: True):
             first = t.get("https://youtu.be/abcdefghijk")
             self.assertEqual(partial, first)
@@ -172,6 +173,22 @@ class Pieces(unittest.TestCase):
             done = t.get("https://www.youtube.com/watch?v=abcdefghijk")
         self.assertEqual(("o início\no resto", False), (done["transcript"], done["partial"]))
         self.assertTrue(t.lock.acquire(blocking=False))
+
+    def test_asking_again_while_finishing_returns_progress(self):
+        t = self.make(timeout="1")
+        gate = threading.Event()
+
+        def finish(progress):
+            progress("o início\no meio")
+            gate.wait(5)
+            return "o início\no meio\no fim"
+        partial = {"title": "Sopa", "transcript": "o início", "source": "whisper", "partial": True}
+        t.transcribe = lambda url, tmp, deadline: (dict(partial), False, finish)
+        with mock.patch.object(transcript, "public_host", lambda url: True):
+            self.assertEqual("o início", t.get("https://youtu.be/abcdefghijk")["transcript"])
+            again = t.get("https://youtu.be/abcdefghijk")  # waits 1 s for the background, then gets its progress
+            gate.set()
+        self.assertEqual(("o início\no meio", True), (again["transcript"], again["partial"]))
 
     def test_download_retried_with_a_fresh_run(self):
         t = self.make()

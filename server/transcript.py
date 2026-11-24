@@ -117,6 +117,7 @@ class Transcriber:
     def __init__(self, s):
         self.s = s
         self.lock = threading.Lock()  # one transcription at a time (background completions included)
+        self.in_progress = {}  # video key -> its partial result, kept up to date while the rest is transcribed
         self.cache_dir = s.data_dir / "cache" / "transcripts"
         self.env = {**os.environ, "HOME": "/tmp", "XDG_CACHE_HOME": str(s.data_dir / "cache")}
 
@@ -152,6 +153,9 @@ class Transcriber:
             return hit
         deadline = time.monotonic() + self.s.transcript_timeout
         if not self.lock.acquire(timeout=self.s.transcript_timeout):
+            progress = self.in_progress.get(key)
+            if progress:  # this video is still being finished in the background: what is done so far
+                return dict(progress)
             raise Problem(504, "another video is being transcribed; try again in a moment")
         background = False
         tmp = None
@@ -164,6 +168,7 @@ class Transcriber:
             result, keep, finish = self.transcribe(url, tmp, deadline)
             if finish:
                 background = True  # the thread finishes the transcript, caches it, cleans up and releases the lock
+                self.in_progress[key] = dict(result)
                 threading.Thread(target=self.complete, args=(key, result, finish, tmp), daemon=True).start()
             elif keep:
                 self.store(key, result)
@@ -175,13 +180,16 @@ class Transcriber:
                 self.lock.release()
 
     def complete(self, key: str, partial: dict, finish, tmp: Path):
+        def progress(text):
+            self.in_progress[key] = {**partial, "transcript": text}
         try:
-            text = finish()
+            text = finish(progress)
             self.store(key, {**partial, "transcript": text, "partial": False})
             log(f"{key}: transcript completed in the background ({len(text.split())} words)")
         except Exception as e:  # noqa: BLE001 - the next request transcribes again
             log(f"{key}: background transcript failed: {type(e).__name__}: {str(e)[:200]}")
         finally:
+            self.in_progress.pop(key, None)
             shutil.rmtree(tmp, ignore_errors=True)
             self.lock.release()
 
@@ -214,8 +222,10 @@ class Transcriber:
         result = {**result, "language": _base(speech.language) or result["language"], "transcript": speech.text,
                   "source": "whisper", "partial": bool(speech.finish)}
         if speech.finish:
-            done = speech.text
-            return result, False, lambda: "\n".join(t for t in (done, speech.finish()) if t)
+            def finish(progress):
+                join = lambda rest: "\n".join(t for t in (speech.text, rest) if t)  # noqa: E731
+                return join(speech.finish(lambda rest: progress(join(rest))))
+            return result, False, finish
         return result, True, None
 
     # ------------------------------------------------------------ steps
@@ -316,10 +326,12 @@ class Transcriber:
         return Speech("\n".join(t for t in texts if t), lang)
 
     def rest(self, first: bytes, it, language: str):
-        def finish():
+        """finish(progress): transcribes the remaining pieces, calling progress(text so far) after each one."""
+        def finish(progress=lambda text: None):
             out = []
             for piece in itertools.chain([first], it):  # one piece in memory at a time
                 text, _ = self.stt(piece, language, timeout=PIECE_TIMEOUT)
                 out.append(text)
+                progress("\n".join(t for t in out if t))
             return "\n".join(t for t in out if t)
         return finish

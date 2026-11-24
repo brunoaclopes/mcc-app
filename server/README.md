@@ -35,8 +35,9 @@ YouTube (watch, `youtu.be`, Shorts) and the other sites yt-dlp supports. The rep
          "source": "subtitles" | "whisper" | "none", "partial": false, "thumbnail": "https://…"}
 
 `"partial": true` means the transcript covers only the start of the video: speech-to-text ran out of
-`MCC_TRANSCRIPT_TIMEOUT` and is finishing the rest in the background. Asking again for the same video returns the
-complete transcript once it is done (the request waits for it, within the same timeout).
+`MCC_TRANSCRIPT_TIMEOUT` and is finishing the rest in the background. Asking again for the same video waits for
+it (within the same timeout) and returns the complete transcript, `"partial": false`; if it still isn't done by
+then, the reply has everything transcribed so far, still `"partial": true`.
 
 | Code | Meaning |
 |---|---|
