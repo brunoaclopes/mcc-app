@@ -645,7 +645,7 @@ class MachineService : Service() {
             }
             val step = rs.step
             // a steady reading only: a jolt while pouring can read high for a moment
-            val done = step is mcc.recipe.Step.Weigh && rs.weighedGrams != null && rs.weighedGrams!! >= step.grams * 0.95 && s.lastFrame?.scaleStable == true
+            val done = step is mcc.recipe.Step.Weigh && !step.measure && rs.weighedGrams != null && rs.weighedGrams!! >= step.grams * 0.95 && s.lastFrame?.scaleStable == true
             if (done && !evWeighed && rs.stepIndex == evStepIndex) m?.publishEvent(MachineEvent(MachineEvent.WEIGHED, recipe = title, grams = (step as mcc.recipe.Step.Weigh).grams))
             evWeighed = done
             evStepIndex = rs.stepIndex

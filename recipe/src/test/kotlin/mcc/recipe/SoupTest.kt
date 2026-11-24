@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class SoupTest {
     private val combos = Soup.Kind.values().flatMap { k ->
-        (Soup.MIN_VEG..Soup.MAX_VEG step 100).flatMap { g -> (0..Soup.BLEND_MAX).flatMap { b -> listOf(true, false).map { Soup.Options(g, k, b, it) } } }
+        (listOf<Int?>(null) + (Soup.MIN_VEG..Soup.MAX_VEG step 100)).flatMap { g -> (0..Soup.BLEND_MAX).flatMap { b -> listOf(true, false).map { Soup.Options(g, k, b, it) } } }
     }
 
     @Test fun everyCombinationFitsTheBowlAndTheLimits() {
@@ -52,5 +52,20 @@ class SoupTest {
         assertTrue(machine.last().segments.single().reverse)
         val smooth = Soup.recipe(Soup.Options(600, Soup.Kind.MIXED, blend = 3), "en")
         assertEquals(10, smooth.steps.filterIsInstance<Step.Machine>().last().segments.last().speed)
+    }
+
+    @Test fun theVegetableStepMeasuresAndTheRestFollowsTheWeight() {
+        val draft = Soup.recipe(Soup.Options(kind = Soup.Kind.FIRM, blend = 1, onionBase = false), "pt")
+        val measure = draft.steps.filterIsInstance<Step.Weigh>().single { it.measure }
+        assertEquals(Soup.MAX_VEG, measure.grams)
+        assertEquals(null, draft.servings, "no portions before the vegetables are weighed")
+        val r = Soup.measured(draft, 900)!!
+        assertEquals(draft.steps.size, r.steps.size)
+        val p = Soup.plan(Soup.Options(900, Soup.Kind.FIRM, 1, false))
+        assertTrue(r.steps.any { it is Step.Weigh && !it.measure && it.grams == p.waterGrams })
+        assertTrue(r.ingredients.single().items.any { "900 g" in it.text })
+        assertEquals(null, Soup.measured(draft, 2000), "too much for the bowl")
+        assertEquals(null, Soup.measured(draft, 100))
+        assertEquals(Soup.measured(draft, 900), Soup.measured(r, 900), "the options survive a re-measure")
     }
 }

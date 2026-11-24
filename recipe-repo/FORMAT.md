@@ -44,7 +44,7 @@ remote pictures into `images/` as 640x400 JPEGs) or an absolute URL. `imageSourc
 | type | fields | what the app does |
 |---|---|---|
 | `instruction` | `text` | shows the text, user taps Next |
-| `weigh` | `text`, `grams` | tares the scale, shows a progress bar towards `grams`, user taps Next |
+| `weigh` | `text`, `grams`, optional `measure` | tares the scale, shows a progress bar towards `grams`, user taps Next. With `"measure": true` the amount is up to the cook (`grams` is the most it takes) and the scale measures what goes in; the app's generated programs (the automatic soup) work out the following steps from that weight |
 | `machine` | `text`, `mode`, `segments[]` | user taps Start; the segments run back to back |
 
 `mode`:

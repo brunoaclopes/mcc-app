@@ -30,9 +30,10 @@
 - `MachinePlan.kt`: turns a machine step into `RunRequest`s (speed ramps, and the knead and roast presets that
   mirror the stock app).
 - `Programs.kt`: the built-in automatic programs (eggs, rice, steaming, cleaning…) as recipes in both languages.
-- `Soup.kt`: the automatic soup. From the vegetables' weight, how firm they are, the texture (chunky, or blended at
-  one of three levels) and an optional onion base, it works out the water, the cooking time and the blending ramp,
-  and builds an ordinary recipe.
+- `Soup.kt`: the automatic soup. The cook picks how firm the vegetables are, the texture (chunky, or blended at one
+  of three levels) and an optional onion base, and just puts the vegetables in: that weigh step measures them
+  (`measure`), and when it ends the runner asks `Generated` for the same recipe worked out for the weighed amount
+  (water, cooking time, portions; 300 g to 1.2 kg, at most 2 kg in the bowl), with the same steps.
 - `RecipeFit.kt`: fits a recipe from outside (AI import, other machines) to the machine limits and lists each change.
 - `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
   time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above

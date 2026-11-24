@@ -310,7 +310,7 @@ class CookScreen(app: AppUi) : Screen(app) {
             upNext.text = when (nxt) {
                 null -> S.lastStep
                 is Step.Machine -> S.upNext(S.stepShort(nxt))
-                is Step.Weigh -> S.upNext(S.weighGrams(nxt.grams) + (nxt.text.takeIf { it.isNotBlank() }?.let { " · " + it.take(60) + if (it.length > 60) "…" else "" } ?: ""))
+                is Step.Weigh -> S.upNext((if (nxt.measure) S.kindWeigh else S.weighGrams(nxt.grams)) + (nxt.text.takeIf { it.isNotBlank() }?.let { " · " + it.take(60) + if (it.length > 60) "…" else "" } ?: ""))
                 else -> S.upNext(nxt.text.take(90) + if (nxt.text.length > 90) "…" else "")
             }
             // step change: the card content slides in from the side we're moving to
@@ -335,7 +335,8 @@ class CookScreen(app: AppUi) : Screen(app) {
 
         when (step) {
             is Step.Machine -> renderMachine(step, st)
-            is Step.Weigh -> { gauge.ofText = { "/ $it g" }; gauge.set(st.weighedGrams, step.grams) }
+            // a measuring step has no amount to reach: the gauge shows what is in, against the most it takes
+            is Step.Weigh -> { gauge.ofText = if (step.measure) { g -> S.upTo(g) } else { g -> "/ $g g" }; gauge.set(st.weighedGrams, step.grams) }
             else -> infoText.put(if (r.steps.getOrNull(st.stepIndex + 1) is Step.Machine) S.tapNextMachine else S.tapNextDone)
         }
 
