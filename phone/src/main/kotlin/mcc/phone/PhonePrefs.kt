@@ -14,7 +14,7 @@ class PhonePrefs(c: Context) {
     var repoUrl: String get() = sp.getString("repoUrl", "") ?: ""; set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
     // recipe import: the AI proxy (OpenAI-compatible) and the NAS upload service that adds recipes to the repository
     var aiUrl: String get() = sp.getString("aiUrl", "") ?: ""; set(v) = sp.edit().putString("aiUrl", v.trim()).apply()
-    var aiModel: String get() = sp.getString("aiModel", "gpt-4o-mini") ?: ""; set(v) = sp.edit().putString("aiModel", v.trim()).apply()
+    var aiModel: String get() = sp.getString("aiModel", "") ?: ""; set(v) = sp.edit().putString("aiModel", v.trim()).apply()
     var aiKey: String get() = sp.getString("aiKey", "") ?: ""; set(v) = sp.edit().putString("aiKey", v.trim()).apply()
     var publishUrl: String get() = sp.getString("publishUrl", "") ?: ""; set(v) = sp.edit().putString("publishUrl", v.trim()).apply()
     var publishToken: String get() = sp.getString("publishToken", "") ?: ""; set(v) = sp.edit().putString("publishToken", v.trim()).apply()

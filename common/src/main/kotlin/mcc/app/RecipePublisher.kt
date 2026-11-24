@@ -4,6 +4,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import mcc.recipe.Recipe
@@ -24,6 +26,8 @@ import java.net.URL
 class RecipePublisher(private val address: String, private val token: String) {
     class Taken : IOException("key already exists")
     class Rejected(msg: String) : IOException(msg)
+    /** The service turned the video down (422, 504) or the token (401): [message] is meant for the user, as is. */
+    class VideoProblem(msg: String, val badToken: Boolean = false) : Exception(msg)
 
     val configured get() = address.isNotBlank()
 
@@ -36,13 +40,51 @@ class RecipePublisher(private val address: String, private val token: String) {
         throw Rejected("no free name for $base")
     }
 
+    /**
+     * A video's title, description and transcript (subtitles, or Whisper when it has none), for the AI import:
+     * `POST <address>/v1/transcript {"url": …}`. Whisper can take minutes; the service answers within 600 s, with
+     * "partial": true when it is still finishing in the background, so a partial transcript is asked for again (up to
+     * [retries] times) to get the rest. Throws [VideoProblem] for answers meant for the user (401, 422, 504) and
+     * IOException when the service can't be reached or fails otherwise (the caller then reads the page itself).
+     */
+    fun transcript(url: String, retries: Int = 2): AiClient.Video {
+        var v = transcriptOnce(url)
+        repeat(retries) { if (v.partial) v = runCatching { transcriptOnce(url) }.getOrElse { return v } }
+        return v
+    }
+
+    private fun transcriptOnce(url: String): AiClient.Video {
+        val reply = try {
+            request("/v1/transcript", buildJsonObject { put("url", url) }.toString(), 660_000)
+        } catch (e: Failed) {
+            when (e.code) {
+                401 -> throw VideoProblem(e.error ?: "wrong token", badToken = true)
+                422, 504 -> throw VideoProblem(e.error ?: "HTTP ${e.code}")
+                else -> throw IOException(e.message)
+            }
+        }
+        val o = json.parseToJsonElement(reply).jsonObject
+        fun s(k: String) = o[k]?.jsonPrimitive?.contentOrNull.orEmpty()
+        return AiClient.Video(s("title"), s("author"), s("description"), s("transcript"), s("source"), s("thumbnail").ifBlank { null },
+            partial = o["partial"]?.jsonPrimitive?.booleanOrNull == true)
+    }
+
+    /** A non-2xx answer other than 409: [error] is the service's message. */
+    private class Failed(val code: Int, val error: String?, text: String) :
+        IOException("HTTP $code" + ((error ?: text.take(200)).takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""))
+
     private fun post(key: String, recipes: List<Recipe>) {
         val body = buildJsonObject {
             put("key", key)
             put("recipes", JsonArray(recipes.map { Recipe.json.encodeToJsonElement(Recipe.serializer(), it) }))
         }.toString()
-        val c = URL(address.trim().trimEnd('/') + "/v1/recipes").openConnection() as HttpURLConnection
-        c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 120_000; c.doOutput = true
+        try { request("/v1/recipes", body, 120_000) } catch (e: Failed) { throw Rejected(e.message ?: "HTTP ${e.code}") }
+    }
+
+    /** POSTs [body]; returns the reply on 2xx, throws [Taken] on 409 and [Failed] (with the service's message) otherwise. */
+    private fun request(path: String, body: String, readTimeout: Int): String {
+        val c = URL(address.trim().trimEnd('/') + path).openConnection() as HttpURLConnection
+        c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = readTimeout; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         c.setRequestProperty("User-Agent", "mcc-app")
         token.trim().takeIf { it.isNotBlank() }?.let { c.setRequestProperty("Authorization", "Bearer $it") }
@@ -51,11 +93,11 @@ class RecipePublisher(private val address: String, private val token: String) {
             val code = c.responseCode
             val text = runCatching { (if (code in 200..299) c.inputStream else c.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull() ?: ""
             when {
-                code in 200..299 -> return
+                code in 200..299 -> return text
                 code == 409 -> throw Taken()
                 else -> {
                     val err = runCatching { json.parseToJsonElement(text).jsonObject["error"]?.jsonPrimitive?.content }.getOrNull()
-                    throw Rejected("HTTP $code" + ((err ?: text.take(200)).takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""))
+                    throw Failed(code, err, text)
                 }
             }
         } finally { c.disconnect() }

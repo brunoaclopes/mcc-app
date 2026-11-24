@@ -25,7 +25,13 @@ import java.net.URL
 class AiClient(private val address: String, private val model: String, private val key: String) {
     class AiException(msg: String) : Exception(msg)
 
-    data class Import(val recipe: Recipe, val changes: List<String>)
+    /**
+     * [prompt] is what the AI was given (the source), kept so the user can ask for changes with [revise]. For a video
+     * transcribed by the upload service, [videoSource] is its "source" (subtitles, whisper, none) and [partial] whether
+     * the transcript covered only the start.
+     */
+    data class Import(val recipe: Recipe, val changes: List<String>, val prompt: String = "",
+                      val videoSource: String? = null, val partial: Boolean = false)
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -38,12 +44,24 @@ class AiClient(private val address: String, private val model: String, private v
         return data.mapNotNull { (it as? JsonObject)?.get("id")?.jsonPrimitive?.content }
     }
 
-    /** [input] is a web address or pasted recipe text. [lang] is "pt" or "en". */
-    fun importRecipe(input: String, lang: String): Import {
+    /** A video's text from the upload service (`POST /v1/transcript`): what is said in it, not only the description. */
+    data class Video(val title: String, val author: String, val description: String, val transcript: String,
+                     val source: String, val thumbnail: String?, val partial: Boolean = false)
+
+    /**
+     * [input] is a web address or pasted recipe text. [lang] is "pt" or "en". [served] is the video's text from the
+     * upload service ([isVideo] links); without it a YouTube video is read from its page (title and description),
+     * and other links as web pages.
+     */
+    fun importRecipe(input: String, lang: String, served: Video? = null): Import {
         val isUrl = input.startsWith("http://") || input.startsWith("https://")
-        val page = if (isUrl) http("GET", input, null, 20_000, ai = false) else null
-        val source = if (page != null) pageText(page) else input
-        val photo = page?.let { pageImage(it, input) }
+        val video = if (isUrl) youtubeId(input) else null
+        val (source, photo) = when {
+            served != null -> videoText(served) to (served.thumbnail ?: video?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" })
+            video != null -> youtube(video)
+            isUrl -> http("GET", input, null, 20_000, ai = false).let { pageText(it) to pageImage(it, input) }
+            else -> input to null
+        }
         val user = "Recipe language: ${if (lang == "pt") "European Portuguese (pt-PT)" else "English"}.\n" +
             (if (input.startsWith("http")) "Source URL: $input\n" else "") + "\n" + source.take(MAX_INPUT)
         val messages = mutableListOf(msg("system", SYSTEM), msg("user", user))
@@ -51,7 +69,7 @@ class AiClient(private val address: String, private val model: String, private v
         repeat(2) { attempt ->
             val reply = chat(messages)
             val problem = try {
-                return finish(reply, lang, input, photo)
+                return finish(reply, overrides(lang, input, photo)).copy(prompt = user, videoSource = served?.source, partial = served?.partial == true)
             } catch (e: AiException) { throw e } catch (e: Exception) { e.message ?: "invalid" }
             last = problem
             if (attempt == 0) { messages += msg("assistant", reply); messages += msg("user", "That JSON was rejected: $problem\nReply with the corrected JSON object only.") }
@@ -59,15 +77,12 @@ class AiClient(private val address: String, private val model: String, private v
         throw AiException("the AI's recipe was not valid: $last")
     }
 
-    private fun finish(reply: String, lang: String, input: String, photo: String?): Import {
-        val start = reply.indexOf('{'); val end = reply.lastIndexOf('}')
-        if (start < 0 || end <= start) throw IllegalArgumentException("no JSON object in the reply")
-        val obj = json.parseToJsonElement(reply.substring(start, end + 1)).jsonObject
-        obj["error"]?.let { throw AiException(it.jsonPrimitive.content) }
+    /** Fields the app sets itself, whatever the AI wrote: format, id, language, photo and source. */
+    private fun overrides(lang: String, input: String, photo: String?): (JsonObject) -> Map<String, kotlinx.serialization.json.JsonElement> = { obj ->
         val title = obj["title"]?.jsonPrimitive?.content ?: "recipe"
         val slug = java.text.Normalizer.normalize(title.lowercase(), java.text.Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40).ifEmpty { "recipe" }
-        val fixed = JsonObject(obj + mapOf(
+        mapOf(
             "format" to JsonPrimitive(Recipe.FORMAT),
             // -pt / -en: the translated copy gets the same id with the other ending, so the list shows one of them
             "id" to JsonPrimitive("my-$slug-${System.currentTimeMillis() / 1000 % 100000}-$lang"),
@@ -77,11 +92,121 @@ class AiClient(private val address: String, private val model: String, private v
                 put("kind", "ai-import")
                 if (input.startsWith("http")) put("url", input.take(500))
             },
-        ))
-        val r = Recipe.parse(fixed.toString())
+        )
+    }
+
+    private fun finish(reply: String, fields: (JsonObject) -> Map<String, kotlinx.serialization.json.JsonElement>): Import {
+        val start = reply.indexOf('{'); val end = reply.lastIndexOf('}')
+        if (start < 0 || end <= start) throw IllegalArgumentException("no JSON object in the reply")
+        val obj = json.parseToJsonElement(reply.substring(start, end + 1)).jsonObject
+        obj["error"]?.let { throw AiException(it.jsonPrimitive.content) }
+        val r = Recipe.parse(JsonObject(obj + fields(obj)).toString())
         val fit = RecipeFit.fit(r, RecipeFit.SPECIAL)
         return Import(fit.recipe, fit.changes)
     }
+
+    /**
+     * The user's corrections to an imported recipe ("there's no garlic in the video", "brown it 2 min longer"). The AI
+     * gets the original source again, its own recipe and the feedback, and returns the whole recipe; it goes through
+     * the same checks. Id, language, photo and source stay as they were.
+     */
+    fun revise(current: Import, feedback: String): Import {
+        val mine = Recipe.json.encodeToJsonElement(Recipe.serializer(), current.recipe).jsonObject
+        val keep: (JsonObject) -> Map<String, kotlinx.serialization.json.JsonElement> = {
+            listOf("format", "id", "language", "image", "source").mapNotNull { k -> mine[k]?.let { k to it } }.toMap()
+        }
+        val messages = mutableListOf(msg("system", SYSTEM), msg("user", current.prompt), msg("assistant", mine.toString()),
+            msg("user", "Change the recipe as follows and keep everything else as it is:\n${feedback.take(2000)}\n" +
+                "Reply with the complete corrected JSON object only."))
+        var last: String? = null
+        repeat(2) { attempt ->
+            val reply = chat(messages)
+            val problem = try {
+                return finish(reply, keep).copy(prompt = current.prompt, videoSource = current.videoSource, partial = current.partial)
+            } catch (e: AiException) { throw e } catch (e: Exception) { e.message ?: "invalid" }
+            last = problem
+            if (attempt == 0) { messages += msg("assistant", reply); messages += msg("user", "That JSON was rejected: $problem\nReply with the corrected JSON object only.") }
+        }
+        throw AiException("the AI's recipe was not valid: $last")
+    }
+
+    /** Whether [input] is a video link (YouTube and the other sites below) that the upload service can transcribe. */
+    fun isVideo(input: String): Boolean = youtubeId(input) != null || isVideoLink(input)
+
+    /** Links to video sites other than YouTube that the upload service can transcribe. */
+    internal fun isVideoLink(u: String): Boolean =
+        Regex("""^https?://(?:[a-z0-9-]+\.)*(?:tiktok\.com|vimeo\.com|fb\.watch|dailymotion\.com)/|^https?://(?:www\.)?(?:instagram\.com/(?:reel|reels|p)/|facebook\.com/.+/videos/|facebook\.com/reel/)""")
+            .containsMatchIn(u.trim())
+
+    private fun videoText(v: Video) = buildString {
+        append("A cooking video. You only get its text, not the video. Use the transcript and the description; ")
+        append("where amounts or times are missing, choose sensible ones and say so in notes. If none of it is a recipe, reply with the error.\n")
+        append(TRANSCRIPT_NOTE)
+        if (v.partial) append("The transcript covers only the start of the video; the description may have the rest.\n")
+        append('\n')
+        append("Title: ").append(v.title).append('\n')
+        append("Channel: ").append(v.author).append("\n\nDescription:\n").append(v.description.ifBlank { "(none)" })
+        if (v.transcript.isNotBlank()) {
+            append("\n\nTranscript (").append(if (v.source == "whisper") "speech recognition" else "subtitles")
+            append(", may contain mistakes):\n").append(v.transcript)
+        }
+    }
+
+    /** The 11-character id of a YouTube video link (watch, youtu.be, shorts, live, embed), or null. */
+    internal fun youtubeId(u: String): String? =
+        Regex("""^https?://(?:www\.|m\.|music\.)?(?:youtube\.com/(?:watch\?(?:[^#]*&)?v=|shorts/|live/|embed/)|youtu\.be/)([A-Za-z0-9_-]{11})""")
+            .find(u.trim())?.groupValues?.get(1)
+
+    /**
+     * What a YouTube video says about its recipe: title, channel, description (where most cooks write the recipe) and,
+     * when YouTube serves them, the subtitles. The AI can't watch the video; it gets this text.
+     */
+    internal fun youtube(id: String): Pair<String, String?> {
+        val html = http("GET", "https://www.youtube.com/watch?v=$id", null, 20_000, ai = false)
+        val player = jsonAfter(html, "ytInitialPlayerResponse") ?: throw AiException("could not read the YouTube page")
+        val details = player["videoDetails"] as? JsonObject
+        fun str(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.content.orEmpty()
+        val tracks = runCatching {
+            player["captions"]!!.jsonObject["playerCaptionsTracklistRenderer"]!!.jsonObject["captionTracks"]!!.jsonArray.map { it.jsonObject }
+        }.getOrDefault(emptyList())
+        // written subtitles beat automatic ones
+        val track = tracks.firstOrNull { str(it, "kind") != "asr" } ?: tracks.firstOrNull()
+        val transcript = track?.let { t -> runCatching { captionText(http("GET", str(t, "baseUrl"), null, 20_000, ai = false)) }.getOrNull() }
+            ?.takeIf { it.length > 40 }
+        val text = buildString {
+            append("A YouTube cooking video. You only get its text, not the video. Use the description and the transcript; ")
+            append("where amounts or times are missing, choose sensible ones and say so in notes. If none of it is a recipe, reply with the error.\n")
+            append(TRANSCRIPT_NOTE).append('\n')
+            append("Title: ").append(str(details, "title")).append('\n')
+            append("Channel: ").append(str(details, "author")).append("\n\nDescription:\n").append(str(details, "shortDescription").ifBlank { "(none)" })
+            transcript?.let { append("\n\nTranscript (subtitles, may contain mistakes):\n").append(it) }
+        }
+        return text to "https://i.ytimg.com/vi/$id/hqdefault.jpg"
+    }
+
+    /** The JSON object assigned to [name] in a page script ("var name = {…};"). */
+    internal fun jsonAfter(html: String, name: String): JsonObject? {
+        val at = Regex("""\b${Regex.escape(name)}\s*=\s*\{""").find(html) ?: return null
+        val start = at.range.last
+        var depth = 0; var inStr = false; var esc = false
+        for (i in start until html.length) {
+            val ch = html[i]
+            if (inStr) { if (esc) esc = false else if (ch == '\\') esc = true else if (ch == '"') inStr = false; continue }
+            when (ch) {
+                '"' -> inStr = true
+                '{' -> depth++
+                '}' -> if (--depth == 0) return runCatching { json.parseToJsonElement(html.substring(start, i + 1)).jsonObject }.getOrNull()
+            }
+        }
+        return null
+    }
+
+    /** Plain text of YouTube subtitles (timedtext XML). */
+    internal fun captionText(xml: String): String =
+        Regex("""<(?:text|p)\b[^>]*>(.*?)</(?:text|p)>""", RegexOption.DOT_MATCHES_ALL).findAll(xml).map { m ->
+            m.groupValues[1].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").replace("&#39;", "'").replace("&quot;", "\"")
+                .replace("&lt;", "<").replace("&gt;", ">").replace("\n", " ").trim()
+        }.filter { it.isNotEmpty() }.joinToString(" ").take(MAX_INPUT)
 
     /**
      * The same recipe in [to] ("pt" or "en"). Only the words go to the AI; steps, grams, times and temperatures are
@@ -209,6 +334,11 @@ class AiClient(private val address: String, private val model: String, private v
     }
 
     companion object {
+        /** Transcripts are noisy; the AI must not take song lyrics or caption fragments for a recipe. */
+        private const val TRANSCRIPT_NOTE = "Transcripts are noisy: automatic captions break sentences into short lines and mishear words " +
+            "(ingredient names, numbers), and a video with only background music can come back as song lyrics. Ignore anything " +
+            "that isn't about the cooking; if the transcript isn't about cooking at all, rely on the title and description.\n"
+
         private const val MAX_INPUT = 14_000
 
         private val SYSTEM = """
