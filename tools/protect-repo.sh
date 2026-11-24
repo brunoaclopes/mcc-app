@@ -41,9 +41,11 @@ ruleset() {   # name, JSON: creates the ruleset or updates the one with that nam
   if [ -n "$id" ]; then try "$1 (updated)" gh api -X PUT "$R/rulesets/$id" --silent --input - <<<"$2"
   else try "$1" gh api -X POST "$R/rulesets" --silent --input - <<<"$2"; fi
 }
-ruleset "master" '{
-  "name": "master", "target": "branch", "enforcement": "active",
-  "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+# the branch is named explicitly: GitHub didn't apply a ~DEFAULT_BRANCH condition here
+BRANCH=$(gh api "$R" -q .default_branch)
+ruleset "$BRANCH" '{
+  "name": "'"$BRANCH"'", "target": "branch", "enforcement": "active",
+  "conditions": {"ref_name": {"include": ["refs/heads/'"$BRANCH"'"], "exclude": []}},
   "rules": [
     {"type": "deletion"}, {"type": "non_fast_forward"},
     {"type": "pull_request", "parameters": {"required_approving_review_count": 0, "dismiss_stale_reviews_on_push": false,
