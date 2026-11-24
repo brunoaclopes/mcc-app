@@ -145,6 +145,34 @@ class Pieces(unittest.TestCase):
         sp = t.speech([b"1", b"2", b"3"], "pt", time.monotonic() + 60)
         self.assertEqual(("texto 1\ntexto 2\ntexto 3", None), (sp.text, sp.finish))
 
+    def pieces(self, n):
+        """A generator like Transcriber.pieces(), recording whether it was closed (that is what stops ffmpeg)."""
+        self.closed = False
+
+        def gen():
+            try:
+                for i in range(1, n + 1):
+                    yield str(i).encode()
+            finally:
+                self.closed = True
+        return gen()
+
+    def test_background_failure_stops_the_audio(self):
+        t = self.make(stt_seconds=0.2)
+        sp = t.speech(self.pieces(4), "pt", time.monotonic() + 0.5)
+        self.assertFalse(self.closed)  # still needed for the background part
+        t.stt = lambda piece, language, timeout: (_ for _ in ()).throw(OSError("speech-to-text down"))
+        with self.assertRaises(OSError):
+            sp.finish()
+        self.assertTrue(self.closed)
+
+    def test_failure_on_the_first_piece_stops_the_audio(self):
+        t = self.make()
+        t.stt = lambda piece, language, timeout: (_ for _ in ()).throw(TimeoutError())
+        with self.assertRaises(transcript.Problem):
+            t.speech(self.pieces(3), "pt", time.monotonic() + 60)
+        self.assertTrue(self.closed)
+
     def test_out_of_time_rest_in_background(self):
         t = self.make(stt_seconds=0.2)
         sp = t.speech(iter([b"1", b"2", b"3"]), "pt", time.monotonic() + 0.5)  # room for one piece only

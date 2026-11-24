@@ -75,8 +75,20 @@ class Checks(unittest.TestCase):
                 {"language": "pt", "tags": ["Sopas"]}, {"language": "en", "tags": ["Soups"]}]}))
             by_lang = {"pt": {"tags": ["SOPAS", "sobremesa", "Natal"]}, "en": {"tags": ["soups", "vegan"]}}
             upload.map_tags(by_lang, Path(d))
-        self.assertEqual(["Sopas", "Sobremesas", "Natal"], by_lang["pt"]["tags"])
-        self.assertEqual(["Soups", "Vegetarian & Vegan"], by_lang["en"]["tags"])
+        self.assertEqual(["Sopas", "sobremesa", "Natal"], by_lang["pt"]["tags"])  # no Sobremesas in this repository
+        self.assertEqual(["Soups", "vegan"], by_lang["en"]["tags"])
+
+    def test_synonyms_use_the_repositorys_own_spelling(self):
+        for repo_tag in ("Vegetarian & Vegan", "Vegetarian and vegan"):  # private repository, mcc-app's template
+            with tempfile.TemporaryDirectory() as d:
+                Path(d, "index.json").write_text(json.dumps({"recipes": [
+                    {"language": "en", "tags": [repo_tag, "Desserts"]},
+                    {"language": "pt", "tags": ["Vegetariano e vegano", "Sobremesas"]}]}))
+                by_lang = {"en": {"tags": ["vegan", "VEGETARIAN AND VEGAN", "dessert"]},
+                           "pt": {"tags": ["vegano", "sobremesa"]}}
+                upload.map_tags(by_lang, Path(d))
+            self.assertEqual([repo_tag, "Desserts"], by_lang["en"]["tags"])
+            self.assertEqual(["Vegetariano e vegano", "Sobremesas"], by_lang["pt"]["tags"])
 
 
 # a stand-in for the template's tools/build_index.py: rejects titles containing REJECT, else writes index.json

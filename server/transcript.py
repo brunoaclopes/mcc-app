@@ -308,6 +308,13 @@ class Transcriber:
         """Transcribes the pieces one after the other. When the next one would not fit before the deadline (twice
         the slowest piece so far, plus a little), stops and returns the rest as a finish() for the background."""
         it = iter(pieces)
+        try:
+            return self._speech(it, language, deadline)
+        except BaseException:
+            close(it)  # stops ffmpeg now, not whenever the generator is collected
+            raise
+
+    def _speech(self, it, language: str, deadline: float) -> Speech:
         texts, slowest, lang = [], 0.0, language
         for piece in it:
             left = deadline - time.monotonic()
@@ -323,15 +330,24 @@ class Transcriber:
             slowest = max(slowest, time.monotonic() - started)
             texts.append(text)
             lang = lang or reported
+        close(it)
         return Speech("\n".join(t for t in texts if t), lang)
 
     def rest(self, first: bytes, it, language: str):
         """finish(progress): transcribes the remaining pieces, calling progress(text so far) after each one."""
         def finish(progress=lambda text: None):
             out = []
-            for piece in itertools.chain([first], it):  # one piece in memory at a time
-                text, _ = self.stt(piece, language, timeout=PIECE_TIMEOUT)
-                out.append(text)
-                progress("\n".join(t for t in out if t))
+            try:
+                for piece in itertools.chain([first], it):  # one piece in memory at a time
+                    text, _ = self.stt(piece, language, timeout=PIECE_TIMEOUT)
+                    out.append(text)
+                    progress("\n".join(t for t in out if t))
+            finally:
+                close(it)  # also when speech-to-text fails halfway: stops ffmpeg
             return "\n".join(t for t in out if t)
         return finish
+
+
+def close(it):
+    """Closes a generator (pieces() then kills its ffmpeg); other iterables need nothing."""
+    getattr(it, "close", lambda: None)()
