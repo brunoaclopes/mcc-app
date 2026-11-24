@@ -60,7 +60,7 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#safety).
    belongs to the power board.
 2. **Build and install** this app over ADB. No root needed: the app is signed with the public AOSP test key that
    the firmware trusts.
-3. Optional: **serve recipes** and **connect Home Assistant**.
+3. Optional: **serve recipes** ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md)) and **connect Home Assistant**.
 
 The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 
@@ -74,13 +74,15 @@ The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 | [`common/`](common) | Android library shared by both apps: design tokens, icons, widgets, translations, recipe store, fonts and program photos. |
 | [`app/`](app) | The machine (tablet) app: serial service, UI, LED, jog knob, MQTT bridge. |
 | [`phone/`](phone) | The phone companion app (Compose, Material 3): status, notifications, recipes, shopping list. |
-| [`recipe-repo/`](recipe-repo) | Recipe format spec, converters (recipe websites, stock-app JSON), index builder and sample recipes. Serve this folder (or your own copy) to the machine. |
+| [`recipe-repo/`](recipe-repo) | Template for your own recipes repository: format spec, converters (recipe websites, stock-app JSON), index builder, sample recipes, and the Docker image that serves it. |
+| [`server/`](server) | Upload service (Docker): the phone publishes imported recipes to your recipes repository through it, and it transcribes cooking videos (yt-dlp subtitles, Whisper). |
 | [`signing/`](signing) | The public AOSP platform test key (why: [signing/README.txt](signing/README.txt)). |
 | [`docs/`](docs) | Setup, architecture, protocol, Home Assistant, test plan. |
 
 ## Documentation
 
 - [docs/SETUP.md](docs/SETUP.md): from a stock machine to this app running, step by step
+- [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md): recipe server, AI server, upload service and Whisper, for recipes and phone/video import
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code fits together, safety, LED, knob, UI and performance rules
 - [docs/PROTOCOL.md](docs/PROTOCOL.md): the tablet ↔ power-board serial protocol
 - [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md): MQTT topics, payloads, events and commands
@@ -93,9 +95,10 @@ The full walk-through is in [docs/SETUP.md](docs/SETUP.md).
 | Area | State |
 |---|---|
 | Serial protocol, lid, scale, tare, motor at speed 1 and 3, heat to 50 °C | verified live while the stock app drove the machine (captures in `machine/src/test/resources/captures`) |
-| This app driving the motor or heater | **not yet tested live**: follow [docs/TEST-PLAN.md](docs/TEST-PLAN.md) |
-| Turbo, knead, roast, steam | implemented, disabled until tested |
-| UI, recipes, MQTT, LED, knob | working on the device |
+| This app driving the motor and heater | tested live and supervised (2026-11-21): manual runs, recipe steps, pause and stop from the phone, the board's own watchdog ([docs/TEST-PLAN.md](docs/TEST-PLAN.md)) |
+| Turbo, knead, roast, steam, cleaning | tested live (2026-11-21) and enabled, with the limits above |
+| UI, recipes, MQTT, LED, knob, phone app | working on the device |
+| Recipe import (web pages, videos) and phone uploads | working with the AI and upload servers ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md)) |
 
 Tested on power-board firmware 4921 and stock app v292 (Android 6, MT6580).
 

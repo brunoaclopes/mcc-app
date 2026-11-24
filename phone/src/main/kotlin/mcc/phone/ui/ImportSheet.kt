@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package mcc.phone.ui
 
@@ -10,6 +10,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,7 +75,7 @@ fun ImportSheet(onSettings: () -> Unit) {
     }
     ModalBottomSheet(onDismissRequest = { Importer.sheet.value = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = Mc.surface) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding().imePadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Label(S.importTitle, Mc.amber, Icon.SPARK)
             when (val s = st) {
                 is Importer.State.Working -> Working(s)
@@ -102,16 +112,77 @@ private fun Working(s: Importer.State.Working) {
         CircularProgressIndicator(Modifier.size(28.dp), color = Mc.amber, strokeWidth = 3.dp)
         Text(P.s.importStage(s.stage.ordinal, sec), style = MaterialTheme.typography.bodyLarge, color = Mc.text)
     }
+    if (s.stage == Importer.Stage.VIDEO) Text(P.s.videoWait, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
 }
 
 @Composable
 private fun Ready(s: Importer.State.Ready) {
     val S = P.s
-    val r = s.main
+    // review in either language: the translation is what the other language's users will see
+    var showOther by remember(s) { mutableStateOf(false) }
+    val r = if (showOther && s.other != null) s.other else s.main
+    var feedback by remember(s) { mutableStateOf("") }
+
     Text(r.title, style = MaterialTheme.typography.titleLarge, color = Mc.text)
-    Text(S.importSummary(r.ingredients.sumOf { it.items.size }, r.steps.size, r.steps.count { it is Step.Machine }),
-        style = MaterialTheme.typography.bodyMedium, color = Mc.text2)
-    if (s.changes.isNotEmpty()) Text(L.s.aiChanges(s.changes.size), style = MaterialTheme.typography.bodySmall, color = Mc.amber)
+    Text(S.importSummary(r.ingredients.sumOf { it.items.size }, r.steps.size, r.steps.count { it is Step.Machine }) +
+        (r.servings?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = Mc.text2)
+    if (s.other != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(false to s.main.language, true to s.other.language).forEach { (other, code) ->
+            FilterChip(selected = showOther == other, onClick = { showOther = other }, label = { Text(if (code == "pt") "Português" else "English") },
+                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Mc.amber, selectedLabelColor = Mc.onAccent))
+        }
+    }
+    if (s.revisions > 0) Text(S.revised(s.revisions), style = MaterialTheme.typography.bodySmall, color = Mc.teal)
+    when {
+        s.imp.videoSource == "none" -> Text(S.videoDescriptionOnly, style = MaterialTheme.typography.bodySmall, color = Mc.amber)
+        s.imp.partial -> Text(S.videoPartial, style = MaterialTheme.typography.bodySmall, color = Mc.amber)
+    }
+
+    // the whole recipe, so it can be checked before it goes anywhere
+    Column(Modifier.fillMaxWidth().background(Mc.surface2, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(L.s.ingredients, style = MaterialTheme.typography.labelLarge, color = Mc.amber)
+        r.ingredients.forEach { g ->
+            g.group?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = Mc.text) }
+            g.items.forEach { Text("• ${it.text}", style = MaterialTheme.typography.bodyMedium, color = Mc.text) }
+        }
+        HorizontalDivider(color = Mc.stroke, modifier = Modifier.padding(vertical = 6.dp))
+        Text(S.steps, style = MaterialTheme.typography.labelLarge, color = Mc.amber)
+        r.steps.forEachIndexed { i, st ->
+            Row {
+                Text("${i + 1}.", style = MaterialTheme.typography.bodyMedium, color = Mc.text2, modifier = Modifier.width(28.dp))
+                Column {
+                    Text(st.text, style = MaterialTheme.typography.bodyMedium, color = Mc.text)
+                    when (st) {
+                        is Step.Machine -> Text(L.s.stepShort(st), style = MaterialTheme.typography.labelMedium, color = if (st.segments.any { it.tempC > 0 }) Mc.ember else Mc.teal)
+                        is Step.Weigh -> Text("${st.grams} g", style = MaterialTheme.typography.labelMedium, color = Mc.teal)
+                        else -> {}
+                    }
+                }
+            }
+        }
+        if (r.notes.isNotEmpty()) {
+            HorizontalDivider(color = Mc.stroke, modifier = Modifier.padding(vertical = 6.dp))
+            r.notes.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = Mc.text2) }
+        }
+    }
+    if (s.changes.isNotEmpty()) {
+        Text(S.adjustedTitle, style = MaterialTheme.typography.labelLarge, color = Mc.amber)
+        s.changes.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = Mc.text2) }
+    }
+
+    // feedback to the AI: it rewrites the recipe from the same source with these corrections
+    Text(S.feedbackLabel, style = MaterialTheme.typography.titleSmall, color = Mc.text, modifier = Modifier.padding(top = 6.dp))
+    // the keyboard covers the button below, so the box sends too: its arrow and the keyboard's action key
+    OutlinedTextField(value = feedback, onValueChange = { feedback = it }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5,
+        placeholder = { Text(S.feedbackHint) }, shape = RoundedCornerShape(16.dp),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = { Importer.revise(feedback) }),
+        trailingIcon = if (feedback.isNotBlank()) ({ androidx.compose.material3.IconButton(onClick = { Importer.revise(feedback) }) { McIcon(Icon.NEXT, Mc.amber) } }) else null,
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Mc.amber, unfocusedBorderColor = Mc.stroke))
+    FilledTonalButton(onClick = { Importer.revise(feedback) }, enabled = feedback.isNotBlank(), modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)) { Text(S.feedbackSend) }
+    Spacer(Modifier.height(4.dp))
+
     when {
         s.other == null -> Text(S.noSecondLanguage, style = MaterialTheme.typography.bodySmall, color = Mc.amber)
         !Importer.canPublish -> Text(S.publishOff, style = MaterialTheme.typography.bodySmall, color = Mc.text2)

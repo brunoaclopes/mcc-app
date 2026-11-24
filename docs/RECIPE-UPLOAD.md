@@ -1,8 +1,8 @@
 # Recipe upload service (phone → recipe repository)
 
-The phone app imports recipes with the AI proxy, in both languages, then sends them here. The service lives on the NAS
-next to the recipe server, because it needs write access to the `mcc-recipes` repository (no repository token on
-phones). The phone sets its address and token in Settings → Recipe import.
+The phone app imports recipes with the AI server, in both languages, then sends them here. The service ([`server/`](../server))
+runs next to the recipe server, because it needs write access to your recipes repository (no repository token on
+phones). The phone sets its address and token in Settings → Recipe import. Setup: [SERVER-SETUP.md](SERVER-SETUP.md).
 
 ## Request
 
@@ -31,3 +31,20 @@ phones). The phone sets its address and token in Settings → Recipe import.
 
 After a 201, the phone polls `<recipe server>/index.json` every 10 s (up to 5 min) until `<key>-<lang>` is listed,
 then sends `refresh` on `mcc/cmd` so the machine re-reads the index, and opens the recipe.
+
+## Video transcripts
+
+`POST <address>/v1/transcript {"url": "…"}` with the same token returns a video's title, description and transcript
+(`source`: `subtitles`, `whisper` or `none`; `partial: true` when only the start is done). The full contract is in
+[server/README.md](../server/README.md#transcripts).
+
+What the phone does with it:
+
+- Calls it for YouTube links and other video sites (TikTok, Instagram reels, Vimeo, Facebook videos) before asking the
+  AI, showing "Reading the video…". It waits up to 660 s, longer than the server's 600 s.
+- `partial: true`: asks again (up to twice); the server finishes in the background, so a repeat returns the rest.
+  Still partial after that: the review says the end of the recipe may be missing.
+- `source: none`: the review says the recipe was made from the title and description only.
+- 422 and 504: the server's message is shown as is and the import stops. 401: "the upload token is wrong".
+- Server unreachable or any other error: the phone reads the YouTube page itself (title and description), or the link
+  as a web page.

@@ -9,12 +9,14 @@ Thanks for helping! A few ground rules, because this software drives a motor and
   supervised live test first.
 - **No stock content.** Don't commit code, recipes or images taken from the stock firmware or the stock app.
   Recipes you wrote yourself are welcome in `recipe-repo/recipes/`.
-- **Translations**: every text is in `app/src/main/kotlin/mcc/app/i18n/Strings.kt`. A new language is a new
-  `object Xx : Strings()`; the compiler tells you what's missing.
+- **Translations**: the machine's texts (and the ones both apps share) are in
+  `common/src/main/kotlin/mcc/app/i18n/Strings.kt`, the phone's own in `phone/src/main/kotlin/mcc/phone/PhoneStrings.kt`.
+  A new language is a new `object Xx : Strings()`; the compiler tells you what's missing.
 - Keep the UI cheap: the tablet is a 2015 MT6580 with a Mali-400 GPU. See "Performance rules" in
   `docs/ARCHITECTURE.md`.
 
 Run before sending a pull request:
 
-    ./gradlew :machine:test :recipe:test :app:assembleDebug
+    ./gradlew :link:test :machine:test :recipe:test :common:testDebugUnitTest :app:assembleDebug :phone:assembleRelease
     (cd recipe-repo && python3 -m unittest discover -s tests && python3 tools/build_index.py)
+    (cd server && python3 -m unittest)

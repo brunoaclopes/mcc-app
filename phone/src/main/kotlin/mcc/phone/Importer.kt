@@ -12,18 +12,22 @@ import mcc.link.Command
 import mcc.recipe.Recipe
 
 /**
- * Recipe import on the phone: a web page (or pasted text) becomes a machine recipe through the AI proxy, in the
+ * Recipe import on the phone: a web page, a video (transcribed by the upload service) or pasted text becomes a machine recipe through the AI proxy, in the
  * phone's language and translated to the other one, then goes to the recipe repository through the NAS upload
  * service (or stays on this phone). Same code and machine checks as the import on the machine ([AiClient]).
  * Runs in the app scope, so closing the sheet doesn't stop it.
  */
 object Importer {
-    enum class Stage { READING, TRANSLATING, PUBLISHING, WAITING }
+    enum class Stage { READING, TRANSLATING, PUBLISHING, WAITING, REVISING, VIDEO }
 
     sealed class State {
         object Idle : State()
         data class Working(val stage: Stage, val since: Long) : State()
-        data class Ready(val main: Recipe, val other: Recipe?, val changes: List<String>) : State()
+        /** [imp] is the recipe in the phone's language (with what the AI was given, for feedback); [other] its translation. */
+        data class Ready(val imp: AiClient.Import, val other: Recipe?, val revisions: Int = 0) : State() {
+            val main get() = imp.recipe
+            val changes get() = imp.changes
+        }
         data class Failed(val message: String) : State()
     }
 
@@ -41,6 +45,7 @@ object Importer {
     private fun ai() = app.prefs.let { AiClient(it.aiUrl, it.aiModel, it.aiKey) }
     val aiConfigured get() = ai().configured
     val canPublish get() = app.prefs.publishUrl.isNotBlank()
+    private fun publisher() = app.prefs.let { RecipePublisher(it.publishUrl, it.publishToken) }
 
     fun open(link: String? = null) {
         if (link != null) prefill.value = link
@@ -57,11 +62,14 @@ object Importer {
             val res = withContext(Dispatchers.IO) {
                 runCatching {
                     val c = ai()
-                    val imp = c.importRecipe(input.trim(), lang)
+                    val link = input.trim()
+                    val video = if (canPublish && c.isVideo(link)) {
+                        _state.value = State.Working(Stage.VIDEO, System.currentTimeMillis())
+                        transcript(link).also { _state.value = State.Working(Stage.READING, System.currentTimeMillis()) }
+                    } else null
+                    val imp = c.importRecipe(link, lang, video)
                     _state.value = State.Working(Stage.TRANSLATING, System.currentTimeMillis())
-                    // the repository needs both languages; one retry, as translations sometimes come back short
-                    val tr = runCatching { c.translate(imp.recipe, other) }.recoverCatching { c.translate(imp.recipe, other) }.getOrNull()
-                    State.Ready(imp.recipe, tr, imp.changes)
+                    State.Ready(imp, translate(c, imp.recipe, other))
                 }
             }
             _state.value = res.getOrElse { State.Failed(it.message ?: it.javaClass.simpleName) }
@@ -71,11 +79,46 @@ object Importer {
         }
     }
 
+    /**
+     * The video's text from the upload service. What it says for the user (not a video, too long, wrong token) ends the
+     * import with that message; if the service can't be reached, null, and the recipe comes from the video's page.
+     */
+    private fun transcript(link: String): AiClient.Video? = try {
+        publisher().transcript(link)
+    } catch (e: RecipePublisher.VideoProblem) {
+        throw IllegalStateException(if (e.badToken) P.s.uploadTokenWrong else e.message)
+    } catch (_: java.io.IOException) { null }
+
+    // the repository needs both languages; one retry, as translations sometimes come back short
+    private fun translate(c: AiClient, r: Recipe, to: String) = runCatching { c.translate(r, to) }.recoverCatching { c.translate(r, to) }.getOrNull()
+
+    /** The user's corrections after reviewing the recipe: the AI rewrites it with the feedback, then it is translated again. */
+    fun revise(feedback: String) {
+        val ready = _state.value as? State.Ready ?: return
+        if (feedback.isBlank()) return
+        _state.value = State.Working(Stage.REVISING, System.currentTimeMillis())
+        app.scope.launch {
+            val res = withContext(Dispatchers.IO) {
+                runCatching {
+                    val c = ai()
+                    val imp = c.revise(ready.imp, feedback.trim())
+                    _state.value = State.Working(Stage.TRANSLATING, System.currentTimeMillis())
+                    State.Ready(imp, translate(c, imp.recipe, if (imp.recipe.language == "pt") "en" else "pt"), ready.revisions + 1)
+                }
+            }
+            _state.value = res.getOrElse { e ->
+                message.value = mcc.app.i18n.L.s.aiFailed(e.message ?: e.javaClass.simpleName)
+                ready   // keep the recipe as it was
+            }
+            if (!sheet.value && res.isSuccess) message.value = P.s.importReady(ready.main.title)
+        }
+    }
+
     /** Sends both languages to the repository, asks the machine to re-read the index and waits until the server lists it. */
     fun publish() {
         val ready = _state.value as? State.Ready ?: return
         val other = ready.other ?: return
-        val pub = app.prefs.let { RecipePublisher(it.publishUrl, it.publishToken) }
+        val pub = publisher()
         _state.value = State.Working(Stage.PUBLISHING, System.currentTimeMillis())
         app.scope.launch {
             val pt = if (ready.main.language == "pt") ready.main else other

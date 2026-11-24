@@ -33,8 +33,40 @@ class RecipePublisherTest {
             }
             val b = reply.toByteArray(); x.sendResponseHeaders(code, b.size.toLong()); x.responseBody.use { it.write(b) }
         }
+        createContext("/v1/transcript") { x ->
+            val asked = Json.parseToJsonElement(x.requestBody.readBytes().toString(Charsets.UTF_8)).jsonObject["url"]!!.jsonPrimitive.content
+            transcriptCalls++
+            val (code, reply) = when {
+                x.requestHeaders.getFirst("Authorization") != "Bearer t0k" -> 401 to """{"error":"missing or wrong token"}"""
+                "slow" in asked -> 504 to """{"error":"reading the video took too long"}"""
+                "broken" in asked -> 502 to """{"error":"the server could not finish this; try again later"}"""
+                "youtu" !in asked -> 422 to """{"error":"that address is not a single video"}"""
+                // a long video: the first answer has only the start, the next one the rest
+                "long" in asked && transcriptCalls == 1 -> 200 to """{"title":"T","author":"","description":"","language":"pt",
+                    "transcript":"Primeira parte.","source":"whisper","partial":true,"thumbnail":""}"""
+                "long" in asked -> 200 to """{"title":"T","author":"","description":"","language":"pt",
+                    "transcript":"Primeira parte.\nSegunda parte.","source":"whisper","partial":false,"thumbnail":""}"""
+                else -> 200 to """{"title":"Arroz de pato","author":"Chef","description":"","language":"pt",
+                    "transcript":"Juntem 300 gramas de arroz e deixem cozinhar 12 minutos.","source":"whisper","partial":false,"thumbnail":null}"""
+            }
+            val b = reply.toByteArray(); x.sendResponseHeaders(code, b.size.toLong()); x.responseBody.use { it.write(b) }
+        }
+        // a stand-in AI server: returns a fixed recipe and keeps what it was asked
+        createContext("/ai/v1/chat/completions") { x ->
+            prompts += x.requestBody.readBytes().toString(Charsets.UTF_8)
+            val recipe = """{"title":"Arroz de pato","servings":"4 doses","ingredients":[{"group":null,"items":[{"text":"300 g de arroz"}]}],
+                "steps":[{"type":"instruction","text":"Junte o arroz."}]}"""
+            val reply = kotlinx.serialization.json.buildJsonObject {
+                put("choices", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.buildJsonObject {
+                    put("message", kotlinx.serialization.json.buildJsonObject { put("content", kotlinx.serialization.json.JsonPrimitive(recipe)) })
+                }) })
+            }.toString().toByteArray()
+            x.sendResponseHeaders(200, reply.size.toLong()); x.responseBody.use { it.write(reply) }
+        }
         start()
     }
+    private val prompts = mutableListOf<String>()
+    private var transcriptCalls = 0
     private val url = "http://127.0.0.1:${server.address.port}/"
 
     @After fun stop() = server.stop(0)
@@ -63,5 +95,45 @@ class RecipePublisherTest {
         val e = assertFailsWith<RecipePublisher.Rejected> { RecipePublisher(url, "t0k").publish("web-bad", listOf(recipe("pt"))) }
         assertEquals("HTTP 422: steps: speed 11 is above 10", e.message)
         assertFailsWith<RecipePublisher.Rejected> { RecipePublisher(url, "wrong").publish("web-x", listOf(recipe("pt"))) }
+    }
+
+    @Test fun transcriptFromTheService() {
+        val v = RecipePublisher(url, "t0k").transcript("https://youtu.be/wy8thXL5_CI")
+        assertEquals("Arroz de pato", v.title)
+        assertEquals("whisper", v.source)
+        assertEquals(null, v.thumbnail)
+        assertEquals(false, v.partial)
+        assertTrue("300 gramas" in v.transcript)
+    }
+
+    @Test fun partialTranscriptIsAskedForAgain() {
+        val v = RecipePublisher(url, "t0k").transcript("https://youtu.be/long0000000")
+        assertEquals(2, transcriptCalls)
+        assertEquals(false, v.partial)
+        assertEquals("Primeira parte.\nSegunda parte.", v.transcript)
+    }
+
+    @Test fun videoProblemsAreForTheUserOtherFailuresFallBack() {
+        val pub = RecipePublisher(url, "t0k")
+        assertEquals("that address is not a single video", assertFailsWith<RecipePublisher.VideoProblem> { pub.transcript("https://example.org/") }.message)
+        assertEquals("reading the video took too long", assertFailsWith<RecipePublisher.VideoProblem> { pub.transcript("https://youtu.be/slow0000000") }.message)
+        assertTrue(assertFailsWith<RecipePublisher.VideoProblem> { RecipePublisher(url, "wrong").transcript("https://youtu.be/x") }.badToken)
+        // a server error or no server at all: not the user's problem, the app reads the video page instead
+        val e = assertFailsWith<java.io.IOException> { pub.transcript("https://youtu.be/broken00000") }
+        assertTrue(e !is RecipePublisher.Rejected)
+        assertFailsWith<java.io.IOException> { RecipePublisher("http://127.0.0.1:1/", "t0k").transcript("https://youtu.be/x") }
+    }
+
+    @Test fun videoImportGivesTheAiTheTranscript() {
+        val ai = AiClient(url + "ai/v1", "m", "")
+        assertTrue(ai.isVideo("https://youtu.be/wy8thXL5_CI"))
+        val link = "https://youtu.be/wy8thXL5_CI"
+        val imp = ai.importRecipe(link, "pt", RecipePublisher(url, "t0k").transcript(link))
+        assertEquals("Arroz de pato", imp.recipe.title)
+        assertEquals("https://i.ytimg.com/vi/wy8thXL5_CI/hqdefault.jpg", imp.recipe.image)
+        assertEquals("whisper", imp.videoSource)
+        assertTrue("Transcript (speech recognition" in imp.prompt && "300 gramas de arroz" in imp.prompt, imp.prompt)
+        assertTrue("song lyrics" in imp.prompt)
+        assertEquals(1, prompts.size)
     }
 }

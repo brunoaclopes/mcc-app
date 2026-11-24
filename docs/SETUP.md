@@ -90,8 +90,8 @@ On the machine: Settings → **Recipe server** → `http://<server-ip>:8088/` �
 downloaded is cached, so it keeps working offline. To add recipes, write your own or convert them (see
 [../recipe-repo/README.md](../recipe-repo/README.md)).
 
-For a permanent server, any web server that can serve the folder works, for example an `nginx:alpine` container
-with the folder mounted read-only at `/usr/share/nginx/html`.
+For a permanent server, your own recipes repository, AI import and adding recipes from the phone, follow
+[SERVER-SETUP.md](SERVER-SETUP.md).
 
 ## 6. Home Assistant (optional)
 
