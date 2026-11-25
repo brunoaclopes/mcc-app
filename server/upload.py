@@ -224,19 +224,39 @@ class Uploader:
         self.git("reset", "-q", "--hard", f"origin/{self.s.git_branch}")
         self.git("clean", "-qfd")
 
-    def add(self, body) -> dict:
+    def add(self, body, upload_key: str | None = None) -> dict:
+        """Adds the recipe. With [upload_key] (the client's Idempotency-Key), a request that was already committed
+        (its reply lost to a timeout, say) gets the same answer again instead of a second copy."""
         with self.lock:
             try:
-                return self._add(body)
+                return self._add(body, upload_key)
             finally:
                 try:
                     self.sync()
                 except Exception as e:  # noqa: BLE001
                     log(f"cleanup sync failed: {e}")
 
-    def _add(self, body) -> dict:
+    def earlier(self, upload_key: str) -> dict | None:
+        """The answer to an upload already committed with this key (the "Upload-Key:" line of its commit)."""
+        h = self.git("log", "-n", "1", "-F", f"--grep=Upload-Key: {upload_key}", "--format=%H",
+                     f"origin/{self.s.git_branch}").stdout.strip()
+        if not h:
+            return None
+        names = self.git("show", "--name-only", "--format=", h).stdout.split()
+        m = next((re.fullmatch(r"recipes/(.+)-pt\.json", n) for n in names if re.fullmatch(r"recipes/.+-pt\.json", n)), None)
+        if not m:
+            return None
+        key = m.group(1)
+        return {"key": key, "ids": [f"{key}-{lang}" for lang in LANGUAGES]}
+
+    def _add(self, body, upload_key: str | None = None) -> dict:
         repo = self.s.repo_dir
         self.sync()
+        if upload_key:
+            done = self.earlier(upload_key)
+            if done:
+                log(f"upload {upload_key[:12]} was already added as {done['key']}")
+                return done
         key, original = check(body, repo)
         files = [f"recipes/{key}-{lang}.json" for lang in LANGUAGES]
         for attempt in range(2):
@@ -260,7 +280,8 @@ class Uploader:
                 raise Problem(422, f"the recipe repository rejected it: {first[:200] or 'build_index.py failed'}")
             self.git("add", *files, "index.json", *([rel] if rel else []))
             title = " ".join(str(by_lang["en"].get("title") or key).split())[:80]
-            self.git("commit", "-q", "-m", f"Add {title} (phone import)")
+            msg = f"Add {title} (phone import)" + (f"\n\nUpload-Key: {upload_key}" if upload_key else "")
+            self.git("commit", "-q", "-m", msg)
             if self.git("push", "-q", "origin", f"HEAD:{self.s.git_branch}", check=False).returncode == 0:
                 self.deploy()
                 return {"key": key, "ids": [f"{key}-{lang}" for lang in LANGUAGES]}

@@ -20,7 +20,7 @@ All replies are JSON. Errors are `{"error": "…"}` with a short message the app
 | Request | Auth | Replies |
 |---|---|---|
 | `GET /health` (and `/`) | none | `200 {"ok": true, "version": "…", "transcripts": {"whisper": true}}` |
-| `POST /v1/recipes` | Bearer token | the contract in [docs/RECIPE-UPLOAD.md](../docs/RECIPE-UPLOAD.md): `201 {"key", "ids"}`, `401`, `409` key exists, `413` over `MCC_MAX_BODY`, `422` invalid |
+| `POST /v1/recipes` | Bearer token | the contract in [docs/RECIPE-UPLOAD.md](../docs/RECIPE-UPLOAD.md): `201 {"key", "ids"}`, `401`, `409` key exists, `413` over `MCC_MAX_BODY`, `422` invalid; an optional `Idempotency-Key` makes retries safe |
 | `POST /v1/transcript` | Bearer token | below |
 
 ### Transcripts

@@ -17,7 +17,7 @@ import java.net.URL
  * Sends a finished recipe (both languages) to the recipe server's upload service on the NAS, which checks it,
  * commits it to the recipe repository and redeploys the server. Contract (docs/RECIPE-UPLOAD.md):
  *
- *     POST <address>/v1/recipes   Authorization: Bearer <token>
+ *     POST <address>/v1/recipes   Authorization: Bearer <token>   Idempotency-Key: <one per recipe>
  *     {"key": "web-…", "recipes": [<pt recipe>, <en recipe>]}
  *     201 {"key": "…", "ids": ["…-pt", "…-en"]}   409 key taken   422 {"error": "…"}   401 bad token
  *
@@ -31,11 +31,15 @@ class RecipePublisher(private val address: String, private val token: String) {
 
     val configured get() = address.isNotBlank()
 
-    /** Publishes [recipes] (one per language, same structure) under a free key based on [base]; returns the key used. */
-    fun publish(base: String, recipes: List<Recipe>): String {
+    /**
+     * Publishes [recipes] (one per language, same structure) under a free key based on [base]; returns the key used.
+     * [uploadKey] stays the same for every try of the same recipe: when an earlier try was added but its answer got
+     * lost (a timeout), the service answers with that key instead of adding a copy as "<base>-2".
+     */
+    fun publish(base: String, recipes: List<Recipe>, uploadKey: String? = null): String {
         for (n in 1..9) {
             val key = if (n == 1) base else "$base-$n"
-            try { post(key, recipes.map { forRepo(it, key) }); return key } catch (_: Taken) { }
+            try { return post(key, recipes.map { forRepo(it, key) }, uploadKey) } catch (_: Taken) { }
         }
         throw Rejected("no free name for $base")
     }
@@ -73,21 +77,24 @@ class RecipePublisher(private val address: String, private val token: String) {
     private class Failed(val code: Int, val error: String?, text: String) :
         IOException("HTTP $code" + ((error ?: text.take(200)).takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""))
 
-    private fun post(key: String, recipes: List<Recipe>) {
+    /** Returns the key the service stored it under (an earlier try's key, when [uploadKey] was seen before). */
+    private fun post(key: String, recipes: List<Recipe>, uploadKey: String?): String {
         val body = buildJsonObject {
             put("key", key)
             put("recipes", JsonArray(recipes.map { Recipe.json.encodeToJsonElement(Recipe.serializer(), it) }))
         }.toString()
-        try { request("/v1/recipes", body, 120_000) } catch (e: Failed) { throw Rejected(e.message ?: "HTTP ${e.code}") }
+        val reply = try { request("/v1/recipes", body, 120_000, uploadKey) } catch (e: Failed) { throw Rejected(e.message ?: "HTTP ${e.code}") }
+        return runCatching { json.parseToJsonElement(reply).jsonObject["key"]?.jsonPrimitive?.contentOrNull }.getOrNull() ?: key
     }
 
     /** POSTs [body]; returns the reply on 2xx, throws [Taken] on 409 and [Failed] (with the service's message) otherwise. */
-    private fun request(path: String, body: String, readTimeout: Int): String {
+    private fun request(path: String, body: String, readTimeout: Int, uploadKey: String? = null): String {
         val c = URL(address.trim().trimEnd('/') + path).openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = readTimeout; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         c.setRequestProperty("User-Agent", "mcc-app")
         token.trim().takeIf { it.isNotBlank() }?.let { c.setRequestProperty("Authorization", "Bearer $it") }
+        uploadKey?.let { c.setRequestProperty("Idempotency-Key", it) }
         try {
             c.outputStream.use { it.write(body.toByteArray()) }
             val code = c.responseCode

@@ -35,6 +35,15 @@ class Http(unittest.TestCase):
         self.assertEqual(400, self.post("-1")[0])
         self.assertEqual(400, self.post("abc")[0])
 
+    def test_bad_idempotency_key(self):
+        c = http.client.HTTPConnection("127.0.0.1", self.server.server_address[1], timeout=5)
+        c.request("POST", "/v1/recipes", body=b'{"key": "web-x"}',
+                  headers={"Authorization": "Bearer t0k", "Idempotency-Key": "no spaces allowed"})
+        r = c.getresponse()
+        self.assertEqual(422, r.status)
+        self.assertIn("Idempotency-Key", json.loads(r.read())["error"])
+        c.close()
+
     def test_wrong_token(self):
         self.assertEqual((401, {"error": "missing or wrong token"}), self.post("0", token="nope"))
 

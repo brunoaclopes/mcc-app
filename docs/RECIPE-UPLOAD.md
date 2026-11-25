@@ -9,6 +9,7 @@ phones). The phone sets its address and token in Settings → Recipe import. Set
     POST <address>/v1/recipes
     Authorization: Bearer <token>
     Content-Type: application/json
+    Idempotency-Key: <optional, 8–100 of A–Z a–z 0–9 - _>
 
     {"key": "web-legumes-salteados-no-azeite",
      "recipes": [ <mcc-recipe/1, language "pt", id "<key>-pt">, <mcc-recipe/1, language "en", id "<key>-en"> ]}
@@ -16,6 +17,10 @@ phones). The phone sets its address and token in Settings → Recipe import. Set
 - `key`: `web-<slug>` (lower case, a–z 0–9 and `-`). The phone tries `<key>-2`, `<key>-3`… on 409.
 - `recipes`: exactly one `pt` and one `en`, same structure (only the words differ). Each one has been parsed and fitted to
   the machine limits by the app (`Recipe.parse`, `RecipeFit`); the service still validates them, like the repo build.
+- `Idempotency-Key` (optional): the phone makes one per reviewed recipe and sends it on every try. When an
+  upload with that key is already in the repository (an earlier try went through but its answer was lost to a
+  timeout), the service answers 201 with that upload's key and adds nothing. It is kept as an `Upload-Key:` line in
+  the commit message, so it still works after a restart. A badly formed key is a 422.
 - `image` may be an absolute `http(s)` URL of the source page's photo, or absent. `source` may hold
   `{"kind": "ai-import", "url": "…"}`.
 
@@ -23,7 +28,7 @@ phones). The phone sets its address and token in Settings → Recipe import. Set
 
 | Code | Body | Meaning |
 |------|------|---------|
-| 201 | `{"key": "…", "ids": ["…-pt", "…-en"]}` | committed and pushed; the recipe server picks it up within a minute (git mode), or `MCC_DEPLOY_CMD` redeploys it |
+| 201 | `{"key": "…", "ids": ["…-pt", "…-en"]}` | committed and pushed (or already there under this `Idempotency-Key`; `key` is then that upload's); the recipe server picks it up within a minute (git mode), or `MCC_DEPLOY_CMD` redeploys it |
 | 401 | `{"error": "…"}` | missing or wrong token |
 | 409 | `{"error": "…"}` | the key already exists |
 | 413 | `{"error": "…"}` | body over 1 MB |

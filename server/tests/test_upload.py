@@ -151,6 +151,20 @@ class RepositoryFlow(unittest.TestCase):
             self.up.add(body())
         self.assertEqual(409, cm.exception.status)
 
+    def test_same_upload_key_is_added_once(self):
+        first = self.up.add(body(), "k-0123456789")
+        self.assertEqual("web-test-soup", first["key"])
+        msg = sh("git", "--git-dir", str(self.remote), "log", "-1", "--format=%B", "main")
+        self.assertIn("Upload-Key: k-0123456789", msg)
+        # the reply was lost and the phone sends it again: same answer, nothing new in the repository
+        before = sh("git", "--git-dir", str(self.remote), "rev-parse", "main")
+        self.assertEqual(first, self.up.add(body(), "k-0123456789"))
+        self.assertEqual(before, sh("git", "--git-dir", str(self.remote), "rev-parse", "main"))
+        # another upload of the same recipe (a new key) is still a conflict
+        with self.assertRaises(Problem) as cm:
+            self.up.add(body(), "k-9999999999")
+        self.assertEqual(409, cm.exception.status)
+
     def test_rejected_by_build_index(self):
         b = body()
         for r in b["recipes"]:

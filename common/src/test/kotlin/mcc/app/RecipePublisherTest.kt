@@ -18,6 +18,8 @@ import kotlin.test.assertTrue
 
 class RecipePublisherTest {
     private val taken = mutableSetOf("web-sopa")
+    /** Idempotency-Key -> key it was stored under, like the service. */
+    private val seen = mutableMapOf<String, String>()
     private val bodies = mutableListOf<String>()
     private var auth: String? = null
     private val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
@@ -25,11 +27,13 @@ class RecipePublisherTest {
             auth = x.requestHeaders.getFirst("Authorization")
             val body = x.requestBody.readBytes().toString(Charsets.UTF_8); bodies += body
             val key = Json.parseToJsonElement(body).jsonObject["key"]!!.jsonPrimitive.content
+            val upKey = x.requestHeaders.getFirst("Idempotency-Key")
             val (code, reply) = when {
                 auth != "Bearer t0k" -> 401 to """{"error":"bad token"}"""
+                upKey != null && upKey in seen -> seen[upKey]!!.let { 201 to """{"key":"$it","ids":["$it-pt","$it-en"]}""" }
                 key == "web-bad" -> 422 to """{"error":"steps: speed 11 is above 10"}"""
                 key in taken -> 409 to """{"error":"exists"}"""
-                else -> 201 to """{"key":"$key","ids":["$key-pt","$key-en"]}"""
+                else -> { taken += key; upKey?.let { seen[it] = key }; 201 to """{"key":"$key","ids":["$key-pt","$key-en"]}""" }
             }
             val b = reply.toByteArray(); x.sendResponseHeaders(code, b.size.toLong()); x.responseBody.use { it.write(b) }
         }
@@ -92,6 +96,15 @@ class RecipePublisherTest {
         assertTrue(sent.all { r -> r["tags"]!!.jsonArray.map { it.jsonPrimitive.content } == listOf("Sopas") })
         // the repository's validator requires mode, also for the default (run)
         assertTrue(sent.all { r -> r["steps"]!!.jsonArray[1].jsonObject["mode"]?.jsonPrimitive?.content == "run" })
+    }
+
+    @Test fun retryWithTheSameUploadKeyGetsTheFirstKey() {
+        val pub = RecipePublisher(url, "t0k")
+        assertEquals("web-caldo", pub.publish("web-caldo", listOf(recipe("pt"), recipe("en")), "u-1234567890"))
+        // the answer was lost and the user tries again: the service knows the key, no "web-caldo-2"
+        assertEquals("web-caldo", pub.publish("web-caldo", listOf(recipe("pt"), recipe("en")), "u-1234567890"))
+        // a different recipe with the same title still gets a free name
+        assertEquals("web-caldo-2", pub.publish("web-caldo", listOf(recipe("pt"), recipe("en")), "u-other00000"))
     }
 
     @Test fun rejectionCarriesTheServersReason() {
