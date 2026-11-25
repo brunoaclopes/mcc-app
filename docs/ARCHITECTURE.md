@@ -135,6 +135,10 @@ for 1.5 s after a tare. The board reports 0 g while the motor runs.
 - The service holds a partial wake lock and a Wi-Fi lock for as long as it runs (the machine is mains powered): the
   100 ms command stream never stalls, the lid and scale are watched in standby, and Home Assistant stays connected
   with the screen off.
+- `WifiWatchdog` reconnects Wi-Fi by itself. On the tablet a lost IP configuration (seen after the router's address
+  or IPv6 announcement changed) drops the connection, and with the screen off the vendor's Wi-Fi code stops trying
+  after 12 minutes, whatever the sleep policy says. After 45 s without a connection the watchdog asks for a scan and
+  a reconnect, at most once a minute, on its own thread.
 
 ## Jog knob
 

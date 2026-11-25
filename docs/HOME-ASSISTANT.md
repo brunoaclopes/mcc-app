@@ -44,7 +44,7 @@ when the run starts (lid, content for heating, speed, time).
 |---|---|---|---|
 | `homeassistant/device/mcc/config` | machine → HA | yes | discovery for the device and its entities |
 | `mcc/state` | machine → HA | yes | JSON state (below), sent on change, at most every 0.5 s, and at least every 60 s |
-| `mcc/availability` | machine → HA | yes | `online` / `offline` (offline is the MQTT last will) |
+| `mcc/availability` | machine → HA | yes | `online` / `offline` (offline is the MQTT last will; after a Wi-Fi drop the app reconnects by itself within about a minute) |
 | `mcc/event` | machine → HA | no | one-off events (below), JSON with `event_type` |
 | `mcc/cmd` | HA → machine | no | `stop`, `pause`, `tare`, `cancel`, `refresh`, `wake` or `start`, as a bare word or `{"command": "stop"}`; and `load` (below) |
 
