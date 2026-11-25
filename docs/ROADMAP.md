@@ -40,6 +40,9 @@ worth doing next, roughly in order of value for the effort.
 8. **Announcements**: "add the pasta now" through Home Assistant on a kitchen speaker (the `needs_you` event already
    carries the text), and a gentle repeat if nobody reacts.
 9. **Cleaning reminder**: after a recipe with sauces or dough, offer the matching cleaning program.
+10. **Wi-Fi and tablet settings in the app**, as on the stock app: Wi-Fi on/off, scan, connect with a password, forget
+    a network, show the address; screen brightness. Needs testing at the machine, since a wrong step takes the tablet
+    off the network it is managed over.
 
 ## Not planned
 

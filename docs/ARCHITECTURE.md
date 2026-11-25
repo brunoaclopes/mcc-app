@@ -34,6 +34,8 @@
   of three levels) and an optional onion base, and just puts the vegetables in: that weigh step measures them
   (`measure`), and when it ends the runner asks `Generated` for the same recipe worked out for the weighed amount
   (water, cooking time, portions; 300 g to 1.2 kg, at most 2 kg in the bowl), with the same steps.
+- `BlurHash.kt`: decodes an index entry's `blurhash` into pixels; `common/`'s `BlurPlaceholder` turns them into the
+  blurred photo placeholder both apps show while a photo loads.
 - `RecipeFit.kt`: fits a recipe from outside (AI import, other machines) to the machine limits and lists each change.
 - `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
   time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above
@@ -74,7 +76,7 @@ Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.ph
 | `SerialPort.kt` + `jni/mccserial.c` | opens `/dev/ttyMT0` at 4800 baud; refuses while the stock machine service runs (`PortGuard`) |
 | `Led.kt` | RGB LED patterns on their own thread |
 | `MqttBridge.kt` | Home Assistant discovery, state and commands ([HOME-ASSISTANT.md](HOME-ASSISTANT.md)) |
-| `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`) |
+| `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`). Both apps show the cached index first and refresh it in the background (stale-while-revalidate), again when it is older than 15 minutes |
 | `AiClient.kt` (in `common/`) | OpenAI-compatible chat client for the recipe import; output goes through `Recipe.parse` and `RecipeFit` |
 | `Prefs.kt` | settings, and the cooking history (recipes finished, newest first; "Cooked lately" in Recipes) |
 | `Sounds.kt` | small synthesized sounds (start, stop, step, weighed, done, alerts, knob ticks), generated at start-up and played on the alarm stream |
@@ -133,6 +135,10 @@ for 1.5 s after a tare. The board reports 0 g while the motor runs.
 - The service holds a partial wake lock and a Wi-Fi lock for as long as it runs (the machine is mains powered): the
   100 ms command stream never stalls, the lid and scale are watched in standby, and Home Assistant stays connected
   with the screen off.
+- `WifiWatchdog` reconnects Wi-Fi by itself. On the tablet a lost IP configuration (seen after the router's address
+  or IPv6 announcement changed) drops the connection, and with the screen off the vendor's Wi-Fi code stops trying
+  after 12 minutes, whatever the sleep policy says. After 45 s without a connection the watchdog asks for a scan and
+  a reconnect, at most once a minute, on its own thread.
 
 ## Jog knob
 

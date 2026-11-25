@@ -41,6 +41,8 @@ ln -sfn "$SRC/recipes" "$WEB/recipes"
 [ -d "$SRC/images" ] && ln -sfn "$SRC/images" "$WEB/images"
 mkdir -p "$STAGE"
 ln -sfn "$SRC/recipes" "$STAGE/recipes"
+# the photos, for their blurred placeholders (computed once, then kept in $STAGE/.mcc-blurhash.json)
+[ -d "$SRC/images" ] && ln -sfn "$SRC/images" "$STAGE/images"
 
 index() {
   if python3 -I /opt/mcc/tools/build_index.py "$STAGE" >/tmp/mcc-index.log 2>&1; then

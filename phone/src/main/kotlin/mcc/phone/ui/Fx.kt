@@ -19,7 +19,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,11 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -89,7 +97,7 @@ fun Rolling(text: String, style: TextStyle, color: Color, modifier: Modifier = M
     AnimatedContent(text, modifier, transitionSpec = {
         val up = (targetState.filter(Char::isDigit).toIntOrNull() ?: 0) >= (initialState.filter(Char::isDigit).toIntOrNull() ?: 0)
         (slideInVertically { if (up) it / 2 else -it / 2 } + fadeIn(tween(220))) togetherWith (slideOutVertically { if (up) -it / 2 else it / 2 } + fadeOut(tween(160)))
-    }, label = "roll") { Text(it, style = style, color = color, maxLines = 1) }
+    }, label = "roll") { Text(it, style = style.copy(fontFeatureSettings = "tnum"), color = color, maxLines = 1) }   // same-width digits
 }
 
 /** 270° arc gauge. */
@@ -154,4 +162,20 @@ fun greeting(): String {
     val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
     val S = mcc.phone.P.s
     return when (h) { in 5..11 -> S.greetMorning; in 12..19 -> S.greetAfternoon; else -> S.greetEvening }
+}
+
+/** Skeleton placeholder: a soft surface that breathes while the real content loads. */
+@Composable
+fun Skeleton(modifier: Modifier, shape: Shape) {
+    val a by rememberInfiniteTransition(label = "skeleton").animateFloat(0.45f, 0.9f,
+        infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "skeleton")
+    Box(modifier.clip(shape).drawBehind { drawRect(Mc.surface2.copy(alpha = a)) })
+}
+
+/** A few text-line skeletons, for a recipe page whose content is still loading. */
+@Composable
+fun SkeletonLines(lines: Int, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(lines) { i -> Skeleton(Modifier.fillMaxWidth(if (i == lines - 1) 0.55f else 1f - 0.08f * (i % 3)).height(18.dp), smooth(9.dp)) }
+    }
 }

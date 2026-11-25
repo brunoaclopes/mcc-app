@@ -27,7 +27,11 @@ as Home Assistant**, so it needs no server on the tablet and no Google services:
   keep it on this phone only. If adding it or a correction fails, the reason is shown at the top of the review, and
   the recipe stays there to try again. Videos are transcribed by the upload service first
   ([RECIPE-UPLOAD.md](RECIPE-UPLOAD.md#video-transcripts)).
-- **Shopping list** from a recipe's ingredients, grouped by recipe, tick off as you shop, share as text.
+- **Recipes** open at once from the copy on the phone and refresh from the recipe server in the background (at start
+  and when the app comes back after 15 minutes). Photos show blurred while they load.
+- **Shopping list** from a recipe's ingredients, grouped by recipe, tick off as you shop, share as text. Removing an
+  item or clearing the bought ones can be undone, and items go back where they were. Discarding an imported recipe
+  can be undone too.
 - **Home-screen widget** and **Quick Settings tile**: what the machine is doing and when it is ready, with Stop
   while it runs (the tile asks first). App shortcuts (long-press the icon) open Machine, Recipes or the list.
 - **Foldables and tablets**: on a wide screen (e.g. Galaxy Z Fold unfolded) a side rail and two panes. The machine

@@ -115,7 +115,7 @@ class HomeScreen(app: AppUi) : Screen(app) {
         val th = header(Icon.THERMO, T.AMBER, S.bowl)
         tempIcon = th.getChildAt(0) as IconView
         tc.addView(th)
-        tempBig = GradientText(c, T.TEXT, T.AMBER).apply { text = "—"; textSize = 44f; typeface = T.heavy; includeFontPadding = false; setPadding(0, T.dp(12), 0, T.dp(4)) }
+        tempBig = GradientText(c, T.TEXT, T.AMBER).apply { text = "—"; textSize = 44f; typeface = T.heavy; fontFeatureSettings = "tnum"; includeFontPadding = false; setPadding(0, T.dp(12), 0, T.dp(4)) }
         tc.addView(tempBig)
         tempSub = T.text(c, "", 13.5f, T.TEXT_2, T.semibold)
         tc.addView(tempSub)

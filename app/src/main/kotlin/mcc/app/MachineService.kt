@@ -93,6 +93,7 @@ class MachineService : Service() {
     private var mqtt: MqttBridge? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+    private var wifiWatchdog: WifiWatchdog? = null
     private val led = Led()
     private val scaleFilter = ScaleFilter()
     private var ledWasRunning = false
@@ -118,6 +119,7 @@ class MachineService : Service() {
             .build()
         startForeground(1, n)
         acquireWake()
+        wifiWatchdog = WifiWatchdog(this).also { it.start() }
         worker = Thread(::loop, "mcc-machine").also { it.start() }
         led.start()
         restartMqtt()
@@ -132,6 +134,7 @@ class MachineService : Service() {
         worker?.interrupt()
         mqtt?.close()
         led.stop()
+        wifiWatchdog?.stop(); wifiWatchdog = null
         releaseWake()
         instance = null
         status = "stopped"

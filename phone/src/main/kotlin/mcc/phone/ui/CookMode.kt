@@ -1,6 +1,7 @@
 package mcc.phone.ui
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -66,7 +67,11 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
     val written by produceState<Recipe?>(null, recipeId) { value = Recipes.byId(recipeId) }
     val view = LocalView.current
     DisposableEffect(view) { view.keepScreenOn = true; onDispose { view.keepScreenOn = false } }
-    BackHandler { onClose() }
+    // predictive back: the page shrinks and rounds as the back gesture is drawn, like the recipe page
+    var back by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    androidx.activity.compose.PredictiveBackHandler { progress ->
+        try { progress.collect { back = it.progress }; onClose() } catch (_: kotlin.coroutines.cancellation.CancellationException) { back = 0f }
+    }
     val S = P.s
     val haptic = rememberHaptic()
     val st by LinkClient.state.collectAsState()
@@ -74,7 +79,10 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
     val people = if (st?.recipeId == recipeId) Servings.parse(st?.servings)?.count else Recipes.people[recipeId]
     val r = remember(written, people) { written?.let { w -> people?.let { w.forPeople(it) } ?: w } }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().graphicsLayer {
+        val k = 1f - 0.1f * back
+        scaleX = k; scaleY = k; shape = RoundedCornerShape((32 * back).dp); clip = back > 0f
+    }.background(if (back > 0f) Mc.bg else Color.Transparent)) {
         Ambient(if (st?.recipeId == recipeId && st?.running == true) mood(st, true) else Mc.amber)
         val recipe = r
         if (recipe == null) { CircularProgressIndicator(Modifier.align(Alignment.Center), color = Mc.amber); return@Box }
@@ -110,7 +118,7 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
                 Column(
                     Modifier.fillMaxSize().padding(vertical = 20.dp)
                         .graphicsLayer { val k = 1f - 0.08f * off.coerceAtMost(1f); scaleX = k; scaleY = k; alpha = 1f - 0.5f * off.coerceAtMost(1f) }
-                        .clip(RoundedCornerShape(32.dp)).background(Mc.surface.copy(alpha = 0.92f))
+                        .clip(smooth(32.dp)).background(Mc.surface.copy(alpha = 0.92f))
                         .verticalScroll(rememberScrollState()).padding(26.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -120,7 +128,7 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
                         if (page == machineStep) {
                             Spacer(Modifier.width(12.dp))
                             Text(S.stepNow.uppercase(L.s.locale), style = MaterialTheme.typography.labelLarge, color = Mc.onAccent,
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Mc.teal).padding(horizontal = 10.dp, vertical = 4.dp))
+                                modifier = Modifier.clip(smooth(10.dp)).background(Mc.teal).padding(horizontal = 10.dp, vertical = 4.dp))
                         }
                     }
                     if (chip != null) {
@@ -147,13 +155,13 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
             }
             Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(onClick = { haptic(false); scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }, enabled = pager.currentPage > 0,
-                    modifier = Modifier.weight(1f).height(60.dp), shape = RoundedCornerShape(22.dp),
+                    modifier = Modifier.weight(1f).height(60.dp), shape = smooth(22.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Mc.surface3, contentColor = Mc.text)) { McIcon(Icon.BACK, Mc.text, 18.dp); Spacer(Modifier.width(6.dp)); Text(S.previous) }
                 if (machineStep != null && machineStep != pager.currentPage)
-                    Button(onClick = { scope.launch { pager.animateScrollToPage(machineStep) } }, modifier = Modifier.weight(1.4f).height(60.dp), shape = RoundedCornerShape(22.dp),
+                    Button(onClick = { scope.launch { pager.animateScrollToPage(machineStep) } }, modifier = Modifier.weight(1.4f).height(60.dp), shape = smooth(22.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Mc.teal, contentColor = Mc.onAccent)) { Text(S.goToMachineStep, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
                 else Button(onClick = { haptic(false); scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, enabled = pager.currentPage < recipe.steps.lastIndex,
-                    modifier = Modifier.weight(1.4f).height(60.dp), shape = RoundedCornerShape(22.dp),
+                    modifier = Modifier.weight(1.4f).height(60.dp), shape = smooth(22.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) { Text(S.next); Spacer(Modifier.width(6.dp)); McIcon(Icon.NEXT, Mc.onAccent, 18.dp) }
             }
         }

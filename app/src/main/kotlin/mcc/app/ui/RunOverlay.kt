@@ -38,7 +38,7 @@ class RunOverlay(private val app: AppUi) {
         top.addView(HoldButton(c).apply { label = ""; icon = Icon.DOWN; holdMillis = 0; style(T.SURFACE_3, T.SURFACE_3); onConfirm = { minimise() } },
             LinearLayout.LayoutParams(T.dp(64), T.dp(56)))
         col.addView(top, LinearLayout.LayoutParams(-1, -2))
-        digits = GradientText(c, T.TEXT, T.TEAL).apply { textSize = 150f; typeface = T.heavy; includeFontPadding = false; gravity = Gravity.CENTER }
+        digits = GradientText(c, T.TEXT, T.TEAL).apply { textSize = 150f; typeface = T.heavy; fontFeatureSettings = "tnum"; includeFontPadding = false; gravity = Gravity.CENTER }
         col.addView(digits, LinearLayout.LayoutParams(-1, 0, 1f))
         detail = T.text(c, "", 20f, T.TEXT_2, T.bold).apply { gravity = Gravity.CENTER }
         col.addView(detail, LinearLayout.LayoutParams(-1, -2))
@@ -65,8 +65,9 @@ class RunOverlay(private val app: AppUi) {
     private fun show() {
         if (shown) return
         shown = true
+        // shown again while still fading out: carry on from where it is instead of jumping back to transparent
+        if (view.visibility != View.VISIBLE) { view.alpha = 0f; view.translationY = T.dpf(40f) }
         view.visibility = View.VISIBLE
-        view.alpha = 0f; view.translationY = T.dpf(40f)
         view.animate().alpha(1f).translationY(0f).setDuration(280).setInterpolator(DecelerateInterpolator()).start()
     }
 

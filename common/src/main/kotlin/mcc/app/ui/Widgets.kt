@@ -150,7 +150,9 @@ class DialView(context: Context) : View(context) {
         txt.letterSpacing = 0f
         txt.typeface = T.heavy; txt.color = T.TEXT
         txt.textSize = r * (if (value.length > 5) 0.34f else 0.42f)
+        txt.fontFeatureSettings = "tnum"   // same-width digits: a running time doesn't jiggle
         c.drawText(value, cx, cy + r * 0.12f, txt)
+        txt.fontFeatureSettings = null
         txt.typeface = T.semibold; txt.textSize = T.dpf(14f); txt.color = T.TEXT_2
         c.drawText(unit, cx, cy + r * 0.33f, txt)
         if (sub.isNotEmpty()) {
@@ -376,11 +378,13 @@ class WeightGauge(context: Context) : View(context) {
             cx + (r + sw / 2 + T.dpf(2f)) * cos(ta).toFloat(), cy + (r + sw / 2 + T.dpf(2f)) * sin(ta).toFloat(), paint)
         val big = grams?.let { "${shown.toInt()}" } ?: "…"
         txt.typeface = T.heavy; txt.textSize = r * 0.4f; txt.color = T.TEXT
+        txt.fontFeatureSettings = "tnum"
         val bw = txt.measureText(big)
         txt.textAlign = Paint.Align.LEFT
         val unitSize = r * 0.16f
         val total = bw + T.dpf(6f) + unitSize * 1.2f
         c.drawText(big, cx - total / 2, cy - r * 0.08f, txt)
+        txt.fontFeatureSettings = null
         txt.typeface = T.bold; txt.textSize = unitSize; txt.color = T.TEXT_2
         c.drawText("g", cx - total / 2 + bw + T.dpf(6f), cy - r * 0.08f, txt)
         txt.textAlign = Paint.Align.CENTER

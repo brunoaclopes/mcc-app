@@ -81,7 +81,7 @@ private fun Color.argb() = android.graphics.Color.argb((alpha * 255).toInt(), (r
 
 @Composable
 fun Glass(modifier: Modifier = Modifier, accent: Color? = null, content: @Composable () -> Unit) {
-    val shape = RoundedCornerShape(26.dp)
+    val shape = smooth(26.dp)
     Box(
         modifier
             .clip(shape)
@@ -243,7 +243,7 @@ private fun StatusCard(s: MachineState, online: Boolean, big: Boolean = false) {
 private fun CookingCard(s: MachineState, recipe: Recipe?, onOpenRecipe: ((String) -> Unit)?, onCook: ((String) -> Unit)?) {
     val S = P.s
     val step = s.step?.split("/")?.mapNotNull { it.toIntOrNull() }
-    val shape = RoundedCornerShape(26.dp)
+    val shape = smooth(26.dp)
     Box(
         Modifier.fillMaxWidth().clip(shape)
             .let { m -> if (onOpenRecipe != null && s.recipeId != null) m.clickable { onOpenRecipe(s.recipeId!!) } else m }
@@ -269,7 +269,7 @@ private fun CookingCard(s: MachineState, recipe: Recipe?, onOpenRecipe: ((String
             if (s.recipeId != null) {
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (onCook != null) Button(onClick = { onCook(s.recipeId!!) }, shape = RoundedCornerShape(16.dp),
+                    if (onCook != null) Button(onClick = { onCook(s.recipeId!!) }, shape = smooth(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0x33FFFFFF), contentColor = Mc.onPhoto)) {
                         McIcon(Icon.CHEF, Mc.onPhoto, 18.dp); Spacer(Modifier.width(8.dp)); Text(S.cookMode)
                     }
@@ -307,7 +307,7 @@ private fun GaugeCard(title: String, icon: Icon, color: Color, fraction: Float, 
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { Label(title, color, icon) }
                 if (action != null) Text(L.s.tare, style = MaterialTheme.typography.labelLarge, color = Mc.teal,
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Mc.teal.copy(alpha = 0.14f)).clickable(onClick = action).padding(horizontal = 10.dp, vertical = 5.dp))
+                    modifier = Modifier.clip(smooth(10.dp)).background(Mc.teal.copy(alpha = 0.14f)).clickable(onClick = action).padding(horizontal = 10.dp, vertical = 5.dp))
             }
             Spacer(Modifier.height(10.dp))
             Box(Modifier.fillMaxWidth(0.82f).aspectRatio(1f), contentAlignment = Alignment.Center) {
@@ -333,12 +333,12 @@ private fun Controls(s: MachineState, online: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(
             onClick = { haptic(true); if (LinkClient.send(Command.Stop)) ui.say(S.stopSent) else ui.say(S.connecting) },
-            enabled = online, modifier = Modifier.weight(1.3f).height(64.dp), shape = RoundedCornerShape(22.dp),
+            enabled = online, modifier = Modifier.weight(1.3f).height(64.dp), shape = smooth(22.dp),
             colors = ButtonDefaults.buttonColors(containerColor = stopCol, contentColor = if (active) Color.White else Mc.text),
         ) { McIcon(Icon.STOP, if (active) Color.White else Mc.text, 20.dp); Spacer(Modifier.width(8.dp)); Text(L.s.stop, fontSize = 18.sp) }
         Button(
             onClick = { haptic(false); if (LinkClient.send(Command.Pause)) ui.say(S.pauseSent) },
-            enabled = online && s.running, modifier = Modifier.weight(1f).height(64.dp), shape = RoundedCornerShape(22.dp),
+            enabled = online && s.running, modifier = Modifier.weight(1f).height(64.dp), shape = smooth(22.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Mc.surface3, contentColor = Mc.text),
         ) { McIcon(Icon.PAUSE, Mc.text, 20.dp); Spacer(Modifier.width(8.dp)); Text(L.s.pause) }
     }
@@ -347,7 +347,7 @@ private fun Controls(s: MachineState, online: Boolean) {
 @Composable
 fun Chip(icon: Icon, text: String, color: Color, onClick: (() -> Unit)? = null) {
     Row(
-        Modifier.clip(RoundedCornerShape(14.dp)).background(Mc.surface3.copy(alpha = 0.7f))
+        Modifier.clip(smooth(14.dp)).background(Mc.surface3.copy(alpha = 0.7f))
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -386,7 +386,7 @@ fun CancelRecipeButton(onPhoto: Boolean, modifier: Modifier = Modifier) {
     val S = P.s
     var ask by remember { mutableStateOf(false) }
     val fg = if (onPhoto) Mc.onPhoto else Mc.danger
-    Button(onClick = { ask = true }, modifier = modifier, shape = RoundedCornerShape(16.dp),
+    Button(onClick = { ask = true }, modifier = modifier, shape = smooth(16.dp),
         contentPadding = PaddingValues(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp),
         colors = ButtonDefaults.buttonColors(containerColor = if (onPhoto) Color(0x33FFFFFF) else Mc.danger.copy(alpha = 0.12f), contentColor = fg)) {
         McIcon(Icon.CLOSE, fg, 16.dp, 2.4f); Spacer(Modifier.width(8.dp)); Text(S.cancelRecipe)

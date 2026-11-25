@@ -61,7 +61,15 @@ fun ShoppingScreen(modifier: Modifier) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(S.listTitle, style = MaterialTheme.typography.headlineMedium, color = Mc.text, modifier = Modifier.weight(1f))
-                    if (done > 0) TextButton(onClick = { haptic(false); shop.clearChecked() }) { Text(S.clearChecked, color = Mc.teal) }
+                    if (done > 0) TextButton(onClick = {
+                        haptic(false)
+                        val gone = shop.clearChecked()
+                        ui.scope.launch {
+                            ui.snackbar.currentSnackbarData?.dismiss()
+                            if (ui.snackbar.showSnackbar(S.clearedN(gone.size), S.undo, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed)
+                                shop.putBack(gone)
+                        }
+                    }) { Text(S.clearChecked, color = Mc.teal) }
                     if (items.isNotEmpty()) TextButton(onClick = {
                         ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
                             .putExtra(Intent.EXTRA_TEXT, shop.asText(S.listTitle)), S.share))
@@ -77,7 +85,7 @@ fun ShoppingScreen(modifier: Modifier) {
         }
         if (items.isEmpty()) item {
             Column(Modifier.fillMaxWidth().padding(top = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(110.dp).clip(RoundedCornerShape(36.dp)).background(Mc.surface), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(110.dp).clip(smooth(36.dp)).background(Mc.surface), contentAlignment = Alignment.Center) {
                     McIcon(Icon.LIST, Mc.amber, 52.dp, 1.6f)
                 }
                 Spacer(Modifier.size(16.dp))
@@ -88,8 +96,8 @@ fun ShoppingScreen(modifier: Modifier) {
             if (recipe != null) item(key = "h-$recipe") {
                 val e = index.firstOrNull { it.title == recipe }
                 Row(Modifier.padding(top = 14.dp, bottom = 2.dp).animateItem(), verticalAlignment = Alignment.CenterVertically) {
-                    if (e != null) Cover(e.id, e.title, e.tags, e.image, 160, Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)))
-                    else Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Mc.surface3), contentAlignment = Alignment.Center) { McIcon(Icon.BOOK, Mc.text3, 20.dp) }
+                    if (e != null) Cover(e.id, e.title, e.tags, e.image, 160, Modifier.size(40.dp).clip(smooth(12.dp)))
+                    else Box(Modifier.size(40.dp).clip(smooth(12.dp)).background(Mc.surface3), contentAlignment = Alignment.Center) { McIcon(Icon.BOOK, Mc.text3, 20.dp) }
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(recipe, style = MaterialTheme.typography.titleSmall, color = Mc.text)
@@ -99,11 +107,11 @@ fun ShoppingScreen(modifier: Modifier) {
             }
             items(group, key = { "${it.recipe}|${it.text}" }) { item ->
                 ItemRow(item, Modifier.animateItem(), onToggle = { haptic(!item.checked); shop.toggle(item) }) {
-                    shop.remove(item)
+                    val gone = shop.remove(item)
                     ui.scope.launch {
                         ui.snackbar.currentSnackbarData?.dismiss()
                         if (ui.snackbar.showSnackbar(S.removed(item.text), S.undo, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed)
-                            shop.restore(item)
+                            shop.putBack(gone)
                     }
                 }
             }
@@ -116,17 +124,17 @@ private fun ItemRow(it: Shopping.Item, modifier: Modifier, onToggle: () -> Unit,
     val state = rememberSwipeToDismissBoxState()
     SwipeToDismissBox(state, modifier = modifier, enableDismissFromStartToEnd = false, onDismiss = { if (it == SwipeToDismissBoxValue.EndToStart) onRemove() },
         backgroundContent = {
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(Mc.danger).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
+            Box(Modifier.fillMaxSize().clip(smooth(18.dp)).background(Mc.danger).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
                 McIcon(Icon.TRASH, androidx.compose.ui.graphics.Color.White, 22.dp)
             }
         }) {
         val box by animateColorAsState(if (it.checked) Mc.teal else Mc.surface3, label = "check")
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Mc.surface.copy(alpha = if (it.checked) 0.6f else 0.95f)).clickable(onClick = onToggle)
+            Modifier.fillMaxWidth().clip(smooth(18.dp)).background(Mc.surface.copy(alpha = if (it.checked) 0.6f else 0.95f)).clickable(onClick = onToggle)
                 .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(26.dp).clip(RoundedCornerShape(8.dp)).background(box), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(26.dp).clip(smooth(8.dp)).background(box), contentAlignment = Alignment.Center) {
                 if (it.checked) McIcon(Icon.CHECK, Mc.onAccent, 16.dp, 2.8f)
             }
             Spacer(Modifier.width(12.dp))

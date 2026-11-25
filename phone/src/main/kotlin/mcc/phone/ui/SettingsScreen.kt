@@ -61,7 +61,7 @@ private fun Field(label: String, value: String, onChange: (String) -> Unit, hint
         placeholder = hint?.let { { Text(it) } },
         visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = when { password -> KeyboardType.Password; number -> KeyboardType.Number; else -> KeyboardType.Uri }),
-        shape = RoundedCornerShape(16.dp),
+        shape = smooth(16.dp),
         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Mc.amber, unfocusedBorderColor = Mc.stroke, focusedLabelColor = Mc.amber),
     )
 }
@@ -128,7 +128,7 @@ fun SettingsScreen(modifier: Modifier) {
                 Button(onClick = {
                     p.host = host; p.port = port.toIntOrNull() ?: 1883; p.user = user; p.password = pass; p.tls = tls
                     LinkClient.stop(); app.syncLink(); ui.say(S.saved)
-                }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(18.dp),
+                }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = smooth(18.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) { Text(S.saveConnect) }
             }
         }
@@ -139,7 +139,7 @@ fun SettingsScreen(modifier: Modifier) {
                 Text(S.repoHint, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
                 Field(L.s.address, repo, { repo = it }, "https://…")
                 FilledTonalButton(onClick = { p.repoUrl = repo; Recipes.refresh(force = true); ui.say(S.saved) },
-                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(L.s.saveSync) }
+                    modifier = Modifier.fillMaxWidth(), shape = smooth(16.dp)) { Text(L.s.saveSync) }
             }
         }
 
@@ -160,7 +160,7 @@ fun SettingsScreen(modifier: Modifier) {
                         }
                         ui.say(r.fold({ L.s.aiOk(it.size) }, { L.s.aiFailed(it.message ?: "") }))
                     }
-                }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(S.testAi) }
+                }, modifier = Modifier.fillMaxWidth(), shape = smooth(16.dp)) { Text(S.testAi) }
             }
         }
 
@@ -182,7 +182,7 @@ fun SettingsScreen(modifier: Modifier) {
                             ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${ctx.packageName}")))
                         }
                         batteryOk = pm.isIgnoringBatteryOptimizations(ctx.packageName)
-                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(S.battery) }
+                    }, modifier = Modifier.fillMaxWidth(), shape = smooth(16.dp)) { Text(S.battery) }
                     Spacer(Modifier.height(8.dp))
                     Text(S.idleNotifHelp, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
                     TextButton(onClick = {

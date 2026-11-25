@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- WifiWatchdog: reconnects when the tablet's Wi-Fi gives up with the screen off -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <!-- standby: turn the screen off and on like the stock app (granted to platform-signed system apps) -->
     <uses-permission android:name="android.permission.DEVICE_POWER" />
 

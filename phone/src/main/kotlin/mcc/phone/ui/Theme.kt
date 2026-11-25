@@ -83,16 +83,18 @@ fun MccTheme(content: @Composable () -> Unit) {
     }
     val base = Typography()
     fun TextStyle.m() = copy(fontFamily = manrope)
+    // headings break into lines of even length (Android 13+), not one word alone on the last line
+    fun TextStyle.h() = m().copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Heading)
     val typo = Typography(
-        displayLarge = base.displayLarge.m().copy(fontWeight = FontWeight.ExtraBold),
-        displayMedium = base.displayMedium.m().copy(fontWeight = FontWeight.ExtraBold),
-        displaySmall = base.displaySmall.m().copy(fontWeight = FontWeight.ExtraBold),
-        headlineLarge = base.headlineLarge.m().copy(fontWeight = FontWeight.ExtraBold),
-        headlineMedium = base.headlineMedium.m().copy(fontWeight = FontWeight.ExtraBold),
-        headlineSmall = base.headlineSmall.m().copy(fontWeight = FontWeight.ExtraBold),
-        titleLarge = base.titleLarge.m().copy(fontWeight = FontWeight.ExtraBold),
-        titleMedium = base.titleMedium.m().copy(fontWeight = FontWeight.Bold),
-        titleSmall = base.titleSmall.m().copy(fontWeight = FontWeight.Bold),
+        displayLarge = base.displayLarge.h().copy(fontWeight = FontWeight.ExtraBold),
+        displayMedium = base.displayMedium.h().copy(fontWeight = FontWeight.ExtraBold),
+        displaySmall = base.displaySmall.h().copy(fontWeight = FontWeight.ExtraBold),
+        headlineLarge = base.headlineLarge.h().copy(fontWeight = FontWeight.ExtraBold),
+        headlineMedium = base.headlineMedium.h().copy(fontWeight = FontWeight.ExtraBold),
+        headlineSmall = base.headlineSmall.h().copy(fontWeight = FontWeight.ExtraBold),
+        titleLarge = base.titleLarge.h().copy(fontWeight = FontWeight.ExtraBold),
+        titleMedium = base.titleMedium.h().copy(fontWeight = FontWeight.Bold),
+        titleSmall = base.titleSmall.h().copy(fontWeight = FontWeight.Bold),
         bodyLarge = base.bodyLarge.m().copy(fontWeight = FontWeight.SemiBold),
         bodyMedium = base.bodyMedium.m().copy(fontWeight = FontWeight.SemiBold),
         bodySmall = base.bodySmall.m().copy(fontWeight = FontWeight.SemiBold),

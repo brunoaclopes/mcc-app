@@ -26,10 +26,24 @@ class Shopping(private val prefs: PhonePrefs) {
     }
 
     fun toggle(i: Item) = save(_items.value.map { if (it == i) it.copy(checked = !it.checked) else it })
-    fun remove(i: Item) = save(_items.value - i)
-    /** Undo of [remove]. */
-    fun restore(i: Item) { if (i !in _items.value) save(_items.value + i) }
-    fun clearChecked() = save(_items.value.filterNot { it.checked })
+    /** Removes [i]; returns it with its place, for [putBack]. */
+    fun remove(i: Item): List<IndexedValue<Item>> {
+        val gone = _items.value.withIndex().filter { it.value == i }
+        save(_items.value - i)
+        return gone
+    }
+    /** Removes the bought items; returns them with their places, for [putBack]. */
+    fun clearChecked(): List<IndexedValue<Item>> {
+        val gone = _items.value.withIndex().filter { it.value.checked }
+        save(_items.value.filterNot { it.checked })
+        return gone
+    }
+    /** Undo of [remove] and [clearChecked]: the items go back where they were (items added since stay). */
+    fun putBack(gone: List<IndexedValue<Item>>) {
+        val l = _items.value.toMutableList()
+        gone.sortedBy { it.index }.forEach { (at, item) -> if (item !in l) l.add(at.coerceAtMost(l.size), item) }
+        save(l)
+    }
 
     fun asText(title: String): String = buildString {
         append(title).append('\n')

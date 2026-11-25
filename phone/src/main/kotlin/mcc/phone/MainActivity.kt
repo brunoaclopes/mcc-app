@@ -22,7 +22,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && android.os.Build.VERSION.SDK_INT >= 33)
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-        Recipes.refresh()
         handle(intent)
         setContent {
             MccTheme { Root(calculateWindowSizeClass(this)) }
@@ -43,6 +42,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() { super.onStart(); PhoneApp.app.onVisible(true) }
+    // the recipe list shows the phone's copy and is refreshed from the server when it is old (at start too)
+    override fun onStart() { super.onStart(); PhoneApp.app.onVisible(true); Recipes.revalidate() }
     override fun onStop() { PhoneApp.app.onVisible(false); super.onStop() }
 }

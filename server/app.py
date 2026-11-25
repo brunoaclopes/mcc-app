@@ -88,7 +88,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(422, {"error": "the body is not valid JSON"})
         if route == "/v1/recipes":
             note = body.get("key", "-") if isinstance(body, dict) else "-"
-            work = lambda: (201, self.uploader.add(body))  # noqa: E731
+            # optional: the same key on a retry returns the first upload's answer instead of adding a copy
+            upload_key = (self.headers.get("Idempotency-Key") or "").strip() or None
+            if upload_key and not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", upload_key):
+                return self.reply(422, {"error": "Idempotency-Key must be 8 to 100 letters, digits, - or _"}, note)
+            work = lambda: (201, self.uploader.add(body, upload_key))  # noqa: E731
         else:
             url = body.get("url") if isinstance(body, dict) else None
             note = video_key(url) if isinstance(url, str) else "-"
