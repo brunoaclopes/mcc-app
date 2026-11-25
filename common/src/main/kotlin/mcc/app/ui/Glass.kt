@@ -150,6 +150,7 @@ class BackdropSlice(private val owner: android.view.View) : Drawable() {
 
 /** TextView with a horizontal gradient fill that follows its size (for titles and big numbers). */
 class GradientText(context: Context, private var a: Int, private var b: Int) : TextView(context, null as AttributeSet?) {
+    init { breakStrategy = android.text.Layout.BREAK_STRATEGY_BALANCED }   // multi-line titles break evenly
     fun colors(c1: Int, c2: Int) { if (c1 != a || c2 != b) { a = c1; b = c2; applyShader() } }
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { super.onSizeChanged(w, h, ow, oh); applyShader() }
     override fun onTextChanged(text: CharSequence?, start: Int, before: Int, after: Int) { super.onTextChanged(text, start, before, after); applyShader() }

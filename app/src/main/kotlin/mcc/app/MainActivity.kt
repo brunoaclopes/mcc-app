@@ -164,8 +164,8 @@ class MainActivity : Activity(), AppUi {
         window.decorView.setOnSystemUiVisibilityChangeListener { vis ->
             if (vis and View.SYSTEM_UI_FLAG_HIDE_NAVIGATION == 0) handler.postDelayed({ immersive() }, 2500)
         }
+        reloadIndex(refresh = true)   // first, so opening the first screen doesn't ask the server a second time
         go(savedInstanceState?.getString("screen") ?: "home", animate = false)
-        reloadIndex(refresh = true)
     }
 
     override fun onSaveInstanceState(out: Bundle) { super.onSaveInstanceState(out); out.putString("screen", current) }
@@ -299,12 +299,14 @@ class MainActivity : Activity(), AppUi {
             else old.view.visibility = View.GONE
         }
         current = screen
+        if (screen == "recipes" || screen == "home") revalidateIndex()
+        val wasLeaving = s.view.visibility == View.VISIBLE   // back to a screen that is still fading out
         s.view.visibility = View.VISIBLE
         // Home shows weight and temperature in big tiles already
         val chips = if (screen == "home") View.GONE else View.VISIBLE
         weightChip.visibility = chips; tempChip.visibility = chips
         if (animate) {
-            s.view.alpha = 0f; s.view.translationY = dir * T.dpf(18f)
+            if (!wasLeaving) { s.view.alpha = 0f; s.view.translationY = dir * T.dpf(18f) }
             s.view.animate().alpha(1f).translationY(0f).setStartDelay(60).setDuration(240).setInterpolator(DecelerateInterpolator()).start()
         }
         s.onShow()
@@ -638,15 +640,32 @@ class MainActivity : Activity(), AppUi {
         }
     }
 
+    /** When the index was last asked from the server (elapsedRealtime), to refresh a stale list now and then. */
+    @Volatile private var indexFetchedAt = 0L
+
+    /**
+     * Stale-while-revalidate: with [refresh], the copy on the tablet shows at once (when nothing is shown yet), and
+     * the server's answer replaces it when it comes, so a slow or offline server never leaves the list empty.
+     */
     override fun reloadIndex(refresh: Boolean) {
+        val empty = index == null
+        if (refresh) indexFetchedAt = SystemClock.elapsedRealtime()
         Thread {
+            if (refresh && empty) store.loadIndex(false).first?.let { cached -> runOnUiThread { if (index == null) showIndex(cached, null) } }
             val (idx, warning) = store.loadIndex(refresh)
-            runOnUiThread {
-                if (idx != null) index = idx
-                (screens["recipes"] as? RecipesScreen)?.onIndex(warning)
-                (screens["home"] as? HomeScreen)?.onIndex()
-            }
+            runOnUiThread { showIndex(idx, warning) }
         }.start()
+    }
+
+    /** Asks the server again when the list is older than 15 minutes (on opening Home or Recipes). */
+    private fun revalidateIndex() {
+        if (SystemClock.elapsedRealtime() - indexFetchedAt > 15 * 60_000L) reloadIndex(true)
+    }
+
+    private fun showIndex(idx: RecipeIndex?, warning: String?) {
+        if (idx != null) index = idx
+        (screens["recipes"] as? RecipesScreen)?.onIndex(warning)
+        (screens["home"] as? HomeScreen)?.onIndex()
     }
 
     override fun cook(recipe: Recipe) {

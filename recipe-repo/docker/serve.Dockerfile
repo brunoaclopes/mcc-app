@@ -8,7 +8,8 @@
 #
 # Build it yourself from recipe-repo/:  docker build -f docker/serve.Dockerfile -t mcc-recipe-server .
 FROM nginx:1.29-alpine
-RUN apk add --no-cache python3 git openssh-client
+# py3-pillow: blurred photo placeholders ("blurhash" in index.json)
+RUN apk add --no-cache python3 py3-pillow git openssh-client
 COPY converters/ /opt/mcc/converters/
 COPY tools/ /opt/mcc/tools/
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf

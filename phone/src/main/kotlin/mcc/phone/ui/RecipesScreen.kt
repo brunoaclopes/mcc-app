@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -111,11 +112,14 @@ private fun palette(seed: String): Pair<Color, Color> {
 }
 
 @Composable
-fun Cover(id: String, title: String, tags: List<String>, image: String?, width: Int, modifier: Modifier) {
+fun Cover(id: String, title: String, tags: List<String>, image: String?, width: Int, modifier: Modifier, blurhash: String? = null) {
     val bmp = Images.load(PhoneApp.app.store, image, width)
     val (a, b) = palette(title)
+    // the photo's BlurHash from the index: a blurred preview until the photo itself is loaded
+    val blur = remember(blurhash) { mcc.app.ui.BlurPlaceholder.bitmap(blurhash)?.asImageBitmap() }
     Box(modifier.background(Brush.linearGradient(listOf(a, b)))) {
         if (bmp != null) Image(bmp, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        else if (blur != null && image != null) Image(blur, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), filterQuality = androidx.compose.ui.graphics.FilterQuality.Low)
         else McIcon(Covers.iconFor(id, title, tags), Mc.onPhoto.copy(alpha = 0.55f), 56.dp, 1.4f, Modifier.align(Alignment.Center))
     }
 }
@@ -123,7 +127,7 @@ fun Cover(id: String, title: String, tags: List<String>, image: String?, width: 
 @Composable
 private fun TimePill(min: Int, modifier: Modifier = Modifier) {
     Text(L.s.minutesShort(min), style = MaterialTheme.typography.labelMedium, color = Color.White,
-        modifier = modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x8C000000)).padding(horizontal = 8.dp, vertical = 4.dp))
+        modifier = modifier.clip(smooth(10.dp)).background(Color(0x8C000000)).padding(horizontal = 8.dp, vertical = 4.dp))
 }
 
 @Composable
@@ -163,12 +167,12 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                     value = q, onValueChange = { q = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(L.s.searchHint) }, leadingIcon = { McIcon(Icon.SEARCH, Mc.text2, 20.dp) },
                     trailingIcon = if (q.isNotEmpty()) ({ IconButton(onClick = { q = "" }) { McIcon(Icon.CLOSE, Mc.text2, 18.dp, 2.4f) } }) else null,
-                    shape = RoundedCornerShape(28.dp),
+                    shape = smooth(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Mc.amber, unfocusedBorderColor = Color.Transparent,
                         focusedContainerColor = Mc.surface, unfocusedContainerColor = Mc.surface.copy(alpha = 0.85f)),
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    tags.forEach { t -> FilterChip(selected = tag == t, onClick = { tag = if (tag == t) null else t }, label = { Text(t) }, colors = chipColors(), shape = RoundedCornerShape(12.dp)) }
+                    tags.forEach { t -> FilterChip(selected = tag == t, onClick = { tag = if (tag == t) null else t }, label = { Text(t) }, colors = chipColors(), shape = smooth(12.dp)) }
                 }
                 rs.warning?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Mc.amber) }
             }
@@ -181,8 +185,8 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                 HorizontalMultiBrowseCarousel(state = rememberCarouselState { featured.size }, preferredItemWidth = 250.dp, itemSpacing = 8.dp,
                     modifier = Modifier.fillMaxWidth().height(210.dp)) { i ->
                     val e = featured[i]
-                    Box(Modifier.fillMaxSize().maskClip(RoundedCornerShape(28.dp)).clickable { onOpen(e) }) {
-                        Cover(e.id, e.title, e.tags, e.image, 700, Modifier.fillMaxSize())
+                    Box(Modifier.fillMaxSize().maskClip(smooth(28.dp)).clickable { onOpen(e) }) {
+                        Cover(e.id, e.title, e.tags, e.image, 700, Modifier.fillMaxSize(), e.blurhash)
                         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color(0xD9000000))))
                         Text(e.title, style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.align(Alignment.BottomStart).padding(14.dp))
@@ -191,6 +195,8 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
             }
         }
         items(shown, key = { it.id }) { e -> RecipeCard(e, e.id == selected) { onOpen(e) } }
+        // first start, nothing on the phone yet: card-shaped skeletons until the server answers
+        if (shown.isEmpty() && rs.loading && rs.index.isEmpty()) items(6) { Skeleton(Modifier.fillMaxWidth().aspectRatio(0.8f), smooth(24.dp)) }
         if (shown.isEmpty() && !rs.loading) item(span = { GridItemSpan(maxLineSpan) }) {
             Text(if (rs.index.isEmpty()) S.noRepo else L.s.nothingMatches(q), color = Mc.text2, modifier = Modifier.padding(24.dp))
         }
@@ -200,13 +206,13 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
 /** Photo card with the title on the photo, like the machine's recipe grid. */
 @Composable
 private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = smooth(24.dp)
     Box(
         Modifier.fillMaxWidth().aspectRatio(0.8f).sharedCover(e.id).clip(shape)
             .border(if (selected) 3.dp else 0.dp, if (selected) Mc.amber else Color.Transparent, shape)
             .clickable(onClick = onClick)
     ) {
-        Cover(e.id, e.title, e.tags, e.image, 420, Modifier.fillMaxSize())
+        Cover(e.id, e.title, e.tags, e.image, 420, Modifier.fillMaxSize(), e.blurhash)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color(0xE0000000))))
         e.totalMinutes?.let { TimePill(it, Modifier.align(Alignment.TopEnd).padding(10.dp)) }
         Text(e.title, style = MaterialTheme.typography.titleSmall.copy(lineHeight = 19.sp), color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis,
@@ -261,7 +267,7 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
             item {
                 Box(Modifier.fillMaxWidth().aspectRatio(if (ui.wide) 1.7f else 1.05f).sharedCover(e.id).clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))) {
                     // parallax: the photo moves at half speed under the page
-                    Cover(e.id, e.title, e.tags, r?.image ?: e.image, 1000, Modifier.fillMaxSize().graphicsLayer {
+                    Cover(e.id, e.title, e.tags, r?.image ?: e.image, 1000, blurhash = e.blurhash, modifier = Modifier.fillMaxSize().graphicsLayer {
                         if (list.firstVisibleItemIndex == 0) translationY = list.firstVisibleItemScrollOffset * 0.5f
                     })
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x55000000), 0.3f to Color.Transparent, 1f to Color(0xE0000000))))
@@ -271,7 +277,7 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                     ) { McIcon(Icon.BACK, Mc.onPhoto, 22.dp, 2.5f) }
                     Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
                         if (onMachine) Text(S.machineIsOn.uppercase(L.s.locale) + (st?.step?.let { " · $it" } ?: ""), style = MaterialTheme.typography.labelMedium,
-                            color = Color.White, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Mc.teal).padding(horizontal = 10.dp, vertical = 5.dp))
+                            color = Color.White, modifier = Modifier.clip(smooth(10.dp)).background(Mc.teal).padding(horizontal = 10.dp, vertical = 5.dp))
                         Spacer(Modifier.height(8.dp))
                         Text(r?.title ?: e.title, style = MaterialTheme.typography.headlineMedium, color = Mc.onPhoto)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
@@ -284,7 +290,7 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
             }
             if (r == null) item {
                 Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                    recipe?.exceptionOrNull()?.let { Text(L.s.cannotOpen(it.message ?: ""), color = Mc.danger) } ?: CircularProgressIndicator(color = Mc.amber)
+                    recipe?.exceptionOrNull()?.let { Text(L.s.cannotOpen(it.message ?: ""), color = Mc.danger) } ?: SkeletonLines(6, Modifier.fillMaxWidth())
                 }
             }
             if (r != null && r.ingredients.isNotEmpty()) item {
@@ -293,7 +299,7 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.weight(1f)) { Label(L.s.ingredients, Mc.teal, Icon.LIST) }
                             Text(S.addToList, style = MaterialTheme.typography.labelLarge, color = Mc.teal,
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable {
+                                modifier = Modifier.clip(smooth(10.dp)).clickable {
                                     haptic(false); ui.say(S.addedToList(PhoneApp.app.shopping.add(r.ingredients.flatMap { g -> g.items.map { it.text } }, r.title)))
                                 }.padding(6.dp))
                         }
@@ -325,15 +331,15 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
         // pinned actions
         if (r != null) Row(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(14.dp)
-                .clip(RoundedCornerShape(28.dp)).background(Mc.surface.copy(alpha = 0.94f)).border(1.dp, Mc.stroke, RoundedCornerShape(28.dp)).padding(8.dp),
+                .clip(smooth(28.dp)).background(Mc.surface.copy(alpha = 0.94f)).border(1.dp, Mc.stroke, smooth(28.dp)).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(onClick = { haptic(true); ui.scope.launch { openOnMachine(r, people?.takeIf { base != null && it != base.count }, ui) } }, enabled = !onMachine && st?.running != true,
-                modifier = Modifier.weight(1f).height(54.dp), shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.weight(1f).height(54.dp), shape = smooth(22.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) {
                 McIcon(Icon.POT, Mc.onAccent, 18.dp); Spacer(Modifier.width(8.dp)); Text(S.openOnMachine, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            FilledTonalButton(onClick = { onCook(r.id) }, modifier = Modifier.height(54.dp), shape = RoundedCornerShape(22.dp)) {
+            FilledTonalButton(onClick = { onCook(r.id) }, modifier = Modifier.height(54.dp), shape = smooth(22.dp)) {
                 McIcon(Icon.CHEF, Mc.text, 18.dp); Spacer(Modifier.width(6.dp)); Text(S.cookMode.substringBefore(" "), maxLines = 1)
             }
         }
@@ -344,7 +350,7 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
 @Composable
 private fun ServingsStepper(people: Int, range: IntRange, label: String, changed: Boolean, locked: Boolean, onChange: (Int) -> Unit) {
     Column(Modifier.padding(vertical = 4.dp)) {
-        Row(Modifier.clip(RoundedCornerShape(22.dp)).background(Mc.surface3.copy(alpha = 0.6f)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.clip(smooth(22.dp)).background(Mc.surface3.copy(alpha = 0.6f)).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             FilledTonalIconButton(onClick = { onChange(people - 1) }, enabled = !locked && people > range.first, modifier = Modifier.size(40.dp)) {
                 Text("−", style = MaterialTheme.typography.titleLarge)
             }
@@ -360,7 +366,7 @@ private fun ServingsStepper(people: Int, range: IntRange, label: String, changed
 
 @Composable
 private fun Fact(icon: Icon, text: String) {
-    Row(Modifier.clip(RoundedCornerShape(12.dp)).background(Color(0x33FFFFFF)).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.clip(smooth(12.dp)).background(Color(0x33FFFFFF)).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         McIcon(icon, Color.White, 14.dp); Spacer(Modifier.width(6.dp))
         Text(text, color = Color.White, style = MaterialTheme.typography.labelLarge)
     }
@@ -391,9 +397,9 @@ fun StepRow(i: Int, step: Step, current: Int?, last: Boolean = false) {
         }
         Spacer(Modifier.width(10.dp))
         Column(
-            Modifier.weight(1f).padding(vertical = 6.dp).pulse(Mc.amber, now).clip(RoundedCornerShape(20.dp))
+            Modifier.weight(1f).padding(vertical = 6.dp).pulse(Mc.amber, now).clip(smooth(20.dp))
                 .background(if (now) Mc.amber.copy(alpha = 0.16f) else Mc.surface.copy(alpha = if (done) 0.45f else 0.9f))
-                .border(if (now) 2.dp else 1.dp, if (now) Mc.amber else Mc.stroke, RoundedCornerShape(20.dp))
+                .border(if (now) 2.dp else 1.dp, if (now) Mc.amber else Mc.stroke, smooth(20.dp))
                 .padding(14.dp),
         ) {
             if (chip != null) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -430,7 +436,7 @@ fun LoadedRecipePanel(modifier: Modifier, onOpen: (String) -> Unit) {
     LaunchedEffect(current) { if (current != null) list.animateScrollToItem(current.coerceAtLeast(0)) }
     Column(modifier) {
         Row(Modifier.padding(16.dp).clickable { onOpen(r.id) }, verticalAlignment = Alignment.CenterVertically) {
-            Cover(r.id, r.title, r.tags, r.image, 200, Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)))
+            Cover(r.id, r.title, r.tags, r.image, 200, Modifier.size(64.dp).clip(smooth(18.dp)))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Label(P.s.machineHere, Mc.teal)

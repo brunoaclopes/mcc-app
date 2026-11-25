@@ -90,6 +90,16 @@ fun Root(size: WindowSizeClass) {
     val importOpen by mcc.phone.Importer.openId.collectAsState()
     val importSheet by mcc.phone.Importer.sheet.collectAsState()
     androidx.compose.runtime.LaunchedEffect(importMsg) { importMsg?.let { ui.say(it); mcc.phone.Importer.message.value = null } }
+    val discarded by mcc.phone.Importer.discarded.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(discarded) {
+        val r = discarded ?: return@LaunchedEffect
+        mcc.phone.Importer.discarded.value = null
+        ui.scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            if (snackbar.showSnackbar(P.s.discarded(r.main.title), P.s.undo, duration = androidx.compose.material3.SnackbarDuration.Long) ==
+                androidx.compose.material3.SnackbarResult.ActionPerformed) mcc.phone.Importer.undoDiscard(r)
+        }
+    }
     androidx.compose.runtime.LaunchedEffect(importOpen) { importOpen?.let { openId = it; tab = Tab.RECIPES; mcc.phone.Importer.openId.value = null } }
     val st by LinkClient.state.collectAsState()
     val items by PhoneApp.app.shopping.items.collectAsState()

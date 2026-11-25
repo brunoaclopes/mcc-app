@@ -27,7 +27,9 @@ object Importer {
          * [imp] is the recipe in the phone's language (with what the AI was given, for feedback); [other] its translation.
          * [error]: why the last publish or revision failed, shown in the sheet (a snackbar would be hidden behind it).
          */
-        data class Ready(val imp: AiClient.Import, val other: Recipe?, val revisions: Int = 0, val error: String? = null) : State() {
+        data class Ready(val imp: AiClient.Import, val other: Recipe?, val revisions: Int = 0, val error: String? = null,
+                         /** Idempotency key for the upload: kept by copy(), so retrying this recipe never adds it twice. */
+                         val uploadKey: String = java.util.UUID.randomUUID().toString()) : State() {
             val main get() = imp.recipe
             val changes get() = imp.changes
         }
@@ -126,7 +128,7 @@ object Importer {
         _state.value = State.Working(Stage.PUBLISHING, System.currentTimeMillis())
         app.scope.launch {
             val pt = if (ready.main.language == "pt") ready.main else other
-            val sent = withContext(Dispatchers.IO) { runCatching { pub.publish(RecipePublisher.keyFor(pt.title), listOf(ready.main, other)) } }
+            val sent = withContext(Dispatchers.IO) { runCatching { pub.publish(RecipePublisher.keyFor(pt.title), listOf(ready.main, other), ready.uploadKey) } }
             val key = sent.getOrElse { e ->
                 val why = P.s.publishFailed(e.message ?: e.javaClass.simpleName)
                 _state.value = ready.copy(error = why)
@@ -165,5 +167,20 @@ object Importer {
         }
     }
 
-    fun discard() { if (_state.value !is State.Working) _state.value = State.Idle }
+    /** The recipe just discarded, for the snackbar's Undo; the UI clears it. */
+    val discarded = MutableStateFlow<State.Ready?>(null)
+
+    /** Drops the reviewed recipe and closes the sheet; [undoDiscard] brings it back (minutes of AI work, one tap). */
+    fun discard() {
+        val s = _state.value
+        if (s is State.Working) return
+        _state.value = State.Idle
+        if (s is State.Ready) { sheet.value = false; discarded.value = s }
+    }
+
+    fun undoDiscard(r: State.Ready) {
+        if (_state.value !is State.Idle) return
+        _state.value = r
+        sheet.value = true
+    }
 }

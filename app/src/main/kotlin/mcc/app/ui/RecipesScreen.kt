@@ -257,6 +257,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             val (pa, pb) = palette(e.title)
             img.placeholder(pa, pb)
             img.art = Covers.iconFor(e.id, e.title, e.tags)
+            img.blur = if (e.image != null) BlurPlaceholder.bitmap(e.blurhash) else null
             ImageLoader.load(app.store, e.image, img, T.dp(300))
             val info = card.getChildAt(1) as LinearLayout
             (info.getChildAt(0) as TextView).text = e.title
@@ -284,7 +285,13 @@ class RecipesScreen(app: AppUi) : Screen(app) {
 
     // ------------------------------------------------------------------ detail
 
+    /** The card the detail was opened from: the detail grows out of it. */
+    private var origin: View? = null
+    /** The scale the detail grew from, to shrink back into the card on closing. */
+    private var originScale = 0.97f
+
     private fun open(e: RecipeIndex.Entry, from: View?) {
+        origin = from
         from?.animate()?.scaleX(0.96f)?.scaleY(0.96f)?.setDuration(90)?.withEndAction { from.animate().scaleX(1f).scaleY(1f).setDuration(120).start() }?.start()
         Thread {
             val r = runCatching { app.store.loadRecipe(e) }
@@ -302,7 +309,8 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         val row = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; setPadding(T.dp(16), T.dp(4), T.dp(16), T.dp(16)) }
 
         val hero = FrameLayout(c)
-        val img = RoundImage(c, 24f).apply { scrim = 0.55f; val (pa, pb) = palette(r.title); placeholder(pa, pb); art = Covers.iconFor(r.id, r.title, r.tags) }
+        val img = RoundImage(c, 24f).apply { scrim = 0.55f; val (pa, pb) = palette(r.title); placeholder(pa, pb); art = Covers.iconFor(r.id, r.title, r.tags)
+            blur = if (r.image != null) BlurPlaceholder.bitmap(e.blurhash) else null }
         hero.addView(img, FrameLayout.LayoutParams(-1, -1))
         ImageLoader.load(app.store, r.image ?: e.image, img, T.dp(520))
         val back = FrameLayout(c).apply { background = T.pressable(T.round(0xA6000000.toInt(), 26, 0x40FFFFFF, 1)); setOnClickListener { closeDetail() } }
@@ -382,9 +390,23 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         }
         row.addView(right, LinearLayout.LayoutParams(0, -1, 1f))
         detail.addView(row, FrameLayout.LayoutParams(-1, -1))
+        // opened again while still closing: carry on from where it is instead of jumping back to transparent
+        if (detail.visibility != View.VISIBLE) {
+            // grow out of the tapped card (a view transition): pivot on the card, start about its size
+            var k = 0.97f
+            val from = origin
+            if (from != null && from.isAttachedToWindow && detail.width > 0) {
+                val a = IntArray(2); val b = IntArray(2)
+                from.getLocationOnScreen(a); detail.getLocationOnScreen(b)
+                detail.pivotX = (a[0] - b[0] + from.width / 2f).coerceIn(0f, detail.width.toFloat())
+                detail.pivotY = (a[1] - b[1] + from.height / 2f).coerceIn(0f, detail.height.toFloat())
+                k = (from.width / detail.width.toFloat()).coerceIn(0.35f, 0.97f)
+            } else { detail.pivotX = detail.width / 2f; detail.pivotY = detail.height / 2f }
+            detail.alpha = 0f; detail.scaleX = k; detail.scaleY = k
+            originScale = k
+        }
         detail.visibility = View.VISIBLE
-        detail.alpha = 0f; detail.scaleX = 0.97f; detail.scaleY = 0.97f
-        detail.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(240).setInterpolator(DecelerateInterpolator()).start()
+        detail.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(280).setInterpolator(DecelerateInterpolator()).start()
         Anim.stagger((0 until list.childCount).map { list.getChildAt(it) }.take(14), step = 25, dy = 8f)
     }
 
@@ -435,7 +457,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
 
     private fun closeDetail() {
         detailRecipe = null; onPeople = null
-        detail.animate().alpha(0f).scaleX(0.97f).scaleY(0.97f).setDuration(180).withEndAction { detail.visibility = View.GONE }.start()
+        detail.animate().alpha(0f).scaleX(originScale).scaleY(originScale).setDuration(200).withEndAction { detail.visibility = View.GONE }.start()
     }
 
     companion object {

@@ -83,13 +83,13 @@ fun ImportSheet(onSettings: () -> Unit) {
                 else -> {
                     if (!Importer.aiConfigured) {
                         Text(S.importNotSet, style = MaterialTheme.typography.bodyMedium, color = Mc.text2)
-                        FilledTonalButton(onClick = { Importer.sheet.value = false; onSettings() }, shape = RoundedCornerShape(16.dp)) { Text(S.openSettings) }
+                        FilledTonalButton(onClick = { Importer.sheet.value = false; onSettings() }, shape = smooth(16.dp)) { Text(S.openSettings) }
                         return@Column
                     }
                     Text(S.importHelp, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
                     OutlinedTextField(
                         value = input, onValueChange = { input = it }, modifier = Modifier.fillMaxWidth(), maxLines = 4,
-                        placeholder = { Text(L.s.aiImportHint) }, shape = RoundedCornerShape(16.dp),
+                        placeholder = { Text(L.s.aiImportHint) }, shape = smooth(16.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
                         keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { Importer.start(input) }),
                         trailingIcon = if (input.isNotEmpty()) ({ androidx.compose.material3.IconButton(onClick = { input = "" }) { McIcon(Icon.CLOSE, Mc.text2, 18.dp, 2.4f) } }) else null,
@@ -97,7 +97,7 @@ fun ImportSheet(onSettings: () -> Unit) {
                     )
                     (s as? Importer.State.Failed)?.let { Text(L.s.aiFailed(it.message), style = MaterialTheme.typography.bodySmall, color = Mc.danger) }
                     Button(onClick = { Importer.start(input) }, enabled = input.isNotBlank(), modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) { Text(S.importGo) }
+                        shape = smooth(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) { Text(S.importGo) }
                 }
             }
         }
@@ -126,7 +126,7 @@ private fun Ready(s: Importer.State.Ready) {
     // why the last publish or revision failed, at the top: after the progress view the sheet is scrolled to the top
     s.error?.let {
         Text(it, style = MaterialTheme.typography.bodyMedium, color = Mc.danger,
-            modifier = Modifier.fillMaxWidth().background(Mc.danger.copy(alpha = 0.12f), RoundedCornerShape(14.dp)).padding(12.dp))
+            modifier = Modifier.fillMaxWidth().background(Mc.danger.copy(alpha = 0.12f), smooth(14.dp)).padding(12.dp))
     }
     Text(r.title, style = MaterialTheme.typography.titleLarge, color = Mc.text)
     Text(S.importSummary(r.ingredients.sumOf { it.items.size }, r.steps.size, r.steps.count { it is Step.Machine }) +
@@ -144,7 +144,7 @@ private fun Ready(s: Importer.State.Ready) {
     }
 
     // the whole recipe, so it can be checked before it goes anywhere
-    Column(Modifier.fillMaxWidth().background(Mc.surface2, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth().background(Mc.surface2, smooth(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(L.s.ingredients, style = MaterialTheme.typography.labelLarge, color = Mc.amber)
         r.ingredients.forEach { g ->
             g.group?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = Mc.text) }
@@ -179,13 +179,13 @@ private fun Ready(s: Importer.State.Ready) {
     Text(S.feedbackLabel, style = MaterialTheme.typography.titleSmall, color = Mc.text, modifier = Modifier.padding(top = 6.dp))
     // the keyboard covers the button below, so the box sends too: its arrow and the keyboard's action key
     OutlinedTextField(value = feedback, onValueChange = { feedback = it }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5,
-        placeholder = { Text(S.feedbackHint) }, shape = RoundedCornerShape(16.dp),
+        placeholder = { Text(S.feedbackHint) }, shape = smooth(16.dp),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
         keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = { Importer.revise(feedback) }),
         trailingIcon = if (feedback.isNotBlank()) ({ androidx.compose.material3.IconButton(onClick = { Importer.revise(feedback) }) { McIcon(Icon.NEXT, Mc.amber) } }) else null,
         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Mc.amber, unfocusedBorderColor = Mc.stroke))
     FilledTonalButton(onClick = { Importer.revise(feedback) }, enabled = feedback.isNotBlank(), modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)) { Text(S.feedbackSend) }
+        shape = smooth(16.dp)) { Text(S.feedbackSend) }
     Spacer(Modifier.height(4.dp))
 
     when {
@@ -193,10 +193,10 @@ private fun Ready(s: Importer.State.Ready) {
         !Importer.canPublish -> Text(S.publishOff, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
         else -> {
             Text(S.publishHelp, style = MaterialTheme.typography.bodySmall, color = Mc.text2)
-            Button(onClick = { Importer.publish() }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(18.dp),
+            Button(onClick = { Importer.publish() }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = smooth(18.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Mc.ember, contentColor = Mc.onAccent)) { Text(S.publish) }
         }
     }
-    FilledTonalButton(onClick = { Importer.keepOnPhone() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(S.keepOnPhone) }
+    FilledTonalButton(onClick = { Importer.keepOnPhone() }, modifier = Modifier.fillMaxWidth(), shape = smooth(16.dp)) { Text(S.keepOnPhone) }
     TextButton(onClick = { Importer.discard() }, modifier = Modifier.fillMaxWidth()) { Text(S.discard, color = Mc.text2) }
 }

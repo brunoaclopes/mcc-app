@@ -71,7 +71,7 @@ class CookScreen(app: AppUi) : Screen(app) {
         val row = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL }
         stepCard = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; background = T.glass(24); setPadding(T.dp(26), T.dp(22), T.dp(26), T.dp(18)) }
         val head = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        stepNo = GradientText(c, T.AMBER, T.EMBER).apply { textSize = 44f; typeface = T.heavy; includeFontPadding = false }
+        stepNo = GradientText(c, T.AMBER, T.EMBER).apply { textSize = 44f; typeface = T.heavy; fontFeatureSettings = "tnum"; includeFontPadding = false }
         head.addView(stepNo)
         kindPill = T.text(c, "", 13f, T.TEXT, T.heavy).apply { letterSpacing = 0.1f; setPadding(T.dp(12), T.dp(7), T.dp(12), T.dp(7)) }
         head.addView(kindPill, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = T.dp(14) })
@@ -182,12 +182,23 @@ class CookScreen(app: AppUi) : Screen(app) {
         if (dir > 0) app.service?.recipeNext() else app.service?.recipeBack()
     }
 
+    /** Whether the ingredients sheet is open (or opening); it can still be visible while it slides away. */
+    private var ingredientsOpen = false
+
     private fun toggleIngredients() {
         val r = recipe ?: return
-        if (ingredients.visibility == View.VISIBLE) {
+        if (ingredientsOpen) {
+            ingredientsOpen = false
             val sheet = ingredients.getChildAt(0)
             sheet?.animate()?.translationX(T.dpf(60f))?.setDuration(180)?.start()
             ingredients.animate().alpha(0f).setDuration(180).withEndAction { ingredients.visibility = View.GONE }.start(); return
+        }
+        ingredientsOpen = true
+        // tapped again while it slides away: turn it around from where it is
+        if (ingredients.visibility == View.VISIBLE && sheetFor === r && ingredients.childCount > 0) {
+            ingredients.animate().alpha(1f).setDuration(180).start()
+            ingredients.getChildAt(0).animate().translationX(0f).setDuration(240).setInterpolator(DecelerateInterpolator()).start()
+            return
         }
         ingredients.removeAllViews()
         sheetFor = r
@@ -231,7 +242,7 @@ class CookScreen(app: AppUi) : Screen(app) {
     private fun flash(m: String) { notice = m; noticeUntil = System.currentTimeMillis() + 5000; render() }
 
     override fun onBack(): Boolean {
-        if (ingredients.visibility == View.VISIBLE) { toggleIngredients(); return true }
+        if (ingredientsOpen) { toggleIngredients(); return true }
         return false
     }
 
@@ -267,7 +278,7 @@ class CookScreen(app: AppUi) : Screen(app) {
         val none = r == null || st == null
         // the recipe was closed or replaced (from the phone, Home Assistant, Cancel): its ingredients sheet goes too
         if (ingredients.visibility == View.VISIBLE && r !== sheetFor) {
-            ingredients.animate().cancel(); ingredients.visibility = View.GONE; ingredients.removeAllViews(); sheetFor = null
+            ingredients.animate().cancel(); ingredients.visibility = View.GONE; ingredients.removeAllViews(); sheetFor = null; ingredientsOpen = false
         }
         emptyState.visibility = if (none) View.VISIBLE else View.GONE
         if (r == null || st == null) { main.visibility = View.GONE; doneState.visibility = View.GONE; lastPhase = null; return }

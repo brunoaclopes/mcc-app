@@ -105,6 +105,8 @@ object T {
 
     fun text(c: Context, s: CharSequence = "", size: Float = 16f, color: Int = TEXT, face: Typeface = regular) = TextView(c).apply {
         text = s; textSize = size; setTextColor(color); typeface = face; includeFontPadding = false
+        // titles and step text: lines of even length instead of one word alone on the last line
+        if (size >= 20f) breakStrategy = android.text.Layout.BREAK_STRATEGY_BALANCED
     }
 
     fun lerpColor(a: Int, b: Int, t: Float): Int {

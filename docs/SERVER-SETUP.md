@@ -52,7 +52,8 @@ When the template gets new tools, copy `tools/`, `converters/`, `tests/`, `docke
 Use the ready-made image **`ghcr.io/brunoaclopes/mcc-recipe-server`** (about 70 MB, for PCs, NAS boxes and
 Raspberry Pi). It never contains recipes: it serves yours, checks them with the template's tools and writes
 `index.json`. A broken recipe or a missing translation is reported in its log and the last good `index.json` stays,
-so the machine never gets a broken recipe.
+so the machine never gets a broken recipe. It also adds each photo's blurred placeholder (`blurhash`, FORMAT.md),
+worked out once per photo and kept in `/tmp`, so a read-only mount is fine.
 
 **A. It pulls your repository (recommended).** New recipes appear about a minute after they are pushed, also the
 ones the phone publishes through the upload service, so nothing has to be rebuilt or redeployed.

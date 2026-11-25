@@ -122,6 +122,8 @@ data class RecipeIndex(val format: String, val generated: String? = null, val re
         val image: String? = null,
         val file: String,
         val sha256: String? = null,
+        /** BlurHash of the photo (FORMAT.md), painted blurred while the photo loads; absent without a photo. */
+        val blurhash: String? = null,
     )
 
     companion object {

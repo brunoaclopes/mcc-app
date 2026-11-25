@@ -31,6 +31,15 @@ class RoundImage(context: Context, private val radiusDp: Float) : ImageView(cont
     private var shaderW = 0
     private var shaderH = 0
 
+    /** The photo's BlurHash ([BlurPlaceholder]): shown blurred, instead of the gradient and [art], until the photo is in. */
+    var blur: Bitmap? = null
+        set(v) { if (field !== v) { field = v; invalidate() } }
+    private val blurMatrix = Matrix()
+    private var blurShader: BitmapShader? = null
+    private var blurShaderFor: Bitmap? = null
+    private var blurW = 0
+    private var blurH = 0
+
     /** Drawn large and faint over the placeholder when there is no photo. */
     var art: Icon? = null
         set(v) { if (field != v) { field = v; invalidate() } }
@@ -64,6 +73,17 @@ class RoundImage(context: Context, private val radiusDp: Float) : ImageView(cont
                 shaderFor = bmp; shaderW = width; shaderH = height
             }
             paint.alpha = imageAlpha // view alpha (fade-in) is applied by the renderer; never bake it into the paint
+        } else if (blur != null) {
+            val b = blur!!
+            if (b !== blurShaderFor || blurW != width || blurH != height) {   // no allocation per frame while scrolling
+                val s = maxOf(w / b.width, h / b.height)
+                blurMatrix.reset(); blurMatrix.setScale(s, s); blurMatrix.postTranslate((w - b.width * s) / 2, (h - b.height * s) / 2)
+                blurShader = BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply { setLocalMatrix(blurMatrix) }
+                blurShaderFor = b; blurW = width; blurH = height
+            }
+            paint.shader = blurShader
+            shaderFor = null
+            paint.alpha = 255
         } else {
             paint.shader = LinearGradient(0f, 0f, w, h, placeholderA, placeholderB, Shader.TileMode.CLAMP)
             shaderFor = null
@@ -71,7 +91,7 @@ class RoundImage(context: Context, private val radiusDp: Float) : ImageView(cont
         }
         c.drawRoundRect(rect, r, r, paint)
         val a = art
-        if (bmp == null && a != null) {
+        if (bmp == null && blur == null && a != null) {
             // illustrated cover: a soft disc and the icon, upper right, faint enough for text on top
             val s = minOf(w, h) * 0.62f
             val cx = w - s * 0.62f; val cy = h * 0.40f

@@ -37,6 +37,7 @@ abstract class PhoneStrings {
     abstract val stopConfirm: String; abstract val stopConfirmText: String; abstract val cancel: String
     abstract val nothingCooking: String; abstract val whatsCooking: String; abstract val temperature: String; abstract val scale: String
     abstract val next: String; abstract val previous: String; abstract fun removed(t: String): String; abstract val undo: String
+    abstract fun clearedN(n: Int): String; abstract fun discarded(t: String): String
     abstract val goToMachineStep: String
     abstract val importTitle: String; abstract val importHelp: String; abstract val importGo: String; abstract fun importStage(n: Int, sec: Int): String
     abstract fun importReady(t: String): String; abstract fun importSummary(ingredients: Int, steps: Int, machine: Int): String
@@ -130,6 +131,8 @@ object PhoneEn : PhoneStrings() {
     override val stopConfirm = "Stop the machine?"; override val stopConfirmText = "The motor and heating stop straight away."; override val cancel = "Cancel"
     override val nothingCooking = "Nothing cooking"; override val whatsCooking = "What's cooking"; override val temperature = "Temperature"; override val scale = "Scale"
     override val next = "Next"; override val previous = "Back"; override fun removed(t: String) = "Removed $t"; override val undo = "Undo"
+    override fun clearedN(n: Int) = if (n == 1) "Removed 1 bought item" else "Removed $n bought items"
+    override fun discarded(t: String) = "Discarded: $t"
     override val goToMachineStep = "Go to the machine's step"
 }
 
@@ -213,6 +216,8 @@ object PhonePt : PhoneStrings() {
     override val stopConfirm = "Parar a máquina?"; override val stopConfirmText = "O motor e o aquecimento param de imediato."; override val cancel = "Cancelar"
     override val nothingCooking = "Nada ao lume"; override val whatsCooking = "A cozinhar"; override val temperature = "Temperatura"; override val scale = "Balança"
     override val next = "Seguinte"; override val previous = "Anterior"; override fun removed(t: String) = "Removido: $t"; override val undo = "Anular"
+    override fun clearedN(n: Int) = if (n == 1) "Removido 1 artigo comprado" else "Removidos $n artigos comprados"
+    override fun discarded(t: String) = "Descartada: $t"
     override val goToMachineStep = "Ir para o passo da máquina"
 }
 

@@ -92,7 +92,8 @@ python3 -m http.server 8088               # quick test from a laptop
 ```
 
 On the machine: Settings → **Recipe server** → `http://<server-ip>:8088/` → **Save & sync**. Everything
-downloaded is cached, so it keeps working offline. To add recipes, write your own or convert them (see
+downloaded is cached, so it keeps working offline: the list shows the cached copy at once and refreshes from the
+server in the background (and again when it is older than 15 minutes). To add recipes, write your own or convert them (see
 [../recipe-repo/README.md](../recipe-repo/README.md)).
 
 For a permanent server (a ready-made Docker image that serves or pulls your recipes), your own recipes
