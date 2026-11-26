@@ -304,8 +304,9 @@ class ManualScreen(app: AppUi) : Screen(app) {
             !armed -> { startBtn.label = S.unlock; startBtn.icon = Icon.LOCK; startBtn.holdMillis = 0; startBtn.style(T.SURFACE_3, T.SURFACE_3); startBtn.isEnabled = true }
             else -> {
                 val content = s?.contentGrams
-                val needMore = tempLevel > 0 && s?.hasEmptyReference == true && content != null && content < 200
-                startBtn.label = if (needMore) S.heatAdd(content ?: 0) else S.holdToStart
+                val minHeat = mcc.machine.SafetyLimits().minContentForHeatGrams
+                val needMore = tempLevel > 0 && s?.hasEmptyReference == true && content != null && content < minHeat
+                startBtn.label = if (needMore) S.heatAdd(minHeat - (content ?: 0)) else S.holdToStart
                 startBtn.icon = Icon.PLAY; startBtn.holdMillis = 900
                 if (tempLevel > 0) startBtn.style(T.AMBER, T.EMBER_HOT) else startBtn.style(T.TEAL, T.TEAL_DEEP)
                 startBtn.isEnabled = s?.connected == true && f?.lidOpen != true && !needMore
@@ -320,7 +321,7 @@ class ManualScreen(app: AppUi) : Screen(app) {
             paused != null -> S.manualPausedInfo
             !armed -> S.unlockToStart
             tempLevel > 0 && !s.hasEmptyReference -> S.heatNeedsReference
-            tempLevel > 0 && (s.contentGrams ?: 0) < 200 -> S.heatNeedsContent(s.contentGrams ?: 0)
+            tempLevel > 0 && (s.contentGrams ?: 0) < mcc.machine.SafetyLimits().minContentForHeatGrams -> S.heatNeedsContent(s.contentGrams ?: 0)
             else -> S.pressHold(describe())
         })
         info.setTextColor(if (f?.lidOpen == true || f?.error != null) T.AMBER else T.TEXT_2)

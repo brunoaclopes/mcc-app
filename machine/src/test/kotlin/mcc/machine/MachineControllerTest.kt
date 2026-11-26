@@ -64,7 +64,7 @@ class MachineControllerTest {
         c.feed(rx(weight = 2130), 0)
         assertIs<StartResult.Rejected>(c.start(RunRequest(1, 50, 60_000), 10), "no reference yet")
         assertTrue(c.setEmptyBowlReference(10))
-        c.feed(rx(weight = 2230), 20) // only 100 g
+        c.feed(rx(weight = 2160), 20) // only 30 g
         assertIs<StartResult.Rejected>(c.start(RunRequest(1, 50, 60_000), 30))
         c.feed(rx(weight = 2650), 40) // 520 g of water
         assertIs<StartResult.Started>(c.start(RunRequest(1, 50, 60_000), 50))
@@ -92,6 +92,40 @@ class MachineControllerTest {
         assertIs<StartResult.Rejected>(c.start(RunRequest(5, 0, 60_000, reverse = true), 20))
         assertIs<StartResult.Rejected>(c.start(RunRequest(7, 0, 16 * 60_000L), 20), "15 min max above speed 6")
         assertIs<StartResult.Rejected>(c.start(RunRequest(1, 131, 60_000), 20))
+    }
+
+    @Test fun longLowTemperatureRunsOnlyWhenSwitchedOnAndWithinTheRule() {
+        val c = controller()
+        c.feed(rx(weight = 0), 0); c.setEmptyBowlReference(0); c.feed(rx(weight = 1500), 10)
+        val sixHours = 6 * 3600_000L
+        val off = c.start(RunRequest(1, 90, sixHours, reverse = true), 20)
+        assertIs<StartResult.Rejected>(off)
+        assertEquals(RejectCode.LONG_RUNS_OFF, off.code)
+        c.longRunsEnabled = true
+        assertIs<StartResult.Rejected>(c.start(RunRequest(1, 100, sixHours), 20), "above 95 °C: 99 min still")
+        assertIs<StartResult.Rejected>(c.start(RunRequest(2, 90, sixHours), 20), "above speed 1: 99 min still")
+        assertIs<StartResult.Rejected>(c.start(RunRequest(1, 0, sixHours), 20), "without heat: 99 min still")
+        assertIs<StartResult.Rejected>(c.start(RunRequest(0, 60, 13 * 3600_000L), 20), "12 h at most")
+        assertIs<StartResult.Started>(c.start(RunRequest(0, 60, sixHours), 20), "sous-vide: heater only")
+        // still stops on the usual checks, here the lid, hours into the run
+        c.feed(rx(running = true), 3 * 3600_000L)
+        assertEquals(WorkCommand.RUN, decode(c.tick(3 * 3600_000L)).command)
+        c.feed(rx(running = true, lidOpen = true), 3 * 3600_000L + 500)
+        assertEquals(TxCommand.STOP, decode(c.tick(3 * 3600_000L + 600)))
+        assertEquals(listOf(StopReason.LID_OPENED), stops)
+    }
+
+    @Test fun longRunEndsAtItsTime() {
+        val c = controller()
+        c.longRunsEnabled = true
+        c.feed(rx(weight = 0), 0); c.setEmptyBowlReference(0); c.feed(rx(weight = 1500), 10)
+        val twoHours = 2 * 3600_000L
+        assertIs<StartResult.Started>(c.start(RunRequest(1, 90, twoHours), 20))
+        var t = 20L
+        while (t < twoHours) { c.feed(rx(running = true), t); c.tick(t); t += 60_000 }
+        assertTrue(stops.isEmpty(), "not stopped at 99 min")
+        c.feed(rx(running = true), twoHours + 30); c.tick(twoHours + 30)
+        assertEquals(listOf(StopReason.COMPLETED), stops)
     }
 
     @Test fun completesAfterDuration() {

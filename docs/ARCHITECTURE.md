@@ -36,6 +36,13 @@
   (water, cooking time, portions; 300 g to 1.2 kg, at most 2 kg in the bowl), with the same steps.
 - `BlurHash.kt`: decodes an index entry's `blurhash` into pixels; `common/`'s `BlurPlaceholder` turns them into the
   blurred photo placeholder both apps show while a photo loads.
+- `online/McOnline.kt`: the optional "Monsieur Cuisine online" source: the JSON shapes of the Monsieur Cuisine
+  website's public recipe API (`mc-api.tecpal.com`, the calls its recipe pages make) and the conversion of one
+  recipe to `mcc-recipe/1`, with the same rules as the repository converters: a heated cook followed by a blend
+  becomes two steps, turbo is split into pulses of at most 10 s, reverse above speed 3 is dropped, a temperature
+  the machine does not have is not run, and a program the machine does not have (slow cooking, sous-vide, an
+  accessory) becomes an instruction that names it and its settings. Photo URLs are moved from the photo CDN, whose
+  incomplete certificate chain Android rejects, to the same files on Google Cloud Storage.
 - `RecipeFit.kt`: fits a recipe from outside (AI import, other machines) to the machine limits and lists each change.
 - `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
   time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above
@@ -76,7 +83,7 @@ Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.ph
 | `SerialPort.kt` + `jni/mccserial.c` | opens `/dev/ttyMT0` at 4800 baud; refuses while the stock machine service runs (`PortGuard`) |
 | `Led.kt` | RGB LED patterns on their own thread |
 | `MqttBridge.kt` | Home Assistant discovery, state and commands ([HOME-ASSISTANT.md](HOME-ASSISTANT.md)) |
-| `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`). Both apps show the cached index first and refresh it in the background (stale-while-revalidate), again when it is older than 15 minutes |
+| `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`). Both apps show the cached index first and refresh it in the background (stale-while-revalidate), again when it is older than 15 minutes. With **Monsieur Cuisine online recipes** on (Settings, off by default) it also lists the website's official MC2.0/MC3.0 recipes in the UI language (list cached, downloaded again at most once a day, about 12 requests; tagged "Online"), hides those whose stock recipe number (in the photo name) matches an `mc2-`/`mc3-` recipe of the server, and downloads and converts a recipe only when it is opened (`online/recipes/`). The ingredient search reads online recipes only once they have been opened |
 | `AiClient.kt` (in `common/`) | OpenAI-compatible chat client for the recipe import; output goes through `Recipe.parse` and `RecipeFit` |
 | `Prefs.kt` | settings, and the cooking history (recipes finished, newest first; "Cooked lately" in Recipes) |
 | `Sounds.kt` | small synthesized sounds (start, stop, step, weighed, done, alerts, knob ticks), generated at start-up and played on the alarm stream |
@@ -107,9 +114,12 @@ maximum runtime or the requested duration is reached.
 - there's no communication, the lid is open, or the board reports an error;
 - the speed is above 3 with heat, or above 3 in reverse;
 - the temperature is above 130 °C;
-- the duration is above 99 min (15 min above speed 6). A manual run without a set time (time 0:00, a stopwatch)
+- the duration is above 99 min (15 min above speed 6), except a **long run**: a normal, heated run at 95 °C or less
+  and speed 0–1 may last up to 12 h (`SafetyLimits.maxLongRunMillis`), only while `longRunsEnabled` is on
+  (Settings → Machine → Long programs, off by default; `LONG_RUNS_OFF` otherwise). Every other check runs for the
+  whole time. A manual run without a set time (time 0:00, a stopwatch)
   gets exactly that limit as its duration and ends there (`MAX_RUNTIME`); only normal runs can be open;
-- heat is requested without a confirmed empty-bowl reference, or with less than 200 g in the bowl (roast: 50 g);
+- heat is requested without a confirmed empty-bowl reference, or with less than 50 g in the bowl (the stock app has no minimum; the board reports dry heating as error 6, which stops any run);
 - the run mode isn't enabled. The controller only enables NORMAL (`01`) by itself (`SafetyLimits.enabledModes`);
   turbo, knead, roast and steam are in `SafetyLimits.userEnableableModes`, and the app enables them
   (`MachineService.applyModes`) because each passed its supervised test ([TEST-PLAN.md](TEST-PLAN.md)). Their own

@@ -8,10 +8,23 @@ data class SafetyLimits(
     val maxRunMillis: Long = 99 * 60_000L,  // stock app: TIME_MAX_MILLIS
     val highSpeedAbove: Int = 6,
     val maxRunMillisHighSpeed: Long = 15 * 60_000L,
+    /**
+     * Long low-temperature runs (slow cooking, sous-vide, fermentation, as on the Monsieur Cuisine Smart): a normal,
+     * heated run at [longRunMaxTempC] or less and speed [longRunMaxSpeed] or less may last [maxLongRunMillis],
+     * but only while [MachineController.longRunsEnabled] is on (Settings, after a supervised test). Every other
+     * check (lid, board error, lost frames, the heating minimum) still applies for the whole run.
+     */
+    val maxLongRunMillis: Long = 12 * 3600_000L,
+    val longRunMaxTempC: Int = 95,
+    val longRunMaxSpeed: Int = 1,
     /** Stop if no valid board frame for this long (board sends every ~500 ms). */
     val commTimeoutMillis: Long = 1_500L,
-    /** Minimum content (grams above the confirmed empty-bowl reference) required to heat. */
-    val minContentForHeatGrams: Int = 200,
+    /**
+     * Minimum content (grams above the confirmed empty-bowl reference) required to heat. The stock app has no such
+     * minimum (the board itself reports dry heating, error 6, which stops any run); this only refuses a bowl that
+     * is still empty. The scale reads to a few grams.
+     */
+    val minContentForHeatGrams: Int = 50,
     /** Roasting heats a little oil + onions on purpose; still refuse a (nearly) empty bowl. */
     val minContentForRoastGrams: Int = 50,
     /**
@@ -67,7 +80,7 @@ enum class RejectCode {
     BUSY, NO_COMM, LID_OPEN, BOARD_ERROR, MODE_DISABLED, BAD_SPEED, BAD_TEMP, BAD_DURATION, TOO_LONG,
     REVERSE_SPEED, NOTHING_TO_DO, HEAT_SPEED, NO_REFERENCE, TOO_LITTLE_CONTENT,
     TURBO_HEAT, TURBO_REVERSE, TURBO_HOT, TURBO_TOO_LONG, KNEAD_HEAT, KNEAD_SPEED, KNEAD_TOO_MUCH,
-    ROAST_SPEED, STEAM_SPEED, STEAM_NO_TEMP, OTHER,
+    ROAST_SPEED, STEAM_SPEED, STEAM_NO_TEMP, LONG_RUNS_OFF, OTHER,
 }
 
 enum class StopReason { COMPLETED, USER, COMM_LOST, LID_OPENED, BOARD_ERROR, MAX_RUNTIME }
@@ -124,6 +137,13 @@ class MachineController(
     @Volatile var userEnabledModes: Set<RunMode> = emptySet()
 
     fun modeEnabled(m: RunMode) = m in limits.enabledModes || (m in userEnabledModes && m in limits.userEnableableModes)
+
+    /** Long low-temperature runs allowed ([SafetyLimits.maxLongRunMillis]); the user turns this on in Settings. */
+    @Volatile var longRunsEnabled: Boolean = false
+
+    /** Whether [req] is the kind of run the long-run rule covers (whether or not it is switched on). */
+    fun isLongRunKind(req: RunRequest) = req.mode == RunMode.NORMAL && !req.open &&
+        req.temperatureC in 1..limits.longRunMaxTempC && req.speedLevel <= limits.longRunMaxSpeed
 
     fun onBytes(bytes: ByteArray, count: Int, nowMillis: Long) {
         val frames = reader.feed(bytes, count)
@@ -187,7 +207,7 @@ class MachineController(
     override fun start(asked: RunRequest, nowMillis: Long): StartResult {
         val f = lastFrame
         if (asked.open && asked.mode != RunMode.NORMAL) return StartResult.Rejected("only normal runs can be open", RejectCode.BAD_DURATION)
-        val cap = maxRunFor(asked.speedLevel)
+        val cap = maxRunFor(asked)
         val req = if (asked.open) asked.copy(durationMillis = if (asked.durationMillis > 0) minOf(asked.durationMillis, cap) else cap) else asked
         fun reject(r: String, code: RejectCode, v: Int = 0) = StartResult.Rejected(r, code, v)
         when {
@@ -200,8 +220,10 @@ class MachineController(
             req.temperatureC < 0 || req.temperatureC > limits.maxTemperatureC ->
                 return reject("temperature must be 0..${limits.maxTemperatureC} °C", RejectCode.BAD_TEMP, limits.maxTemperatureC)
             req.durationMillis <= 0 -> return reject("duration must be > 0", RejectCode.BAD_DURATION)
-            req.durationMillis > maxRunFor(req.speedLevel) ->
-                return reject("duration exceeds limit for speed ${req.speedLevel}", RejectCode.TOO_LONG, (maxRunFor(req.speedLevel) / 60_000).toInt())
+            req.durationMillis > maxRunFor(req) && isLongRunKind(req) && !longRunsEnabled && req.durationMillis <= limits.maxLongRunMillis ->
+                return reject("long low-temperature runs are switched off", RejectCode.LONG_RUNS_OFF, (limits.maxRunMillis / 60_000).toInt())
+            req.durationMillis > maxRunFor(req) ->
+                return reject("duration exceeds limit for speed ${req.speedLevel}", RejectCode.TOO_LONG, (maxRunFor(req) / 60_000).toInt())
             req.reverse && req.speedLevel > limits.maxSpeedReverse && req.mode != RunMode.KNEAD ->
                 return reject("reverse allows speed <= ${limits.maxSpeedReverse}", RejectCode.REVERSE_SPEED, limits.maxSpeedReverse)
             req.mode == RunMode.NORMAL && req.speedLevel == 0 && req.temperatureC == 0 ->
@@ -267,7 +289,7 @@ class MachineController(
             !isConnected(nowMillis) -> StopReason.COMM_LOST to "no board frame for ${nowMillis - lastFrameAt} ms"
             f!!.lidOpen -> StopReason.LID_OPENED to null
             f.errorFlag || f.errorCode != 0 -> StopReason.BOARD_ERROR to "${f.error} (code ${f.errorCode})"
-            elapsed > maxRunFor(req.speedLevel) -> StopReason.MAX_RUNTIME to null
+            elapsed > maxRunFor(req) -> StopReason.MAX_RUNTIME to null
             req.mode == RunMode.TURBO && elapsed > limits.maxTurboMillis -> StopReason.MAX_RUNTIME to "turbo"
             req.open && elapsed >= req.durationMillis -> StopReason.MAX_RUNTIME to "open run"
             elapsed >= req.durationMillis -> StopReason.COMPLETED to null
@@ -299,8 +321,11 @@ class MachineController(
         lastStopDetail = lastStopDetail,
     )
 
-    private fun maxRunFor(speed: Int) =
-        if (speed > limits.highSpeedAbove) minOf(limits.maxRunMillis, limits.maxRunMillisHighSpeed) else limits.maxRunMillis
+    private fun maxRunFor(req: RunRequest): Long = when {
+        longRunsEnabled && isLongRunKind(req) -> limits.maxLongRunMillis
+        req.speedLevel > limits.highSpeedAbove -> minOf(limits.maxRunMillis, limits.maxRunMillisHighSpeed)
+        else -> limits.maxRunMillis
+    }
 
     private fun end(reason: StopReason, detail: String?) {
         if (request == null) return

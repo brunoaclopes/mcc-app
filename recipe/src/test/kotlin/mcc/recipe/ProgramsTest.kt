@@ -27,10 +27,10 @@ class ProgramsTest {
             val heats = r.steps.any { it is Step.Machine && it.segments.any { s -> s.tempC > 0 } }
             if (!heats) continue
             val weigh = r.steps.filterIsInstance<Step.Weigh>().maxOfOrNull { it.grams }
-            val text = r.steps.joinToString(" ") { it.text } + " " + r.notes.joinToString(" ")
-            val heatSteps = r.steps.filterIsInstance<Step.Machine>().filter { it.segments.any { s -> s.tempC > 0 } }
-            val need = if (heatSteps.all { it.mode == Mode.ROAST }) 50 else 200 // browning: 50 g, as the machine layer
-            assertTrue((weigh ?: 0) >= need || "$need g" in text, r.id)
+            val text = r.steps.joinToString(" ") { it.text } + " " + r.notes.joinToString(" ") + " " +
+                r.ingredients.flatMap { g -> g.items.map { it.text } }.joinToString(" ")
+            val need = 50 // as the machine layer (SafetyLimits.minContentForHeatGrams / minContentForRoastGrams)
+            assertTrue((weigh ?: 0) >= need || "$need g" in text || Regex("\\d kg").containsMatchIn(text), r.id)
         }
     }
 

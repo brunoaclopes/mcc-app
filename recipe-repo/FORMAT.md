@@ -56,13 +56,17 @@ remote pictures into `images/` as 640x400 JPEGs) or an absolute URL. `imageSourc
 * `roast`: `seconds`, `tempC` (default 130).
 * `steam`: `seconds` = steaming time after preheat.
 
+A `run` segment heated to 95 °C or less at speed 0 or 1 may last up to 43200 s (12 h): slow cooking, sous-vide,
+fermentation. The machine runs it only with **Long programs** on (Settings → Machine); otherwise it says so when the
+step starts. Every other segment: 5940 s (99 min) at most.
+
 A heated `run` segment whose time ends before the bowl reaches `tempC` keeps heating until it does (95 °C counts
 for targets above that), at most half its time longer (2 to 10 min), so write the time the food needs once hot
 plus a normal heat-up, as for the stock app.
 
 The machine layer enforces its own limits whatever the recipe says: speed ≤ 3 while heating,
 speed ≤ 3 in reverse, 99 min max, 15 min max above speed 6, and heating only with
-≥ 200 g in the bowl. `knead`, `roast` and `steam` use the stock presets with the same limits.
+≥ 50 g in the bowl. `knead`, `roast` and `steam` use the stock presets with the same limits.
 
 ## Languages
 

@@ -118,7 +118,7 @@ class MainActivity : Activity(), AppUi {
         L.set(prefs.uiLanguage)
         Sun.where = prefs.latLon
         T.apply(night = wantNight())
-        store = RecipeStore(this) { prefs.repoUrl }
+        store = RecipeStore(this, { prefs.onlineRecipes }) { prefs.repoUrl }
         sounds = Sounds { prefs.soundLevel }
         if (!helloPlayed) { helloPlayed = true; play(Sounds.Cue.HELLO) } // once per app start, not on theme or language rebuilds
         startService(Intent(this, MachineService::class.java))

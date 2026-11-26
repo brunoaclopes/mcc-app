@@ -239,6 +239,7 @@ class MachineService : Service() {
     fun applyModes() {
         val p = Prefs(this)
         controller.userEnabledModes = setOf(RunMode.TURBO, RunMode.KNEAD, RunMode.ROAST, RunMode.STEAM)
+        controller.longRunsEnabled = p.longRuns
         remoteEnabled = p.remoteStart
     }
 
@@ -249,6 +250,8 @@ class MachineService : Service() {
 
     /** Settings changed hands-free weighing: the loaded recipe follows at once. */
     fun setAutoWeigh(on: Boolean) = synchronized(lock) { prefs.autoWeigh = on; runner?.autoAdvanceWeigh = on }
+    /** Long low-temperature programs (up to 12 h at 95 °C or less, speed 0–1); applies from the next start. */
+    fun setLongRuns(on: Boolean) { prefs.longRuns = on; controller.longRunsEnabled = on }
 
     /**
      * Keep warm after a heated recipe: 30 min at 70 °C, speed 1 in reverse (stirs without cutting, nothing sticks).
@@ -358,7 +361,7 @@ class MachineService : Service() {
                     st.phase != RecipeRunner.Phase.DONE && (st.stepIndex > 0 || st.phase != RecipeRunner.Phase.READY))
             }
             if (busy) { Log.i(TAG, "remote load '$id' refused: busy"); lastEvent = "remote load refused (busy)"; return@Thread }
-            val store = RecipeStore(this) { prefs.repoUrl }
+            val store = RecipeStore(this, { prefs.onlineRecipes }) { prefs.repoUrl }
             // not in the cached index: it may have just been published, so ask the server once
             val entry = store.loadIndex(false).first?.recipes?.firstOrNull { it.id == id }
                 ?: store.loadIndex(true).first?.recipes?.firstOrNull { it.id == id }?.also { recipesRefreshed++ }
@@ -377,7 +380,7 @@ class MachineService : Service() {
     /** Downloads the recipe index again (the phone published a recipe); the UI picks it up through [recipesRefreshed]. */
     fun refreshRecipes() {
         Thread {
-            val (_, warning) = RecipeStore(this) { prefs.repoUrl }.loadIndex(true)
+            val (_, warning) = RecipeStore(this, { prefs.onlineRecipes }) { prefs.repoUrl }.loadIndex(true)
             Log.i(TAG, "recipe index refreshed from the phone${warning?.let { ": $it" } ?: ""}")
             recipesRefreshed++
         }.start()

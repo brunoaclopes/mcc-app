@@ -15,6 +15,20 @@ def slug(text: str) -> str:
     return s[:60] or "recipe"
 
 
+MAX_SECONDS = 99 * 60
+MAX_LONG_SECONDS = 12 * 3600  # long low-temperature segments: slow cooking, sous-vide, fermentation
+LONG_MAX_TEMP_C = 95
+
+
+def max_seconds(mode: str | None, seg: dict) -> int:
+    """A run segment heated to 95 degC or less at speed 0-1 may last 12 h (the machine runs it only with long
+    programs switched on); everything else 99 min. Mirrors Recipe.maxSeconds in the app."""
+    t, sp = seg.get("tempC", 0) or 0, seg.get("speed", 0) or 0
+    if mode == "run" and 0 < t <= LONG_MAX_TEMP_C and sp <= 1:
+        return MAX_LONG_SECONDS
+    return MAX_SECONDS
+
+
 def validate(r: dict) -> list[str]:
     """Returns a list of problems (empty = valid). Mirrors what the app's parser accepts."""
     p: list[str] = []
@@ -47,8 +61,9 @@ def validate(r: dict) -> list[str]:
                 continue
             for j, g in enumerate(segs, 1):
                 sec = g.get("seconds")
-                if not isinstance(sec, int) or sec <= 0 or sec > 99 * 60:
-                    p.append(f"step {i}.{j}: seconds must be 1..5940")
+                mx = max_seconds(s.get("mode"), g)
+                if not isinstance(sec, int) or sec <= 0 or sec > mx:
+                    p.append(f"step {i}.{j}: seconds must be 1..{mx}")
                 if not 0 <= g.get("speed", 0) <= 10:
                     p.append(f"step {i}.{j}: speed must be 0..10")
                 if g.get("tempC", 0) not in TEMPS_C:

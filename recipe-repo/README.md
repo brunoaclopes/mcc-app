@@ -81,5 +81,5 @@ works. It caches everything and keeps working offline.
 ## What the machine enforces anyway
 
 Whatever a recipe says, the app refuses speed > 3 with heat or in reverse, more than 130 °C, more than 99 min
-(15 min above speed 6), and heat with less than 200 g in the bowl. Turbo runs only while held (10 s at most, never
+(15 min above speed 6), and heat with less than 50 g in the bowl. Turbo runs only while held (10 s at most, never
 with heat or above 60 °C); knead, roast and steam use the stock presets with the same limits.

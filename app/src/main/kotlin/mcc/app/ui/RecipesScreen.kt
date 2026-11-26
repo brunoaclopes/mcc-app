@@ -144,7 +144,8 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             var added = 0
             for (e in entries) {
                 if (ingredientsById.containsKey(e.id)) continue
-                val r = runCatching { app.store.loadRecipe(e) }.getOrNull() ?: continue
+                // online recipes count once opened: reading them all here would download the whole catalogue
+                val r = runCatching { app.store.loadRecipe(e, download = false) }.getOrNull() ?: continue
                 ingredientsById[e.id] = fold(r.ingredients.flatMap { g -> g.items.map { it.text } }.joinToString(" | "))
                 added++
             }

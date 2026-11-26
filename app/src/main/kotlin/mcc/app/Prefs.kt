@@ -15,6 +15,17 @@ class Prefs(context: Context) {
     var repoUrl: String
         get() = sp.getString("repoUrl", "") ?: ""
         set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
+    /**
+     * Long low-temperature programs (slow cooking, sous-vide, fermentation): runs up to 12 h at 95 °C or less and
+     * speed 0–1 (SafetyLimits.maxLongRunMillis). Off until switched on after the supervised test (TEST-PLAN T19).
+     */
+    var longRuns: Boolean
+        get() = sp.getBoolean("longRuns", false)
+        set(v) = sp.edit().putBoolean("longRuns", v).apply()
+    /** Also list the official recipes of the Monsieur Cuisine website (RecipeStore). Off until the user turns it on. */
+    var onlineRecipes: Boolean
+        get() = sp.getBoolean("onlineRecipes", false)
+        set(v) = sp.edit().putBoolean("onlineRecipes", v).apply()
 
     /**
      * Cooking history: recipe keys (the id without its language) and when they were finished, newest first, at most
