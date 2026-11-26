@@ -114,7 +114,10 @@ maximum runtime or the requested duration is reached.
 - there's no communication, the lid is open, or the board reports an error;
 - the speed is above 3 with heat, or above 3 in reverse;
 - the temperature is above 130 °C;
-- the duration is above 99 min (15 min above speed 6). A manual run without a set time (time 0:00, a stopwatch)
+- the duration is above 99 min (15 min above speed 6), except a **long run**: a normal, heated run at 95 °C or less
+  and speed 0–1 may last up to 12 h (`SafetyLimits.maxLongRunMillis`), only while `longRunsEnabled` is on
+  (Settings → Machine → Long programs, off by default; `LONG_RUNS_OFF` otherwise). Every other check runs for the
+  whole time. A manual run without a set time (time 0:00, a stopwatch)
   gets exactly that limit as its duration and ends there (`MAX_RUNTIME`); only normal runs can be open;
 - heat is requested without a confirmed empty-bowl reference, or with less than 50 g in the bowl (the stock app has no minimum; the board reports dry heating as error 6, which stops any run);
 - the run mode isn't enabled. The controller only enables NORMAL (`01`) by itself (`SafetyLimits.enabledModes`);

@@ -6,6 +6,8 @@ worth doing next, roughly in order of value for the effort.
 
 ## Done
 
+- **Long programs** (slow cooking, sous-vide, yoghurt) and the **Monsieur Cuisine Smart programs** in online recipes,
+  run as machine steps; heating now needs 50 g in the bowl instead of 200 g (the stock app has no minimum).
 - **Monsieur Cuisine online recipes** (Settings, off by default): the official recipes of the Monsieur Cuisine
   website, listed live and downloaded when opened, without duplicating the recipe server's (`recipe/online/McOnline.kt`).
 - **Any-vegetable soup** (Programs): how firm, chunky or blended at three levels, optional onion base; put in as many
