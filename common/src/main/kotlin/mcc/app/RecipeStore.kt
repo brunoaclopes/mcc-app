@@ -182,7 +182,11 @@ class RecipeStore(
         const val ONLINE_MAX_AGE_MS = 24 * 3600_000L
     }
 
-    /** Copies a bundled image out of the APK once, so the image loader can decode it like any cached file. */
+    private val apkUpdated: Long by lazy {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime }.getOrDefault(0L)
+    }
+
+    /** Copies a bundled image out of the APK once per install, so the image loader can decode it like any cached file. */
     private fun assetFile(path: String): File? {
         // a local build may carry nicer photos (tools/fetch_program_photos.py; never committed): prefer them
         val own = path.replaceFirst("programs/", "programs-pixabay/")
@@ -192,10 +196,11 @@ class RecipeStore(
 
     private fun copyAsset(path: String): File? {
         val f = File(localDir, "assets/$path")
-        if (f.exists() && f.length() > 0) return f
+        // a copy older than the installed APK may be a photo an update replaced: copy it again
+        if (f.exists() && f.length() > 0 && f.lastModified() >= apkUpdated) return f
         return try {
             f.parentFile?.mkdirs()
-            context.assets.open(path).use { input -> File(f.path + ".part").apply { outputStream().use { input.copyTo(it) }; renameTo(f) } }
+            context.assets.open(path).use { input -> File(f.path + ".part").apply { outputStream().use { input.copyTo(it) }; f.delete(); renameTo(f) } }
             f
         } catch (e: Exception) { null }
     }
