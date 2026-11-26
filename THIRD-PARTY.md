@@ -41,13 +41,8 @@ From [Unsplash](https://unsplash.com/?utm_source=mcc-app&utm_medium=referral), u
 | `clean.jpg` | [Person in green shirt washing stainless steel sink](https://unsplash.com/photos/person-in-green-shirt-washing-stainless-steel-sink--VhH4S1Lur8?utm_source=mcc-app&utm_medium=referral) | [Marek Studzinski](https://unsplash.com/@jccards?utm_source=mcc-app&utm_medium=referral) |
 | `clean-deep.jpg` | [A close up of a sponge on a blue and yellow surface](https://unsplash.com/photos/a-close-up-of-a-sponge-on-a-blue-and-yellow-surface-p20KXTbxwVM?utm_source=mcc-app&utm_medium=referral) | [Volodymyr Hryshchenko](https://unsplash.com/@lunarts?utm_source=mcc-app&utm_medium=referral) |
 | `clean-smell.jpg` | [Yellow lemon fruit on white ceramic plate](https://unsplash.com/photos/yellow-lemon-fruit-on-white-ceramic-plate-09tUNHKUSrk?utm_source=mcc-app&utm_medium=referral) | [Myfanwy Owen](https://unsplash.com/@myfanwyo22?utm_source=mcc-app&utm_medium=referral) |
-
-From Wikimedia Commons:
-
-| File | Photo | Author | Licence |
-|---|---|---|---|
-| `eggs-medium.jpg` | [Soft boiled egg cut in half in Japan - 2024 July 9.jpeg](https://commons.wikimedia.org/wiki/File:Soft_boiled_egg_cut_in_half_in_Japan_-_2024_July_9.jpeg) | Nesnad | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| `varoma.jpg` | [Chinese soup dumplings.jpg](https://commons.wikimedia.org/wiki/File%3AChinese_soup_dumplings.jpg) | Phil Denton | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
+| `eggs-medium.jpg` | [A blue plate topped with eggs and pasta](https://unsplash.com/photos/a-blue-plate-topped-with-eggs-and-pasta-ROoTn5W_WmI?utm_source=mcc-app&utm_medium=referral) | [Stephanie Sarlos](https://unsplash.com/@studiostephaniesarlos?utm_source=mcc-app&utm_medium=referral) |
+| `varoma.jpg` | [Cooked food](https://unsplash.com/photos/cooked-food-kp0z_XbfxdI?utm_source=mcc-app&utm_medium=referral) | [topcools tee](https://unsplash.com/@topcools?utm_source=mcc-app&utm_medium=referral) |
 
 To use nicer photos in your own build, `tools/fetch_program_photos.py` downloads them from Pixabay (free API key)
 into `common/src/main/assets/programs-pixabay/`, which git ignores: the Pixabay Content License allows them inside
