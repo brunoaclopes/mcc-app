@@ -206,6 +206,7 @@ class SettingsScreen(app: AppUi) : Screen(app) {
         repoStatus = T.text(c, "", 14f, T.TEXT_2, T.semibold).apply { setPadding(T.dp(14), 0, 0, 0) }
         rrow.addView(repoStatus, lp(0, -2, 1f))
         rc.addView(rrow)
+        toggle(rc, Icon.BOOK, T.AMBER, S.onlineSetting, S.onlineHelp, p.onlineRecipes) { p.onlineRecipes = it; app.reloadIndex(true); app.notify(S.syncing) }
 
         val hc = card("ha", S.homeAssistant, Icon.WIFI, T.TEAL)
         val sw = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, T.dp(2), 0, T.dp(4)) }

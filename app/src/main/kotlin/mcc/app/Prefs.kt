@@ -15,6 +15,10 @@ class Prefs(context: Context) {
     var repoUrl: String
         get() = sp.getString("repoUrl", "") ?: ""
         set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
+    /** Also list the official recipes of the Monsieur Cuisine website (RecipeStore). Off until the user turns it on. */
+    var onlineRecipes: Boolean
+        get() = sp.getBoolean("onlineRecipes", false)
+        set(v) = sp.edit().putBoolean("onlineRecipes", v).apply()
 
     /**
      * Cooking history: recipe keys (the id without its language) and when they were finished, newest first, at most

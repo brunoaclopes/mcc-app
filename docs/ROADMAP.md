@@ -6,6 +6,8 @@ worth doing next, roughly in order of value for the effort.
 
 ## Done
 
+- **Monsieur Cuisine online recipes** (Settings, off by default): the official recipes of the Monsieur Cuisine
+  website, listed live and downloaded when opened, without duplicating the recipe server's (`recipe/online/McOnline.kt`).
 - **Any-vegetable soup** (Programs): how firm, chunky or blended at three levels, optional onion base; put in as many
   vegetables as you like and the machine weighs them and works out water, time and portions (`recipe/Soup.kt`).
 - **Heated steps reach their temperature**: a step whose time runs out before the bowl is hot keeps heating, within

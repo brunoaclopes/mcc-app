@@ -36,7 +36,7 @@ object Recipes {
                 visible(cached).takeIf { it.isNotEmpty() }?.let { _state.value = State(it, loading = true) }
             }
             val (idx, warn) = withContext(Dispatchers.IO) { app.store.loadIndex(force) }
-            _state.value = State(visible(idx), false, warn ?: if (app.prefs.repoUrl.isBlank()) P.s.noRepo else null)
+            _state.value = State(visible(idx), false, warn ?: if (app.prefs.repoUrl.isBlank() && !app.prefs.onlineRecipes) P.s.noRepo else null)
         }
     }
 

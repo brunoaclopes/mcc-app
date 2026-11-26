@@ -91,6 +91,10 @@ python3 tools/build_index.py              # validates recipes/*.json and writes 
 python3 -m http.server 8088               # quick test from a laptop
 ```
 
+Without a server of your own, Settings → **Recipe server** → **Monsieur Cuisine online recipes** lists the
+official recipes of the Monsieur Cuisine website (downloaded when opened, then cached); it can be combined with a
+server, which then wins for recipes both have.
+
 On the machine: Settings → **Recipe server** → `http://<server-ip>:8088/` → **Save & sync**. Everything
 downloaded is cached, so it keeps working offline: the list shows the cached copy at once and refreshes from the
 server in the background (and again when it is older than 15 minutes). To add recipes, write your own or convert them (see

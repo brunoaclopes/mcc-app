@@ -94,6 +94,7 @@ fun SettingsScreen(modifier: Modifier) {
     var pass by remember { mutableStateOf(p.password) }
     var tls by remember { mutableStateOf(p.tls) }
     var repo by remember { mutableStateOf(p.repoUrl) }
+    var online by remember { mutableStateOf(p.onlineRecipes) }
     var aiUrl by remember { mutableStateOf(p.aiUrl) }
     var aiModel by remember { mutableStateOf(p.aiModel) }
     var aiKey by remember { mutableStateOf(p.aiKey) }
@@ -140,6 +141,7 @@ fun SettingsScreen(modifier: Modifier) {
                 Field(L.s.address, repo, { repo = it }, "https://…")
                 FilledTonalButton(onClick = { p.repoUrl = repo; Recipes.refresh(force = true); ui.say(S.saved) },
                     modifier = Modifier.fillMaxWidth(), shape = smooth(16.dp)) { Text(L.s.saveSync) }
+                Toggle(L.s.onlineSetting, online, L.s.onlineHelp) { online = it; p.onlineRecipes = it; Recipes.refresh(force = true) }
             }
         }
 

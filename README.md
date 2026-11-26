@@ -36,6 +36,9 @@ without the stock cooking app.
   Time 0:00 runs as a stopwatch until you stop it. Works with the touch screen or the machine's jog knob.
 - **Guided recipes** from a recipe server you control (any static web server). Preparation steps, weighing with a
   live gauge, and machine steps that run only after you hold Start.
+- **Monsieur Cuisine online recipes** (optional, off by default): also list the official recipes of the Monsieur
+  Cuisine website, read live from its public recipe API. A recipe is downloaded when you open it and then works
+  offline; nothing from it is stored in this repository.
 - **Automatic programs**: an **any-vegetable soup**: put in as many vegetables as you like, the machine weighs them
   and works out the water, time and portions (firmness, chunky or blended at three levels, optional onion base), boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, proofing dough,
   reheating, and **cleaning** programs. They are ordinary guided recipes, so the same limits apply.

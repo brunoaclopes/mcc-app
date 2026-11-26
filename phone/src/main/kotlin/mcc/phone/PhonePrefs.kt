@@ -12,6 +12,8 @@ class PhonePrefs(c: Context) {
     var user: String get() = sp.getString("user", "") ?: ""; set(v) = sp.edit().putString("user", v.trim()).apply()
     var password: String get() = sp.getString("password", "") ?: ""; set(v) = sp.edit().putString("password", v).apply()
     var repoUrl: String get() = sp.getString("repoUrl", "") ?: ""; set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
+    /** Also list the official recipes of the Monsieur Cuisine website (RecipeStore). Off until the user turns it on. */
+    var onlineRecipes: Boolean get() = sp.getBoolean("onlineRecipes", false); set(v) = sp.edit().putBoolean("onlineRecipes", v).apply()
     // recipe import: the AI proxy (OpenAI-compatible) and the NAS upload service that adds recipes to the repository
     var aiUrl: String get() = sp.getString("aiUrl", "") ?: ""; set(v) = sp.edit().putString("aiUrl", v.trim()).apply()
     var aiModel: String get() = sp.getString("aiModel", "") ?: ""; set(v) = sp.edit().putString("aiModel", v.trim()).apply()

@@ -4,6 +4,7 @@ import android.content.Context
 import mcc.recipe.Programs
 import mcc.recipe.Recipe
 import mcc.recipe.RecipeIndex
+import mcc.recipe.online.McOnline
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -13,8 +14,16 @@ import java.security.MessageDigest
  * Recipes come from the HTTP repository at [repoUrl] (static files: index.json + recipes/<id>.json).
  * Every downloaded file is cached in the app's external files dir, which is also where recipes can be
  * pushed by hand (adb push … /sdcard/Android/data/mcc.app/files/recipes-repo/). Works offline from the cache.
+ *
+ * With [online] on, the official recipes of the Monsieur Cuisine website are listed too ([McOnline]): the list is
+ * refreshed at most every [ONLINE_MAX_AGE_MS], and a recipe is downloaded and converted only when it is opened,
+ * then kept in the cache. Online copies of recipes the repository already has (same stock recipe number) are hidden.
  */
-class RecipeStore(private val context: Context, private val repoUrl: () -> String) {
+class RecipeStore(
+    private val context: Context,
+    private val online: () -> Boolean = { false },
+    private val repoUrl: () -> String,
+) {
     val localDir: File = File(context.getExternalFilesDir(null) ?: context.filesDir, "recipes-repo")
 
     /** Downloads index.json from the repository (if configured) and returns the index (cached copy on failure). */
@@ -37,10 +46,55 @@ class RecipeStore(private val context: Context, private val repoUrl: () -> Strin
         if (f.exists()) {
             try { server = RecipeIndex.parse(f.readText()) } catch (e: Exception) { warning = "local index.json is invalid: ${e.message}" }
         }
-        // built-in programs first, then recipes imported on this machine, then the server's
-        val all = programs.map { entry(it, PROGRAM + it.id) } + mine() + (server?.recipes ?: emptyList())
+        // built-in programs first, then recipes imported on this machine, then the server's, then online ones
+        val own = mine() + (server?.recipes ?: emptyList())
+        var onlineEntries = emptyList<RecipeIndex.Entry>()
+        if (online()) {
+            val (list, w) = onlineIndex(refresh)
+            // without a server the "offline copy" note would be wrong: only the online state matters then
+            warning = if (base.isBlank()) w else warning ?: w
+            val have = own.mapNotNull { stockNumber.find(it.id)?.groupValues?.get(1) }.toSet()
+            onlineEntries = list.filter { McOnline.recipeNumber(it.image)?.let { n -> n in have } != true }
+        }
+        val all = programs.map { entry(it, PROGRAM + it.id) } + own + onlineEntries
         return RecipeIndex(format = "mcc-index/1", generated = server?.generated, recipes = all) to warning
     }
+
+    /** "mc2-24407-pt" / "mc3-24407-en": recipes converted from the stock apps carry the stock recipe number. */
+    private val stockNumber = Regex("^mc[23]-(\\d{5})-")
+
+    private val onlineDir get() = File(localDir, "online")
+    private fun onlineLang() = mcc.app.i18n.L.s.code
+
+    /** The online list in the UI language, from the cache, downloaded again when [refresh] and older than a day. */
+    private fun onlineIndex(refresh: Boolean): Pair<List<RecipeIndex.Entry>, String?> {
+        val lang = onlineLang()
+        val f = File(onlineDir, "index-$lang.json")
+        var warning: String? = null
+        if (refresh && (!f.exists() || System.currentTimeMillis() - f.lastModified() > ONLINE_MAX_AGE_MS)) {
+            try {
+                val out = ArrayList<RecipeIndex.Entry>()
+                var page = 1
+                do {
+                    val data = McOnline.parseList(fetch(McOnline.listUrl(page), McOnline.headers(lang)).toString(Charsets.UTF_8))
+                    out += McOnline.entries(data, lang)
+                    page++
+                } while (page <= data.totalPage && page <= 50)
+                if (out.isNotEmpty()) {
+                    onlineDir.mkdirs()
+                    val idx = RecipeIndex(format = "mcc-index/1", generated = java.util.Date().toString(), recipes = out)
+                    File(f.path + ".part").apply { writeText(Recipe.json.encodeToString(RecipeIndex.serializer(), idx)); renameTo(f) }
+                }
+            } catch (e: Exception) {
+                warning = mcc.app.i18n.L.s.onlineUnreachable
+            }
+        }
+        val cached: List<RecipeIndex.Entry> = if (f.exists()) runCatching { RecipeIndex.parse(f.readText()).recipes }.getOrDefault(emptyList()) else emptyList()
+        val list = cached.map { e -> e.copy(tags = (listOf(mcc.app.i18n.L.s.tagOnline) + e.tags).take(4)) }
+        return list to warning
+    }
+
+    fun isOnline(e: RecipeIndex.Entry) = e.file.startsWith(McOnline.FILE_PREFIX)
 
     private val programs = Programs.cooking()
 
@@ -72,9 +126,26 @@ class RecipeStore(private val context: Context, private val repoUrl: () -> Strin
         if (base != e.id) listOf("pt", "en").forEach { File(mineDir, "$base-$it.json").delete() }
     }
 
-    fun loadRecipe(entry: RecipeIndex.Entry): Recipe {
+    /**
+     * The recipe behind an index entry, downloading it when it is not cached. With [download] false, an online
+     * recipe that has not been opened yet is not fetched (the ingredient search reads every recipe).
+     */
+    fun loadRecipe(entry: RecipeIndex.Entry, download: Boolean = true): Recipe {
         if (entry.file.startsWith(PROGRAM)) return Programs.all().first { it.id == entry.file.removePrefix(PROGRAM) }
         if (isMine(entry)) return Recipe.parse(File(localDir, entry.file).readText())
+        if (isOnline(entry)) {
+            val id = entry.file.removePrefix(McOnline.FILE_PREFIX).toLong()
+            val lang = entry.language ?: onlineLang()
+            val f = File(onlineDir, "recipes/${entry.id}.json")
+            if (f.exists()) return Recipe.parse(f.readText())
+            require(download) { "online recipe not downloaded yet" }
+            val r = McOnline.convert(McOnline.parseDetail(fetch(McOnline.detailUrl(id), McOnline.headers(lang)).toString(Charsets.UTF_8)), lang)
+            val problems = r.validate()
+            require(problems.isEmpty()) { problems.joinToString("; ") }
+            f.parentFile?.mkdirs()
+            File(f.path + ".part").apply { writeText(Recipe.json.encodeToString(Recipe.serializer(), r)); renameTo(f) }
+            return r
+        }
         val f = File(localDir, entry.file)
         if (!f.exists() || (entry.sha256 != null && sha256(f.readBytes()) != entry.sha256)) {
             val base = repoUrl()
@@ -106,7 +177,10 @@ class RecipeStore(private val context: Context, private val repoUrl: () -> Strin
         } catch (e: Exception) { null }
     }
 
-    companion object { const val PROGRAM = "program:" }
+    companion object {
+        const val PROGRAM = "program:"
+        const val ONLINE_MAX_AGE_MS = 24 * 3600_000L
+    }
 
     /** Copies a bundled image out of the APK once, so the image loader can decode it like any cached file. */
     private fun assetFile(path: String): File? {
@@ -126,10 +200,11 @@ class RecipeStore(private val context: Context, private val repoUrl: () -> Strin
         } catch (e: Exception) { null }
     }
 
-    private fun fetch(url: String): ByteArray {
+    private fun fetch(url: String, headers: Map<String, String> = emptyMap()): ByteArray {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 5_000
         c.readTimeout = 10_000
+        headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
         try {
             if (c.responseCode != 200) throw java.io.IOException("HTTP ${c.responseCode} for $url")
             return c.inputStream.use { it.readBytes() }

@@ -108,6 +108,7 @@ abstract class Strings {
     abstract fun recipesCount(n: Int): String
     abstract fun stepsCount(n: Int): String
     abstract val offlineCopy: String; abstract val serverUnreachable: String
+    abstract val onlineUnreachable: String; abstract val onlineSetting: String; abstract val onlineHelp: String; abstract val tagOnline: String
     abstract val searchHint: String; abstract val syncing: String; abstract val all: String
     abstract val noRecipes: String
     abstract fun nothingMatches(q: String): String
@@ -321,6 +322,10 @@ object En : Strings() {
     override fun recipesCount(n: Int) = if (n == 1) "1 recipe" else "$n recipes"
     override fun stepsCount(n: Int) = "$n steps"
     override val offlineCopy = "offline copy"; override val serverUnreachable = "server unreachable, offline copy"
+    override val onlineUnreachable = "Monsieur Cuisine online unreachable, offline copy"
+    override val onlineSetting = "Monsieur Cuisine online recipes"
+    override val onlineHelp = "Also lists the official recipes from the Monsieur Cuisine website. A recipe is downloaded when you open it, then works offline. Recipes your server already has are not shown twice."
+    override val tagOnline = "Online"
     override val searchHint = "Search recipes, tags or ingredients (chicken, rice)"; override val syncing = "Syncing recipes…"; override val all = "All"
     override val noRecipes = "No recipes yet.\nSet the recipe server in Settings."
     override fun nothingMatches(q: String) = "Nothing matches “$q”."
@@ -598,6 +603,10 @@ object Pt : Strings() {
     override fun recipesCount(n: Int) = if (n == 1) "1 receita" else "$n receitas"
     override fun stepsCount(n: Int) = "$n passos"
     override val offlineCopy = "cópia local"; override val serverUnreachable = "servidor indisponível, cópia local"
+    override val onlineUnreachable = "Monsieur Cuisine online indisponível, cópia local"
+    override val onlineSetting = "Receitas online do Monsieur Cuisine"
+    override val onlineHelp = "Mostra também as receitas oficiais do site Monsieur Cuisine. Cada receita é transferida quando a abre e depois funciona sem internet. As receitas que o seu servidor já tem não aparecem duas vezes."
+    override val tagOnline = "Online"
     override val searchHint = "Procurar receitas, etiquetas ou ingredientes (frango, arroz)"; override val syncing = "A sincronizar receitas…"; override val all = "Todas"
     override val noRecipes = "Ainda não há receitas.\nIndique o servidor de receitas nas Definições."
     override fun nothingMatches(q: String) = "Nada corresponde a “$q”."

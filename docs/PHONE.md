@@ -16,7 +16,8 @@ as Home Assistant**, so it needs no server on the tablet and no Google services:
   - while cooking, a live notification with a progress bar, a countdown, and **Pause** / **Stop** buttons. On
     Android 16 it asks to be shown as a live update.
 - **Recipes**: the same recipe repository as the machine (search, language and tag filters, photos cached for
-  offline use). The recipe page lists ingredients and steps. While the machine cooks that recipe, it highlights
+  offline use), plus, with **Monsieur Cuisine online recipes** on (Settings → Recipe server), the official recipes
+  of the Monsieur Cuisine website. Turn it on on the machine too, so **Open on the machine** finds those recipes. The recipe page lists ingredients and steps. While the machine cooks that recipe, it highlights
   the current step and follows along. **Open on the machine** shows the recipe on the machine's Cook screen, ready
   to cook: it never starts anything.
 - **Cook along**: one step per page in big type, with the screen kept on. While the recipe is open on the machine,
@@ -53,7 +54,7 @@ whatever asks. Opening recipes from the phone can be switched off on the machine
    (Android 10 or newer), or build it (below). Android asks to allow installs from your browser or file manager
    once. See [Installing and updating](#installing-and-updating).
 3. Settings → **Connection**: broker address, port, user and password. **Recipe server**: the same address as on
-   the machine.
+   the machine, and **Monsieur Cuisine online recipes** if the machine has them on.
 4. Optional, for recipe import: Settings → **Recipe import** → AI server address, model and key, and the upload
    service's address and token ([SERVER-SETUP.md](SERVER-SETUP.md)) → **Save and test**.
 5. Allow notifications when asked. For notifications with the app closed, keep **Stay connected in the
