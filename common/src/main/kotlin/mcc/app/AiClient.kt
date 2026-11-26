@@ -367,7 +367,7 @@ Hard machine limits (never exceed them):
 - while heating (tempC > 0): speed 0-3;  reverse: speed 1-3;
 - tempC is 0 (no heat) or 37-130; 100 = boiling, 120 = steaming / browning ("Varoma");
 - one segment lasts at most 5940 s, and at most 900 s above speed 6;
-- heating needs at least 200 g in the bowl; speed 0 with a temperature heats without the blade turning.
+- heating needs at least 50 g in the bowl; speed 0 with a temperature heats without the blade turning.
 
 Converting other machines' settings (Thermomix / Bimby notation "time/temperature/speed"):
 - "5 sec/speed 5" -> {"seconds":5,"speed":5}; "10 min/100°C/speed 1" -> {"seconds":600,"speed":1,"tempC":100};

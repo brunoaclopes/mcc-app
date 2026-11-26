@@ -31,7 +31,7 @@ class SoupTest {
             var weighed = 0
             for (s in r.steps) {
                 if (s is Step.Weigh) weighed += s.grams
-                if (s is Step.Machine && s.segments.any { it.tempC > 0 }) assertTrue(weighed >= if (s.mode == Mode.ROAST) 30 else 200, "$o: heats with $weighed g weighed")
+                if (s is Step.Machine && s.segments.any { it.tempC > 0 }) assertTrue(weighed >= if (s.mode == Mode.ROAST) 30 else 50, "$o: heats with $weighed g weighed")
             }
         }
     }

@@ -116,7 +116,7 @@ maximum runtime or the requested duration is reached.
 - the temperature is above 130 °C;
 - the duration is above 99 min (15 min above speed 6). A manual run without a set time (time 0:00, a stopwatch)
   gets exactly that limit as its duration and ends there (`MAX_RUNTIME`); only normal runs can be open;
-- heat is requested without a confirmed empty-bowl reference, or with less than 200 g in the bowl (roast: 50 g);
+- heat is requested without a confirmed empty-bowl reference, or with less than 50 g in the bowl (the stock app has no minimum; the board reports dry heating as error 6, which stops any run);
 - the run mode isn't enabled. The controller only enables NORMAL (`01`) by itself (`SafetyLimits.enabledModes`);
   turbo, knead, roast and steam are in `SafetyLimits.userEnableableModes`, and the app enables them
   (`MachineService.applyModes`) because each passed its supervised test ([TEST-PLAN.md](TEST-PLAN.md)). Their own

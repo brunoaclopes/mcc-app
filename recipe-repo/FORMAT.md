@@ -62,7 +62,7 @@ plus a normal heat-up, as for the stock app.
 
 The machine layer enforces its own limits whatever the recipe says: speed ≤ 3 while heating,
 speed ≤ 3 in reverse, 99 min max, 15 min max above speed 6, and heating only with
-≥ 200 g in the bowl. `knead`, `roast` and `steam` use the stock presets with the same limits.
+≥ 50 g in the bowl. `knead`, `roast` and `steam` use the stock presets with the same limits.
 
 ## Languages
 

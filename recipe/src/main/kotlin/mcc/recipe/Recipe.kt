@@ -27,6 +27,16 @@ data class Recipe(
 ) {
     companion object {
         const val FORMAT = "mcc-recipe/1"
+        const val MAX_SECONDS = 99 * 60
+        /** Long low-temperature segments (slow cooking, sous-vide, fermentation): see [isLongKind]. */
+        const val MAX_LONG_SECONDS = 12 * 3600
+        const val LONG_MAX_TEMP_C = 95
+        /**
+         * A run segment heated to 95 °C or less at speed 0 or 1 may last up to 12 h (FORMAT.md); the machine runs it
+         * only with long programs switched on (SafetyLimits.maxLongRunMillis). Everything else: 99 min.
+         */
+        fun isLongKind(mode: Mode, g: Segment) = mode == Mode.RUN && g.tempC in 1..LONG_MAX_TEMP_C && g.speed <= 1
+        fun maxSeconds(mode: Mode, g: Segment) = if (isLongKind(mode, g)) MAX_LONG_SECONDS else MAX_SECONDS
         val json = Json { ignoreUnknownKeys = true; classDiscriminator = "type"; explicitNulls = false }
 
         /** Parses and validates; throws [IllegalArgumentException] with a readable message. */
@@ -55,7 +65,8 @@ data class Recipe(
                 is Step.Machine -> {
                     if (s.segments.isEmpty()) p += "step ${i + 1}: no segments"
                     s.segments.forEach { g ->
-                        if (g.seconds !in 1..99 * 60) p += "step ${i + 1}: seconds must be 1..5940"
+                        val max = maxSeconds(s.mode, g)
+                        if (g.seconds !in 1..max) p += "step ${i + 1}: seconds must be 1..$max"
                         if (g.speed !in 0..10) p += "step ${i + 1}: speed must be 0..10"
                         if (g.tempC !in 0..130) p += "step ${i + 1}: tempC must be 0..130"
                     }

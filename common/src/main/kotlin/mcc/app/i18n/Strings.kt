@@ -108,11 +108,12 @@ abstract class Strings {
     abstract fun recipesCount(n: Int): String
     abstract fun stepsCount(n: Int): String
     abstract val offlineCopy: String; abstract val serverUnreachable: String
+    abstract val longRunsSetting: String; abstract val longRunsHelp: String
     abstract val onlineUnreachable: String; abstract val onlineSetting: String; abstract val onlineHelp: String; abstract val tagOnline: String
     abstract val searchHint: String; abstract val syncing: String; abstract val all: String
     abstract val noRecipes: String
     abstract fun nothingMatches(q: String): String
-    abstract val nothingInFilter: String; abstract fun aiImporting(s: Int): String; abstract fun heatAdd(g: Int): String; abstract val autoLocked: String
+    abstract val nothingInFilter: String; abstract fun aiImporting(s: Int): String; abstract fun heatAdd(missing: Int): String; abstract val autoLocked: String
     abstract fun opening(t: String): String
     abstract fun cannotOpen(m: String): String
     abstract fun minutesShort(m: Int): String
@@ -282,7 +283,7 @@ object En : Strings() {
     override val standbyAfter = "After"
     override val turbo = "Turbo"
     override val emptyBowlTitle = "Is the bowl empty?"
-    override val emptyBowlBody = "Fit the empty bowl with the lid on. Heating then needs at least 200 g of food or liquid above this weight."
+    override val emptyBowlBody = "Fit the empty bowl with the lid on. Heating then needs at least 50 g of food or liquid above this weight."
     override val emptyBowlOk = "Bowl is empty"; override val emptyBowlSaved = "Empty bowl saved"
     override val scaleNotReady = "Scale not ready: lid on, motor off, wait for a steady reading"
     override val lockedHint = "Controls are locked: tap the lock at the top"
@@ -313,7 +314,7 @@ object En : Strings() {
     override val waitingMachine = "Waiting for the machine…"; override val closeLidToStart = "Close the lid to start"
     override val unlockToStart = "Controls locked · tap the lock at the top to unlock"
     override val heatNeedsReference = "To heat, the app needs the empty bowl's weight · tap here"
-    override fun heatNeedsContent(now: Int) = "Heating needs at least 200 g in the bowl (now $now g)"
+    override fun heatNeedsContent(now: Int) = "Heating needs at least 50 g in the bowl (now $now g)"
     override fun pressHold(summary: String) = "$summary · press and hold to start"
     override fun runningAt(speed: Int) = "Running at speed $speed"
     override fun duration(sec: Int) = when { sec < 60 -> "$sec s"; sec % 60 == 0 -> "${sec / 60} min"; else -> "${sec / 60} min ${sec % 60} s" }
@@ -323,6 +324,8 @@ object En : Strings() {
     override fun stepsCount(n: Int) = "$n steps"
     override val offlineCopy = "offline copy"; override val serverUnreachable = "server unreachable, offline copy"
     override val onlineUnreachable = "Monsieur Cuisine online unreachable, offline copy"
+    override val longRunsSetting = "Long programs"
+    override val longRunsHelp = "Slow cooking, sous-vide and fermentation: up to 12 hours, only at 95 °C or less and speed 0–1. The lid and board errors still stop it. Stay nearby the first time."
     override val onlineSetting = "Monsieur Cuisine online recipes"
     override val onlineHelp = "Also lists the official recipes from the Monsieur Cuisine website. A recipe is downloaded when you open it, then works offline. Recipes your server already has are not shown twice."
     override val tagOnline = "Online"
@@ -331,7 +334,7 @@ object En : Strings() {
     override fun nothingMatches(q: String) = "Nothing matches “$q”."
     override val nothingInFilter = "No recipes with this filter.\nTap here to show all."
     override fun aiImporting(s: Int) = "Importing… $s s"
-    override fun heatAdd(g: Int) = "Add ${200 - g} g more to heat"
+    override fun heatAdd(missing: Int) = "Add $missing g more to heat"
     override val autoLocked = "Controls locked after a few idle minutes"
     override fun opening(t: String) = "Opening $t…"
     override fun cannotOpen(m: String) = "Can't open the recipe: $m"
@@ -429,7 +432,7 @@ object En : Strings() {
     override val on = "ON"; override val notConnected = "Not connected"; override val connectedWord = "Connected"; override val connecting = "Connecting…"
     override val safetyTitle = "Safety limits, always enforced"
     override val safetyLines = listOf(
-        "Heating: speed ≤ 3, at least 200 g in the bowl, max 130 °C",
+        "Heating: speed ≤ 3, at least 50 g in the bowl, max 130 °C",
         "Reverse: speed ≤ 3 · max 99 min, 15 min above speed 6",
         "Stops on lid open, board error or lost contact (1.5 s)",
         "Turbo: only while held, max 10 s, never with heat or above 60 °C",
@@ -457,6 +460,7 @@ object En : Strings() {
         RejectCode.BAD_TEMP -> "Temperature must be 0 to ${r.value} °C"
         RejectCode.BAD_DURATION -> "Set a time first"
         RejectCode.TOO_LONG -> "Too long for this speed (max ${r.value} min)"
+        RejectCode.LONG_RUNS_OFF -> "Long programs are off (max ${r.value} min): Settings → Machine"
         RejectCode.REVERSE_SPEED -> "Reverse runs at speed ${r.value} or less"
         RejectCode.NOTHING_TO_DO -> "Set a speed or a temperature"
         RejectCode.HEAT_SPEED -> "Heating runs at speed ${r.value} or less"
@@ -563,7 +567,7 @@ object Pt : Strings() {
     override val standbyAfter = "Depois de"
     override val turbo = "Turbo"
     override val emptyBowlTitle = "O copo está vazio?"
-    override val emptyBowlBody = "Coloque o copo vazio com a tampa. Para aquecer serão depois precisos pelo menos 200 g de alimentos ou líquido acima deste peso."
+    override val emptyBowlBody = "Coloque o copo vazio com a tampa. Para aquecer serão depois precisos pelo menos 50 g de alimentos ou líquido acima deste peso."
     override val emptyBowlOk = "O copo está vazio"; override val emptyBowlSaved = "Copo vazio guardado"
     override val scaleNotReady = "Balança não está pronta: tampa colocada, motor parado, espere por um valor estável"
     override val lockedHint = "Comandos bloqueados: toque no cadeado em cima"
@@ -594,7 +598,7 @@ object Pt : Strings() {
     override val waitingMachine = "À espera da máquina…"; override val closeLidToStart = "Feche a tampa para começar"
     override val unlockToStart = "Comandos bloqueados · toque no cadeado em cima para desbloquear"
     override val heatNeedsReference = "Para aquecer, a app precisa do peso do copo vazio · toque aqui"
-    override fun heatNeedsContent(now: Int) = "Para aquecer são precisos pelo menos 200 g no copo (agora $now g)"
+    override fun heatNeedsContent(now: Int) = "Para aquecer são precisos pelo menos 50 g no copo (agora $now g)"
     override fun pressHold(summary: String) = "$summary · mantenha premido para iniciar"
     override fun runningAt(speed: Int) = "A trabalhar na velocidade $speed"
     override fun duration(sec: Int) = when { sec < 60 -> "$sec s"; sec % 60 == 0 -> "${sec / 60} min"; else -> "${sec / 60} min ${sec % 60} s" }
@@ -604,6 +608,8 @@ object Pt : Strings() {
     override fun stepsCount(n: Int) = "$n passos"
     override val offlineCopy = "cópia local"; override val serverUnreachable = "servidor indisponível, cópia local"
     override val onlineUnreachable = "Monsieur Cuisine online indisponível, cópia local"
+    override val longRunsSetting = "Programas longos"
+    override val longRunsHelp = "Cozedura lenta, sous-vide e fermentação: até 12 horas, só a 95 °C ou menos e velocidade 0–1. A tampa e os erros da placa continuam a parar. Fique por perto da primeira vez."
     override val onlineSetting = "Receitas online do Monsieur Cuisine"
     override val onlineHelp = "Mostra também as receitas oficiais do site Monsieur Cuisine. Cada receita é transferida quando a abre e depois funciona sem internet. As receitas que o seu servidor já tem não aparecem duas vezes."
     override val tagOnline = "Online"
@@ -612,7 +618,7 @@ object Pt : Strings() {
     override fun nothingMatches(q: String) = "Nada corresponde a “$q”."
     override val nothingInFilter = "Sem receitas com este filtro.\nToque aqui para ver todas."
     override fun aiImporting(s: Int) = "A importar… $s s"
-    override fun heatAdd(g: Int) = "Junte mais ${200 - g} g para aquecer"
+    override fun heatAdd(missing: Int) = "Junte mais $missing g para aquecer"
     override val autoLocked = "Comandos bloqueados após alguns minutos sem uso"
     override fun opening(t: String) = "A abrir $t…"
     override fun cannotOpen(m: String) = "Não foi possível abrir a receita: $m"
@@ -710,7 +716,7 @@ object Pt : Strings() {
     override val on = "LIG."; override val notConnected = "Sem ligação"; override val connectedWord = "Ligado"; override val connecting = "A ligar…"
     override val safetyTitle = "Limites de segurança, sempre aplicados"
     override val safetyLines = listOf(
-        "Aquecimento: velocidade ≤ 3, pelo menos 200 g no copo, máx. 130 °C",
+        "Aquecimento: velocidade ≤ 3, pelo menos 50 g no copo, máx. 130 °C",
         "Inverso: velocidade ≤ 3 · máx. 99 min, 15 min acima da velocidade 6",
         "Para com a tampa aberta, erro da placa ou perda de ligação (1,5 s)",
         "Turbo: só enquanto premido, máx. 10 s, nunca com calor nem acima de 60 °C",
@@ -738,6 +744,7 @@ object Pt : Strings() {
         RejectCode.BAD_TEMP -> "A temperatura tem de ser de 0 a ${r.value} °C"
         RejectCode.BAD_DURATION -> "Defina primeiro o tempo"
         RejectCode.TOO_LONG -> "Demasiado tempo para esta velocidade (máx. ${r.value} min)"
+        RejectCode.LONG_RUNS_OFF -> "Programas longos desligados (máx. ${r.value} min): Definições → Máquina"
         RejectCode.REVERSE_SPEED -> "O sentido inverso vai até à velocidade ${r.value}"
         RejectCode.NOTHING_TO_DO -> "Defina uma velocidade ou uma temperatura"
         RejectCode.HEAT_SPEED -> "Com aquecimento, a velocidade vai até ${r.value}"

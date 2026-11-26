@@ -2,7 +2,7 @@ package mcc.recipe
 
 /**
  * Built-in automatic programs. Each one is an ordinary recipe made only of `run` steps, so it goes through the
- * same runner and the same machine limits as any recipe (speed <= 3 while heating, >= 200 g to heat, 99 min).
+ * same runner and the same machine limits as any recipe (speed <= 3 while heating, >= 50 g to heat, 99 min).
  * Heating without the blade is speed 0 with a temperature.
  */
 object Programs {
@@ -11,7 +11,7 @@ object Programs {
     /** Photos ship inside the app (app/src/main/assets/programs/, credits in THIRD-PARTY.md). */
     const val ASSET = "asset:programs/"
     /** Programs without a bundled photo yet: they get a drawn cover. */
-    private val DRAWN = emptySet<String>()
+    private val DRAWN = setOf("slow-cook", "sous-vide", "yoghurt", "puree")
 
     fun all(): List<Recipe> = listOf("en", "pt").flatMap { lang -> defs.map { it(Txt(lang)) } }
 
@@ -77,8 +77,8 @@ object Programs {
                 seg(25.0, 1, 120)),
             say(x.t("Open the steaming lid away from you: the steam is very hot.", "Abra a tampa do vapor para o lado oposto a si: o vapor queima."))) },
         { x -> recipe(x, "melt-chocolate", x.t("Melt chocolate", "Derreter chocolate"), 6,
-            listOf(x.t("200 to 400 g chocolate, in pieces", "200 a 400 g de chocolate em pedaços")),
-            weigh(x.t("Put the chocolate in the bowl (at least 200 g).", "Coloque o chocolate no copo (pelo menos 200 g)."), 200),
+            listOf(x.t("100 to 400 g chocolate, in pieces", "100 a 400 g de chocolate em pedaços")),
+            weigh(x.t("Put the chocolate in the bowl (at least 100 g).", "Coloque o chocolate no copo (pelo menos 100 g)."), 100),
             run(x.t("Grate.", "Ralar."), sec(10, 7)),
             run(x.t("Melt gently.", "Derreter lentamente."), seg(4.0, 2, 50)),
             say(x.t("Scrape down the sides. If it is not fully melted, run 1 more minute at 50 °C, speed 2 in Manual.",
@@ -89,13 +89,55 @@ object Programs {
                 "Coloque a fruta e o líquido no copo (no máximo 1 litro) e feche a tampa com o copo medidor.")),
             run(x.t("Blend, speeding up gradually.", "Triturar, aumentando a velocidade aos poucos."), sec(10, 4), sec(10, 6), sec(40, 9))) },
         { x -> recipe(x, "proof-dough", x.t("Proof dough", "Levedar massa"), 30,
-            listOf(x.t("Kneaded yeast dough (at least 200 g)", "Massa lêveda amassada (pelo menos 200 g)")),
-            say(x.t("Leave the dough in the bowl (at least 200 g), lid on.", "Deixe a massa no copo (pelo menos 200 g), com a tampa.")),
+            listOf(x.t("Kneaded yeast dough", "Massa lêveda amassada")),
+            say(x.t("Leave the dough in the bowl (at least 50 g), lid on.", "Deixe a massa no copo (pelo menos 50 g), com a tampa.")),
             run(x.t("Keep warm while it rises (blade off).", "Manter morno enquanto leveda (lâmina parada)."), seg(30.0, 0, 37)),
             say(x.t("If it has not doubled, repeat the step.", "Se ainda não dobrou de volume, repita o passo."))) },
+        // the Monsieur Cuisine Smart's long programs: one long low-temperature run (Settings → Machine → Long programs)
+        { x -> recipe(x, "slow-cook", x.t("Slow cooking, 4 hours", "Cozedura lenta, 4 horas"), 250,
+            listOf(x.t("Meat and vegetables in pieces, with stock or water to cover (1 to 2 kg in total)",
+                "Carne e legumes em pedaços, com caldo ou água a cobrir (1 a 2 kg no total)")),
+            say(x.t("Put everything in the bowl: the liquid must cover it. Close the lid with the measuring cup in.",
+                "Coloque tudo no copo: o líquido tem de cobrir. Feche a tampa com o copo medidor.")),
+            run(x.t("Slow cook at 90 °C, stirring gently in reverse.", "Cozer lentamente a 90 °C, mexendo devagar em inverso."),
+                seg(240.0, 1, 90, reverse = true)),
+            say(x.t("Season and serve. Tougher cuts (beef cheek, shoulder) like 6 hours: run the step again for 2 more.",
+                "Tempere e sirva. Cortes mais rijos (bochecha, pá) gostam de 6 horas: repita o passo mais 2.")),
+            notes = listOf(x.t("Needs Long programs on (Settings → Machine). Stay nearby the first time.",
+                "Precisa de Programas longos ligados (Definições → Máquina). Fique por perto da primeira vez."))) },
+        { x -> recipe(x, "sous-vide", x.t("Sous-vide, 60 °C", "Sous-vide, 60 °C"), 100,
+            listOf(x.t("Chicken breast, fish or pork, vacuum-sealed (up to 600 g)", "Peito de frango, peixe ou porco embalado em vácuo (até 600 g)"),
+                x.t("1500 g warm water", "1500 g de água morna")),
+            weigh(x.t("Pour the warm water into the bowl.", "Deite a água morna no copo."), 1500),
+            say(x.t("Put the sealed bags in the simmering basket (they must not touch the blade), put it in the bowl and close the lid.",
+                "Coloque os sacos no cesto (não podem tocar na lâmina), ponha o cesto no copo e feche a tampa.")),
+            run(x.t("Cook gently at 60 °C (blade off).", "Cozinhar suavemente a 60 °C (lâmina parada)."), seg(90.0, 0, 60)),
+            say(x.t("Take the bags out, open them and sear the meat briefly in a very hot pan.",
+                "Retire os sacos, abra-os e sele a carne rapidamente numa frigideira bem quente.")),
+            notes = listOf(x.t("The machine holds 60 °C (its heat levels go in 5 °C steps). Needs Long programs on (Settings → Machine).",
+                "A máquina mantém 60 °C (os níveis de calor vão de 5 em 5 °C). Precisa de Programas longos ligados (Definições → Máquina)."))) },
+        { x -> recipe(x, "yoghurt", x.t("Yoghurt", "Iogurte"), 560,
+            listOf(x.t("1000 g milk", "1000 g de leite"), x.t("150 g plain yoghurt with live cultures", "150 g de iogurte natural com culturas vivas")),
+            weigh(x.t("Pour the milk into the bowl.", "Deite o leite no copo."), 1000),
+            run(x.t("Heat the milk to 90 °C.", "Aquecer o leite a 90 °C."), seg(12.0, 2, 90)),
+            say(x.t("Take the measuring cup out and let the milk cool to about 40 °C (about 45 minutes; the screen shows the bowl temperature).",
+                "Tire o copo medidor e deixe o leite arrefecer até cerca de 40 °C (uns 45 minutos; o ecrã mostra a temperatura do copo).")),
+            weigh(x.t("Add the yoghurt.", "Junte o iogurte."), 150),
+            run(x.t("Stir in.", "Misturar."), sec(10, 3)),
+            run(x.t("Ferment at 37 °C for 8 hours (blade off). Don't open the lid.", "Fermentar a 37 °C durante 8 horas (lâmina parada). Não abra a tampa."),
+                seg(480.0, 0, 37)),
+            say(x.t("Pour into jars and chill for at least 4 hours: it thickens in the fridge.",
+                "Passe para frascos e leve ao frigorífico pelo menos 4 horas: engrossa no frio.")),
+            notes = listOf(x.t("Needs Long programs on (Settings → Machine). Keep 2 tbsp as the starter for the next batch.",
+                "Precisa de Programas longos ligados (Definições → Máquina). Guarde 2 colheres como fermento para a próxima vez."))) },
+        { x -> recipe(x, "puree", x.t("Purée", "Puré"), 3,
+            listOf(x.t("300 to 1500 g cooked vegetables, fruit or soup", "300 a 1500 g de legumes cozidos, fruta ou sopa")),
+            say(x.t("Put the cooked food in the bowl and close the lid with the measuring cup in. Let very hot food cool a little first.",
+                "Coloque os alimentos cozidos no copo e feche a tampa com o copo medidor. Deixe arrefecer um pouco o que estiver muito quente.")),
+            run(x.t("Purée, speeding up gradually.", "Triturar, aumentando a velocidade aos poucos."), sec(10, 5), sec(10, 7), sec(60, 10))) },
         { x -> recipe(x, "reheat", x.t("Reheat soup or sauce", "Reaquecer sopa ou molho"), 10,
-            listOf(x.t("300 to 1500 g soup or sauce", "300 a 1500 g de sopa ou molho")),
-            say(x.t("Pour the soup or sauce into the bowl (at least 200 g) and close the lid.", "Deite a sopa ou o molho no copo (pelo menos 200 g) e feche a tampa.")),
+            listOf(x.t("100 to 1500 g soup or sauce", "100 a 1500 g de sopa ou molho")),
+            say(x.t("Pour the soup or sauce into the bowl (at least 50 g) and close the lid.", "Deite a sopa ou o molho no copo (pelo menos 50 g) e feche a tampa.")),
             run(x.t("Reheat, stirring.", "Reaquecer, mexendo."), seg(8.0, 2, 90))) },
         // the stock app's three special modes (firmware work modes), copied from its presets; see MachinePlan
         { x -> recipe(x, "knead", x.t("Knead dough", "Amassar massa"), 3,

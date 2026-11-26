@@ -67,7 +67,7 @@ without the stock cooking app.
 - A red **STOP** is always on screen. The jog knob never starts anything; Home Assistant only with the opt-in remote start.
 - The machine layer refuses unsafe requests whatever asks for them: speed > 3 with heat or in reverse,
   more than 130 °C, more than 99 min (15 min above speed 6), and heat without a known empty-bowl weight or with
-  less than 200 g in the bowl.
+  less than 50 g in the bowl (the stock app has no minimum; the power board reports dry heating itself).
 - It **stops** when the lid opens, the power board reports an error, or no valid board frame arrives for 1.5 s.
 - Every run mode (normal, turbo, knead, roast, steam) passed a supervised live test before it was turned on, and
   each keeps its own limits: turbo runs only while held (10 s at most, never with heat, reverse or a bowl at 60 °C or

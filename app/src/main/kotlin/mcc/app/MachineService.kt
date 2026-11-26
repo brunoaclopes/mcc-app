@@ -239,6 +239,7 @@ class MachineService : Service() {
     fun applyModes() {
         val p = Prefs(this)
         controller.userEnabledModes = setOf(RunMode.TURBO, RunMode.KNEAD, RunMode.ROAST, RunMode.STEAM)
+        controller.longRunsEnabled = p.longRuns
         remoteEnabled = p.remoteStart
     }
 
@@ -249,6 +250,8 @@ class MachineService : Service() {
 
     /** Settings changed hands-free weighing: the loaded recipe follows at once. */
     fun setAutoWeigh(on: Boolean) = synchronized(lock) { prefs.autoWeigh = on; runner?.autoAdvanceWeigh = on }
+    /** Long low-temperature programs (up to 12 h at 95 °C or less, speed 0–1); applies from the next start. */
+    fun setLongRuns(on: Boolean) { prefs.longRuns = on; controller.longRunsEnabled = on }
 
     /**
      * Keep warm after a heated recipe: 30 min at 70 °C, speed 1 in reverse (stirs without cutting, nothing sticks).

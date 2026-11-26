@@ -64,20 +64,36 @@ class McOnlineTest {
         assertEquals("", s[2].text) // "Mode" is a label, not step text
         assertEquals(Step.Machine("", Mode.TURBO, listOf(Segment(10), Segment(2))), s[3])
         assertFalse((s[4] as Step.Machine).segments[0].reverse) // reverse at speed 5 dropped
-        // 42 °C is not a machine level: no machine step is made from it (it had no text, so nothing at all)
-        assertEquals(Step.Instruction("Sirva."), s[5])
-        assertEquals(6, s.size)
+        // 42 °C is not a machine level: it runs at the level below (37 °C), with a note
+        assertEquals(listOf(Segment(20, 2, 37)), (s[5] as Step.Machine).segments)
+        assertEquals(Step.Instruction("Sirva."), s[6])
+        assertEquals(7, s.size)
         assertTrue(McOnline.convert(McOnline.parseDetail(detail), "pt").notes.any { "42" in it })
     }
 
-    @Test fun programsThisMachineDoesNotHaveStayVisible() {
-        val d = McOnline.parseDetail(detail.replace(
-            "{\"order\":5,\"name\":\"Sirva.\"",
-            "{\"order\":4,\"name\":\"Mode\",\"deviceSetting\":{\"mode\":\"slow_cooking\",\"settings\":[{\"temperature\":90,\"time\":14400}]}},{\"order\":5,\"name\":\"Sirva.\""))
-        val pt = McOnline.convert(d, "pt").steps
-        assertTrue(pt.any { it is Step.Instruction && it.text.startsWith("Programa \"Cozedura lenta\" do Monsieur Cuisine Smart: 4 h a 90 °C.") })
-        assertEquals("Monsieur Cuisine Smart program \"Sous-vide\": 1 h 30 min at 70 °C. This machine has no such program: do this step by hand.",
-            McOnline.foreignProgram("sous_vide", McOnline.Setting(temperature = 70, time = 5400), "en"))
+    private fun withStep(json: String) = McOnline.parseDetail(detail.replace(
+        "{\"order\":5,\"name\":\"Sirva.\"", "{\"order\":4,\"name\":\"Mode\",\"deviceSetting\":$json},{\"order\":5,\"name\":\"Sirva.\""))
+
+    @Test fun smartProgramsBecomeMachineSteps() {
+        val slow = McOnline.convert(withStep("{\"mode\":\"slow_cooking\",\"settings\":[{\"temperature\":90,\"time\":14400}]}"), "pt").steps
+        assertTrue(slow.contains(Step.Machine("Cozedura lenta: 4 h a 90 °C.", Mode.RUN, listOf(Segment(14400, 1, 90, true)))))
+        val sv = McOnline.convert(withStep("{\"mode\":\"sousVide\",\"settings\":[{\"temperature\":62,\"time\":5400}]}"), "en")
+        assertTrue(sv.steps.contains(Step.Machine("Sous-vide: 1 h 30 min at 60 °C.", Mode.RUN, listOf(Segment(5400, 0, 60)))), "62 °C runs at the 60 °C level")
+        assertTrue(sv.notes.any { "62" in it })
+        assertEquals(emptyList(), sv.validate(), "a 90 min heated segment at speed 0 is a valid long segment")
+        val sm = McOnline.convert(withStep("{\"mode\":\"smoothie\",\"settings\":[{\"time\":60}]}"), "pt").steps
+        assertTrue(sm.contains(Step.Machine("Batido: 1 min.", Mode.RUN, listOf(Segment(10, 4), Segment(10, 6), Segment(40, 9)))))
+    }
+
+    @Test fun attachmentsThisMachineDoesNotHaveStayVisible() {
+        val pt = McOnline.convert(withStep("{\"mode\":\"food_processor\",\"settings\":[{\"time\":120}]}"), "pt").steps
+        assertTrue(pt.any { it is Step.Instruction && it.text.startsWith("Programa \"Processador de alimentos\" do Monsieur Cuisine Smart: 2 min.") })
+        assertEquals("Monsieur Cuisine Smart program \"Air fryer\": 10 min at 200 °C. This machine has no such program: do this step by hand.",
+            McOnline.foreignProgram("air_fryer", McOnline.Setting(temperature = 200, time = 600), "en"))
+    }
+
+    @Test fun levels() {
+        assertEquals(37, McOnline.level(40)); assertEquals(60, McOnline.level(62)); assertEquals(130, McOnline.level(165)); assertEquals(0, McOnline.level(0))
     }
 
     @Test fun listEntriesSkipMemberRecipes() {

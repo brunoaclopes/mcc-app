@@ -181,6 +181,7 @@ class SettingsScreen(app: AppUi) : Screen(app) {
             p.standbyEnabled = on; after.forEach { if (!foldedAway(it)) it.visibility = if (on) View.VISIBLE else View.GONE }
         }
         toggle(mc, Icon.SCALE, T.TEAL, S.autoWeighSetting, S.autoWeighHelp, p.autoWeigh) { app.service?.setAutoWeigh(it) ?: run { p.autoWeigh = it } }
+        toggle(mc, Icon.MOON, T.TEAL, S.longRunsSetting, S.longRunsHelp, p.longRuns) { app.service?.setLongRuns(it) ?: run { p.longRuns = it } }
         val afterLabel = label(mc, S.standbyAfter)
         val afterSeg = segment(listOf(3, 7, 15, 30).map { "$it" to "$it min" }, "${p.standbyMinutes}") { p.standbyMinutes = it.toInt() }
         mc.addView(afterSeg, lp(-1, T.dp(48)))

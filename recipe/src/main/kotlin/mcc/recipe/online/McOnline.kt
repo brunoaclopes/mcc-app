@@ -115,8 +115,16 @@ object McOnline {
 
     // ---- conversion to mcc-recipe/1 ----
 
+    /** Mode names come as "slow_cooking" or "slowCooking": compare them without case, "_" or "-". */
+    private fun key(mode: String) = mode.lowercase().replace("_", "").replace("-", "")
     private val modeOf = mapOf("customized" to Mode.RUN, "ramp" to Mode.RUN, "turbo" to Mode.TURBO, "kneading" to Mode.KNEAD,
-        "roasting" to Mode.ROAST, "steaming" to Mode.STEAM)
+        "kneadingsoliddough" to Mode.KNEAD, "kneadingsoftdough" to Mode.KNEAD, "kneadingliquiddough" to Mode.KNEAD,
+        "roasting" to Mode.ROAST, "roastinggentle" to Mode.ROAST, "roastingintense" to Mode.ROAST, "steaming" to Mode.STEAM)
+    /** Attachments this machine does not have. */
+    private val hardware = setOf("foodprocessor", "citrusjuicer", "airfryer", "contactgrill")
+
+    /** The machine level at or below [t] (37 °C at least when heating, 130 °C at most). */
+    fun level(t: Int): Int = if (t <= 0) 0 else TEMPS_C.filter { it in 1..minOf(t, 130) }.maxOrNull() ?: 37
     /** Temperature levels the machine has (the same table as recipe-repo/converters/mcc_format.py). */
     val TEMPS_C = setOf(0, 37, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130)
     const val TURBO_MAX_S = 10
@@ -181,20 +189,30 @@ object McOnline {
             val grams = params.firstOrNull()?.weight ?: 0
             return if (grams in 1..5000) listOf(Step.Weigh(text, grams)) else asText()
         }
-        val mode = modeOf[ds.mode] ?: run {
-            // a program this machine does not have (slow cooking, sous-vide, an accessory…): say what it was,
-            // so the step does not silently disappear, and leave it to the cook
+        val k = key(ds.mode)
+        if (k in hardware) {
+            // an attachment this machine does not have: say what it was, so the step does not silently disappear
+            notes += "$where: ${ds.mode} needs an attachment this machine does not have; kept as text"
+            return asText() + Step.Instruction(foreignProgram(k, params.firstOrNull(), lang))
+        }
+        program(k, params.firstOrNull(), lang, notes, where)?.let { steps ->
+            if (text.isEmpty()) return steps
+            // the source's own text goes on the first machine step
+            return steps.mapIndexed { i, st -> if (i == 0 && st is Step.Machine) st.copy(text = text) else st }
+        }
+        val mode = modeOf[k] ?: run {
             notes += "$where: ${ds.mode} is not a program of this machine; kept as text"
-            return asText() + Step.Instruction(foreignProgram(ds.mode, params.firstOrNull(), lang))
+            return asText() + Step.Instruction(foreignProgram(k, params.firstOrNull(), lang))
         }
         var reverse = ds.reverse == true
         val segs = ArrayList<Segment>()
         for (p in params) {
             var sec = p.time ?: 0
             val speed = (p.speed ?: 0.0).toInt()
-            val temp = p.temperature ?: 0
+            val asked = p.temperature ?: 0
             if (sec <= 0) continue
-            if (temp !in TEMPS_C) { notes += "$where: $temp °C is not a machine level; kept as text"; return asText() }
+            val temp = level(asked)
+            if (temp != asked) notes += "$where: $asked °C runs at the machine level $temp °C"
             when (mode) {
                 Mode.RUN -> {
                     if (reverse && speed > 3) { notes += "$where: reverse at speed $speed is not allowed; reverse dropped"; reverse = false }
@@ -220,16 +238,73 @@ object McOnline {
     }
 
     private val programNames = mapOf(
-        "slow_cooking" to ("Slow cooking" to "Cozedura lenta"), "sous_vide" to ("Sous-vide" to "Sous-vide"),
-        "smoothie" to ("Smoothie" to "Smoothie"), "food_processor" to ("Food processor" to "Processador de alimentos"),
-        "fermenting" to ("Fermenting" to "Fermentar"), "egg_boiler" to ("Egg boiler" to "Cozer ovos"),
-        "cleaning" to ("Cleaning" to "Limpeza"), "rice_cooker" to ("Rice cooker" to "Cozer arroz"),
+        "slowcooking" to ("Slow cooking" to "Cozedura lenta"), "sousvide" to ("Sous-vide" to "Sous-vide"),
+        "fermentation" to ("Fermentation" to "Fermentação"), "smoothie" to ("Smoothie" to "Batido"),
+        "puree" to ("Purée" to "Puré"), "cookingeggs" to ("Boiled eggs" to "Cozer ovos"),
+        "ricecooking" to ("Rice" to "Cozer arroz"), "precleaning" to ("Pre-clean" to "Pré-limpeza"),
+        "heatwater" to ("Heat water" to "Aquecer água"), "heatingup" to ("Heating up" to "Aquecer"),
+        "opencooking" to ("Open cooking" to "Cozinhar sem tampa"), "kneadingprovedough" to ("Proving dough" to "Levedar massa"),
+        "foodprocessor" to ("Food processor" to "Processador de alimentos"), "citrusjuicer" to ("Citrus juicer" to "Espremedor de citrinos"),
+        "airfryer" to ("Air fryer" to "Fritadeira de ar"), "contactgrill" to ("Contact grill" to "Grelhador de contacto"),
     )
+
+    /**
+     * The Monsieur Cuisine Smart programs, built from what this machine can do (the same pieces as the built-in
+     * Programs). Slow cooking, sous-vide and fermentation are long low-temperature runs: the machine runs them
+     * only with long programs switched on, else it says so when the step starts. Null: not a program.
+     */
+    private fun program(k: String, p: Setting?, lang: String, notes: MutableList<String>, where: String): List<Step>? {
+        val sec = p?.time ?: 0
+        val asked = p?.temperature ?: 0
+        val t = level(asked)
+        fun label() = programLabel(k, sec, t, lang)
+        fun run(vararg g: Segment) = listOf(Step.Machine(label(), Mode.RUN, g.toList()))
+        fun long(max: Int, speed: Int, reverse: Boolean): List<Step>? {
+            if (sec <= 0 || t <= 0) return null
+            if (t != asked) notes += "$where: $asked °C runs at the machine level $t °C"
+            if (sec > max) notes += "$where: ${sec / 60} min shortened to ${max / 60} min"
+            return run(Segment(minOf(sec, max), speed, minOf(t, Recipe.LONG_MAX_TEMP_C), reverse))
+        }
+        return when (k) {
+            // stirs gently in reverse, like a long simmer; 8 h at most, as on the Smart
+            "slowcooking" -> long(8 * 3600, 1, true)
+            // bags in water: blade off, the heater holds the level
+            "sousvide" -> long(Recipe.MAX_LONG_SECONDS, 0, false)
+            "fermentation" -> long(Recipe.MAX_LONG_SECONDS, 0, false)
+            "kneadingprovedough" -> if (sec > 0) run(Segment(minOf(sec, Recipe.MAX_SECONDS), 0, 37)) else null
+            "smoothie" -> if (sec <= 0) null else if (sec >= 30) run(Segment(10, 4), Segment(10, 6), Segment(sec - 20, 9)) else run(Segment(sec, 8))
+            "puree" -> if (sec <= 0) null else if (sec >= 30) run(Segment(10, 5), Segment(10, 7), Segment(minOf(sec - 20, 15 * 60), 10)) else run(Segment(sec, 8))
+            // the built-in egg program: blade off, boiling (times include heating the water)
+            "cookingeggs" -> { val s = if (sec in 1..59) sec * 60 else sec; if (s > 0) run(Segment(minOf(s, Recipe.MAX_SECONDS), 0, 120)) else null }
+            // rice and water in the bowl, stirred gently in reverse
+            "ricecooking" -> if (sec > 0) run(Segment(minOf(sec, Recipe.MAX_SECONDS), 1, 100, true)) else null
+            // the built-in cleaning: warm soak, then short bursts
+            "precleaning" -> { val s = if (sec > 0) sec else 120
+                run(Segment(maxOf(s - 30, 30), 2, 60), Segment(10, 5), Segment(5, 2), Segment(10, 6), Segment(5, 2)) }
+            // until hot: the runner keeps heating past the time until the bowl reaches the temperature
+            "heatwater" -> if (t > 0) run(Segment(if (sec > 0) minOf(sec, Recipe.MAX_SECONDS) else 8 * 60, 1, t)) else null
+            "heatingup" -> if (t > 0) run(Segment(if (sec > 0) minOf(sec, Recipe.MAX_SECONDS) else 8 * 60, ((p?.speed ?: 1.0).toInt()).coerceIn(1, 3), t)) else null
+            "opencooking" -> if (sec > 0 && t > 0) {
+                if (asked > 130) notes += "$where: $asked °C runs at 130 °C, this machine's maximum"
+                if (sec > Recipe.MAX_SECONDS) notes += "$where: ${sec / 60} min shortened to 99 min"
+                run(Segment(minOf(sec, Recipe.MAX_SECONDS), 1, t))
+            } else null
+            else -> null
+        }
+    }
+
+    /** "Cozedura lenta: 6 h a 90 °C." (the step text when the source has none). */
+    fun programLabel(k: String, sec: Int, t: Int, lang: String): String {
+        val en = lang == "en"
+        val name = programNames[k]?.let { if (en) it.first else it.second } ?: k
+        val parts = listOfNotNull(sec.takeIf { it > 0 }?.let(::duration), t.takeIf { it > 0 }?.let { "$it °C" })
+        return if (parts.isEmpty()) "$name." else "$name: " + parts.joinToString(if (en) " at " else " a ") + "."
+    }
 
     /** "Monsieur Cuisine Smart program "Slow cooking": 4 h at 90 °C. …" in the recipe's language. */
     fun foreignProgram(mode: String, p: Setting?, lang: String): String {
         val en = lang == "en"
-        val name = programNames[mode]?.let { if (en) it.first else it.second } ?: mode.replace('_', ' ')
+        val name = programNames[key(mode)]?.let { if (en) it.first else it.second } ?: mode.replace('_', ' ')
         val parts = ArrayList<String>()
         val sec = p?.time ?: 0
         if (sec > 0) parts += duration(sec)

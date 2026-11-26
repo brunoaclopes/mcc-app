@@ -30,7 +30,8 @@ object RecipeFit {
             }
             val mode = if (s.mode == Mode.TURBO) Mode.TURBO else Mode.RUN
             segs = segs.map { g ->
-                var x = g.copy(speed = g.speed.coerceIn(0, 10), tempC = g.tempC.coerceIn(0, 130), seconds = g.seconds.coerceIn(1, MAX_SECONDS))
+                var x = g.copy(speed = g.speed.coerceIn(0, 10), tempC = g.tempC.coerceIn(0, 130))
+                x = x.copy(seconds = x.seconds.coerceIn(1, Recipe.maxSeconds(mode, x)))
                 if (x.tempC in 1..36) x = x.copy(tempC = 37)
                 if (x.tempC > 0 && x.speed > MAX_SPEED_HEAT) { changes += "step $n: speed ${x.speed} → $MAX_SPEED_HEAT while heating"; x = x.copy(speed = MAX_SPEED_HEAT) }
                 if (x.reverse && x.speed > MAX_SPEED_REVERSE) { changes += "step $n: reverse speed ${x.speed} → $MAX_SPEED_REVERSE"; x = x.copy(speed = MAX_SPEED_REVERSE) }
