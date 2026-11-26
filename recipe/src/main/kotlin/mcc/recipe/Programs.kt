@@ -11,7 +11,7 @@ object Programs {
     /** Photos ship inside the app (app/src/main/assets/programs/, credits in THIRD-PARTY.md). */
     const val ASSET = "asset:programs/"
     /** Programs without a bundled photo yet: they get a drawn cover. */
-    private val DRAWN = setOf("slow-cook", "sous-vide", "yoghurt", "puree")
+    private val DRAWN = emptySet<String>()
 
     fun all(): List<Recipe> = listOf("en", "pt").flatMap { lang -> defs.map { it(Txt(lang)) } }
 

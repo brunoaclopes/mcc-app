@@ -16,27 +16,38 @@ The protocol notes in `docs/PROTOCOL.md` describe behaviour; no stock code is co
 
 ## Program photos
 
-From Wikimedia Commons and Flickr (found through Openverse), cropped and resized to 640×400, in `common/src/main/assets/programs/`. Each file stays under
-its own licence below (the licence of this project does not apply to them); the CC BY-SA crops are shared
-under the same CC BY-SA licence.
+Cropped and resized to 640×400, in `common/src/main/assets/programs/`. Each file stays under its own licence
+below (the licence of this project does not apply to them).
+
+From [Unsplash](https://unsplash.com/?utm_source=mcc-app&utm_medium=referral), under the
+[Unsplash License](https://unsplash.com/license) (free to use, including in apps; credited here by choice):
+
+| File | Photo | Photographer |
+|---|---|---|
+| `eggs-soft.jpg` | [Two boiled eggs on a plate on a table](https://unsplash.com/photos/two-boiled-eggs-on-a-plate-on-a-table-kzzx_gCE75s?utm_source=mcc-app&utm_medium=referral) | [Alex 張飛](https://unsplash.com/@zhangfeialex?utm_source=mcc-app&utm_medium=referral) |
+| `eggs-hard.jpg` | [White egg lot on brown wooden table](https://unsplash.com/photos/white-egg-lot-on-brown-wooden-table-rKUK4EB8F7s?utm_source=mcc-app&utm_medium=referral) | [Mustafa Bashari](https://unsplash.com/@mustafabashari?utm_source=mcc-app&utm_medium=referral) |
+| `rice.jpg` | [Rice in bowl](https://unsplash.com/photos/rice-in-bowl-xmuIgjuQG0M?utm_source=mcc-app&utm_medium=referral) | [Pille R. Priske](https://unsplash.com/@pillepriske?utm_source=mcc-app&utm_medium=referral) |
+| `steam-veg.jpg` | [A plate of broccoli and carrots on a table](https://unsplash.com/photos/a-plate-of-broccoli-and-carrots-on-a-table-m0tdvKoq0CU?utm_source=mcc-app&utm_medium=referral) | [The Design Lady](https://unsplash.com/@sarah35?utm_source=mcc-app&utm_medium=referral) |
+| `melt-chocolate.jpg` | [A close up view of chocolate flowing in a bowl](https://unsplash.com/photos/a-close-up-view-of-chocolate-flowing-in-a-bowl-67j_Tv-Ub-8?utm_source=mcc-app&utm_medium=referral) | [Has Tahishi](https://unsplash.com/@dark_lens?utm_source=mcc-app&utm_medium=referral) |
+| `smoothie.jpg` | [Strawberry shake in clear drinking glass](https://unsplash.com/photos/strawberry-shake-in-clear-drinking-glass-n73TTunlskE?utm_source=mcc-app&utm_medium=referral) | [Denis](https://unsplash.com/@denis96?utm_source=mcc-app&utm_medium=referral) |
+| `puree.jpg` | [Yellow cream in clear glass bowl](https://unsplash.com/photos/yellow-cream-in-clear-glass-bowl-CJj2iQn6IsE?utm_source=mcc-app&utm_medium=referral) | [Rachel Loughman](https://unsplash.com/@rachelloughman?utm_source=mcc-app&utm_medium=referral) |
+| `proof-dough.jpg` | [A bowl with a ball in it sitting on a table](https://unsplash.com/photos/a-bowl-with-a-ball-in-it-sitting-on-a-table-S1fZUOr3OUI?utm_source=mcc-app&utm_medium=referral) | [Abdul Raheem Kannath](https://unsplash.com/@raheemblacksnows?utm_source=mcc-app&utm_medium=referral) |
+| `reheat.jpg` | [Bowl of creamy orange soup with swirl and herb garnish](https://unsplash.com/photos/bowl-of-creamy-orange-soup-with-swirl-and-herb-garnish-6EYlAbV2F3M?utm_source=mcc-app&utm_medium=referral) | [Rob Wingate](https://unsplash.com/@robwingate?utm_source=mcc-app&utm_medium=referral) |
+| `knead.jpg` | [White dough on black textile](https://unsplash.com/photos/white-dough-on-black-textile-SQLOsc0HGDI?utm_source=mcc-app&utm_medium=referral) | [Tamara Gak](https://unsplash.com/@tamara_photography?utm_source=mcc-app&utm_medium=referral) |
+| `brown.jpg` | [Brown food on white and green ceramic bowl](https://unsplash.com/photos/brown-food-on-white-and-green-ceramic-bowl-oMif_mjCPyY?utm_source=mcc-app&utm_medium=referral) | [Keriliwi](https://unsplash.com/@keriliwi?utm_source=mcc-app&utm_medium=referral) |
+| `slow-cook.jpg` | [A bowl of food](https://unsplash.com/photos/a-bowl-of-food-y_7KLDoPlAc?utm_source=mcc-app&utm_medium=referral) | [Laura Ohlman](https://unsplash.com/@ohlmanphotography?utm_source=mcc-app&utm_medium=referral) |
+| `sous-vide.jpg` | [Sliced meat on black surface](https://unsplash.com/photos/sliced-meat-on-black-surface-Vr6Su7dd2qs?utm_source=mcc-app&utm_medium=referral) | [Stu Moffat](https://unsplash.com/@stumoffatimages?utm_source=mcc-app&utm_medium=referral) |
+| `yoghurt.jpg` | [A close up of a bowl of food on a table](https://unsplash.com/photos/a-close-up-of-a-bowl-of-food-on-a-table-4B3eEzUYD6o?utm_source=mcc-app&utm_medium=referral) | [Marie Martin](https://unsplash.com/@marie_martin1?utm_source=mcc-app&utm_medium=referral) |
+| `clean.jpg` | [Person in green shirt washing stainless steel sink](https://unsplash.com/photos/person-in-green-shirt-washing-stainless-steel-sink--VhH4S1Lur8?utm_source=mcc-app&utm_medium=referral) | [Marek Studzinski](https://unsplash.com/@jccards?utm_source=mcc-app&utm_medium=referral) |
+| `clean-deep.jpg` | [A close up of a sponge on a blue and yellow surface](https://unsplash.com/photos/a-close-up-of-a-sponge-on-a-blue-and-yellow-surface-p20KXTbxwVM?utm_source=mcc-app&utm_medium=referral) | [Volodymyr Hryshchenko](https://unsplash.com/@lunarts?utm_source=mcc-app&utm_medium=referral) |
+| `clean-smell.jpg` | [Yellow lemon fruit on white ceramic plate](https://unsplash.com/photos/yellow-lemon-fruit-on-white-ceramic-plate-09tUNHKUSrk?utm_source=mcc-app&utm_medium=referral) | [Myfanwy Owen](https://unsplash.com/@myfanwyo22?utm_source=mcc-app&utm_medium=referral) |
+
+From Wikimedia Commons:
 
 | File | Photo | Author | Licence |
 |---|---|---|---|
-| `eggs-soft.jpg` | [Jajka na miękko-02.jpg](https://commons.wikimedia.org/wiki/File:Jajka_na_mi%C4%99kko-02.jpg) | a_b_normal123 | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
 | `eggs-medium.jpg` | [Soft boiled egg cut in half in Japan - 2024 July 9.jpeg](https://commons.wikimedia.org/wiki/File:Soft_boiled_egg_cut_in_half_in_Japan_-_2024_July_9.jpeg) | Nesnad | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) |
-| `eggs-hard.jpg` | [Boiled Egg - Crossection.jpg](https://commons.wikimedia.org/wiki/File:Boiled_Egg_-_Crossection.jpg) | Ramesh NG | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| `rice.jpg` | [A bowl of rice.jpg](https://commons.wikimedia.org/wiki/File:A_bowl_of_rice.jpg) | Douglas Perkins | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| `steam-veg.jpg` | [Steamed vegetables in the breakfast buffet (43887013644).jpg](https://commons.wikimedia.org/wiki/File:Steamed_vegetables_in_the_breakfast_buffet_(43887013644).jpg) | Eric Fischer | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| `melt-chocolate.jpg` | [Melted chocolate (6547776815).jpg](https://commons.wikimedia.org/wiki/File:Melted_chocolate_(6547776815).jpg) | Lenore Edman from Sunnyvale, CA | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| `smoothie.jpg` | [Strawberry and lemon smoothie (14430283996).jpg](https://commons.wikimedia.org/wiki/File:Strawberry_and_lemon_smoothie_(14430283996).jpg) | Vanessa p. from near Savannah, GA | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| `proof-dough.jpg` | [Craisin bread dough.jpg](https://commons.wikimedia.org/wiki/File:Craisin_bread_dough.jpg) | Ruth Hartnup | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| `reheat.jpg` | [Vegetable soup in Switzerland.jpg](https://commons.wikimedia.org/wiki/File:Vegetable_soup_in_Switzerland.jpg) | Tiia Monto | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
-| `clean.jpg` | [Sponge-for-washing-1212612.jpg](https://commons.wikimedia.org/wiki/File:Sponge-for-washing-1212612.jpg) | Robert Fotograf | [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en) |
-| `knead.jpg` | [Baker woman's hands kneading bread dough.jpg](https://commons.wikimedia.org/wiki/File%3ABaker_woman%27s_hands_kneading_bread_dough.jpg) | Shixart1985 | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) |
-| `brown.jpg` | [Fried onion with seasoning.JPG](https://commons.wikimedia.org/wiki/File%3AFried_onion_with_seasoning.JPG) | Gran | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) |
 | `varoma.jpg` | [Chinese soup dumplings.jpg](https://commons.wikimedia.org/wiki/File%3AChinese_soup_dumplings.jpg) | Phil Denton | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
-| `clean-deep.jpg` | [Cleaning Kitchen Counter](https://www.flickr.com/photos/184594136@N08/51486539352) (Flickr) | Alabama Extension | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
-| `clean-smell.jpg` | [Lemons](https://www.flickr.com/photos/101300267@N05/12950385095) (Flickr) | Tim-Hoggarth | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) |
 
 To use nicer photos in your own build, `tools/fetch_program_photos.py` downloads them from Pixabay (free API key)
 into `common/src/main/assets/programs-pixabay/`, which git ignores: the Pixabay Content License allows them inside
