@@ -20,3 +20,15 @@ fun List<RecipeIndex.Entry>.visible(prefer: String): List<RecipeIndex.Entry> {
     }
     return out
 }
+
+/**
+ * One name per category: the online recipes split some that the recipe repository keeps together
+ * ("Vegano" and "Vegetariano" are "Vegetariano e vegano"; "One-Pot" and "All-in-One" are "One-Pot / All-in-One").
+ */
+fun canonicalTag(tag: String): String = TAG_ALIASES[tag] ?: tag
+
+private val TAG_ALIASES = mapOf(
+    "Vegano" to "Vegetariano e vegano", "Vegetariano" to "Vegetariano e vegano",
+    "Vegan" to "Vegetarian & Vegan", "Vegetarian" to "Vegetarian & Vegan",
+    "One-Pot" to "One-Pot / All-in-One", "All-in-One" to "One-Pot / All-in-One",
+)
