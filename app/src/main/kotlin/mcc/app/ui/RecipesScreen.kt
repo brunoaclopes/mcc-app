@@ -224,6 +224,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         val q = search.text.toString().trim().lowercase()
         val terms = q.split(',').map { fold(it.trim()) }.filter { it.isNotEmpty() }
         shown.clear()
+        favKeys = app.prefs.favourites.keys.toSet()
         // "Cooked lately" (the history, most recent first) and "Favourites" (most recently added first) are lists of keys
         val keys = when (selectedTag) {
             S.tagCooked -> app.prefs.cooked.map { it.first }
@@ -276,6 +277,9 @@ class RecipesScreen(app: AppUi) : Screen(app) {
 
     // ------------------------------------------------------------------ cards
 
+    /** Favourite keys, read once per list refresh (the cards check them while scrolling). */
+    private var favKeys: Set<String> = emptySet()
+
     private inner class Cards : BaseAdapter() {
         override fun getCount() = shown.size
         override fun getItem(p: Int) = shown[p]
@@ -293,6 +297,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             val info = card.getChildAt(1) as LinearLayout
             (info.getChildAt(0) as TextView).text = e.title
             (info.getChildAt(1) as TextView).text = listOfNotNull(e.totalMinutes?.let { "⏱ " + S.minutesShort(it) }, e.tags.firstOrNull()).joinToString("   ·   ")
+            card.getChildAt(2).visibility = if (mcc.app.recipeKey(e.id) in favKeys) View.VISIBLE else View.GONE
             return card
         }
     }
@@ -304,6 +309,10 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         info.addView(T.text(c, "", 17f, T.ON_PHOTO, T.heavy).apply { maxLines = 2; setLineSpacing(0f, 1.05f); setShadowLayer(6f, 0f, 1f, 0xAA000000.toInt()) })
         info.addView(T.text(c, "", 13f, T.ON_PHOTO_2, T.semibold).apply { setPadding(0, T.dp(6), 0, 0); maxLines = 1 })
         card.addView(info, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        // favourite: a star in the photo's corner
+        val star = FrameLayout(c).apply { background = T.round(0xA6000000.toInt(), 17, 0x40FFFFFF, 1); visibility = View.GONE }
+        star.addView(IconView(c, Icon.STAR_FULL, T.AMBER, 1.6f), FrameLayout.LayoutParams(T.dp(18), T.dp(18), Gravity.CENTER))
+        card.addView(star, FrameLayout.LayoutParams(T.dp(34), T.dp(34), Gravity.TOP or Gravity.END).apply { topMargin = T.dp(10); rightMargin = T.dp(10) })
         T.press(card)
         return card
     }
@@ -451,6 +460,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             app.notify(if (now) S.favAdded else S.favRemoved, Notice.OK)
             buildTags()
             if (selectedTag == S.tagFavourites) filter(animate = false)
+            else { favKeys = app.prefs.favourites.keys.toSet(); adapter.notifyDataSetChanged() }
         }
         if (app.store.isMine(e)) photoButton(Icon.TRASH, T.ON_PHOTO) {
             app.confirm(S.deleteRecipe, S.deleteRecipeBody, S.deleteRecipe, danger = true) { app.store.deleteMine(e); closeDetail(); app.reloadIndex(false) }

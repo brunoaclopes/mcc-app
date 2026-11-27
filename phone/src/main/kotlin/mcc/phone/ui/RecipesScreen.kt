@@ -223,7 +223,7 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                 }
             }
         }
-        items(shown, key = { it.id }) { e -> RecipeCard(e, e.id == selected) { onOpen(e) } }
+        items(shown, key = { it.id }) { e -> RecipeCard(e, e.id == selected, mcc.app.recipeKey(e.id) in favKeys) { onOpen(e) } }
         // first start, nothing on the phone yet: card-shaped skeletons until the server answers
         if (shown.isEmpty() && rs.loading && rs.index.isEmpty()) items(6) { Skeleton(Modifier.fillMaxWidth().aspectRatio(0.8f), smooth(24.dp)) }
         if (shown.isEmpty() && !rs.loading) item(span = { GridItemSpan(maxLineSpan) }) {
@@ -237,7 +237,7 @@ private const val FAVOURITES = "\u0000favourites"
 
 /** Photo card with the title on the photo, like the machine's recipe grid. */
 @Composable
-private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, onClick: () -> Unit) {
+private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, favourite: Boolean, onClick: () -> Unit) {
     val shape = smooth(24.dp)
     Box(
         Modifier.fillMaxWidth().aspectRatio(0.8f).sharedCover(e.id).clip(shape)
@@ -247,6 +247,8 @@ private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, onClick: () -> U
         Cover(e.id, e.title, e.tags, e.image, 420, Modifier.fillMaxSize(), e.blurhash)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color(0xE0000000))))
         e.totalMinutes?.let { TimePill(it, Modifier.align(Alignment.TopEnd).padding(10.dp)) }
+        if (favourite) Box(Modifier.align(Alignment.TopStart).padding(10.dp).size(30.dp).clip(CircleShape).background(Color(0x8C000000)),
+            contentAlignment = Alignment.Center) { McIcon(Icon.STAR_FULL, Mc.amber, 16.dp, 1.6f) }
         Text(e.title, style = MaterialTheme.typography.titleSmall.copy(lineHeight = 19.sp), color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.BottomStart).padding(12.dp))
     }
