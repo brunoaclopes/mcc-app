@@ -106,6 +106,7 @@ class RecipeStore(
                     File(f.path + ".part").apply { writeText(Recipe.json.encodeToString(RecipeIndex.serializer(), idx)); renameTo(f) }
                 }
             } catch (e: Exception) {
+                android.util.Log.w("mcc", "Monsieur Cuisine list failed", e)
                 warning = mcc.app.i18n.L.s.onlineUnreachable
             }
         }
@@ -131,12 +132,15 @@ class RecipeStore(
                     out += data.entries
                     page++
                 } while (page < data.pages && page < 10)
+                val unique = out.distinctBy { it.id }
+                out.clear(); out += unique
                 if (out.isNotEmpty()) {
                     onlineDir.mkdirs()
                     val idx = RecipeIndex(format = "mcc-index/1", generated = java.util.Date().toString(), recipes = out)
                     File(f.path + ".part").apply { writeText(Recipe.json.encodeToString(RecipeIndex.serializer(), idx)); renameTo(f) }
                 }
             } catch (e: Exception) {
+                android.util.Log.w("mcc", "Moulinex list failed", e)
                 warning = mcc.app.i18n.L.s.moulinexUnreachable
             }
         }
@@ -245,7 +249,7 @@ class RecipeStore(
     companion object {
         const val PROGRAM = "program:"
         const val ONLINE_MAX_AGE_MS = 24 * 3600_000L
-        /** The Moulinex list changes slowly and is bigger (about 1.8 MB in Portuguese): once a week. */
+        /** The Moulinex list changes slowly and is bigger (about 1.5 MB in Portuguese): once a week. */
         const val MOULINEX_MAX_AGE_MS = 7 * 24 * 3600_000L
     }
 

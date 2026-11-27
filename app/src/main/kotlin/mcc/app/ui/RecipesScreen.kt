@@ -379,8 +379,10 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         styleTabs(0)
         head.addView(HorizontalScrollView(c).apply { isHorizontalScrollBarEnabled = false; addView(tabs) }, LinearLayout.LayoutParams(0, -2, 1f))
         right.addView(head, LinearLayout.LayoutParams(-1, T.dp(52)))
-        val scaledNote = T.text(c, S.scaledNote, 13f, T.AMBER, T.semibold).apply { setPadding(0, T.dp(4), 0, 0); visibility = View.GONE }
-        right.addView(scaledNote)
+        // how many people, under the tabs (the column is too narrow for both on one line), with the "amounts changed" note
+        val peopleRow = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; visibility = View.GONE }
+        right.addView(peopleRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = T.dp(8) })
+        val scaledNote = T.text(c, S.scaledNote, 13f, T.AMBER, T.semibold).apply { setPadding(T.dp(12), 0, 0, 0); visibility = View.GONE; maxLines = 2 }
         val list = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(0, T.dp(8), 0, T.dp(8)) }
         val stepsList = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(0, T.dp(8), 0, T.dp(8)) }
         fun fill(rr: Recipe) {
@@ -405,7 +407,9 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             pill.addView(minus, LinearLayout.LayoutParams(T.dp(44), T.dp(44)))
             pill.addView(label, LinearLayout.LayoutParams(-2, -1).apply { leftMargin = T.dp(12); rightMargin = T.dp(12) })
             pill.addView(plus, LinearLayout.LayoutParams(T.dp(44), T.dp(44)))
-            head.addView(pill, LinearLayout.LayoutParams(-2, T.dp(52)))
+            peopleRow.addView(pill, LinearLayout.LayoutParams(-2, T.dp(52)))
+            peopleRow.addView(scaledNote, LinearLayout.LayoutParams(0, -2, 1f))
+            peopleRow.visibility = View.VISIBLE
             onPeople = { n ->
                 val v = n.coerceIn(range.first, range.last)
                 if (v != people || label.text.isEmpty()) {

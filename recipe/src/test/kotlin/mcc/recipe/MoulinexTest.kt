@@ -102,6 +102,10 @@ class MoulinexTest {
         assertTrue("PRO_COM" in Moulinex.searchBody("pt") && "GS_PT" in Moulinex.searchBody("pt") && "GS_GB" in Moulinex.searchBody("en"))
     }
 
+    @Test fun portugueseGender() {
+        assertEquals("Coloque a cebola na máquina e ligue a máquina.", Moulinex.cleanText("Coloque a cebola no robot e ligue o robot.", "pt"))
+    }
+
     @Test fun englishText() {
         assertEquals("Add the carrots.", Moulinex.cleanText("Add the carrots and press \"start\".", "en"))
         assertEquals("Put in the mixer attachment.", Moulinex.cleanText("Replace the ultrablade knife with the whisk.", "en"))

@@ -37,7 +37,8 @@ object Moulinex {
     const val KEY = "dce684c2e06f345386fdf9326374b304"
     /** The Companion family's recipe domain. */
     const val DOMAIN = "PRO_COM"
-    const val PAGE_SIZE = 500
+    /** One page holds the whole catalogue: the API's pages overlap (about a fifth of the recipes never showed with pages of 500). */
+    const val PAGE_SIZE = 2000
     const val FILE_PREFIX = "moulinex:"
     const val ID_PREFIX = "mlx-"
     /**
@@ -285,7 +286,10 @@ object Moulinex {
             }
             // P1 browns at 130 °C stirring now and then; P2 and P3 simmer, stirring gently
             name.startsWith("Slow cook P1") -> machine(Mode.ROAST) { left -> listOf(Segment(cap(left), 0, if (temp > 0) temp else 130)) }
-            name.startsWith("Slow cook") -> machine(Mode.RUN) { left ->
+            name.startsWith("Slow cook") -> machine(Mode.RUN.also {
+                val hot = (if (temp > 0) temp else 95) > Recipe.LONG_MAX_TEMP_C
+                if (hot && sec > Recipe.MAX_SECONDS) notes += "$where: ${sec / 60} min above 95 °C shortened to 99 min"
+            }) { left ->
                 val t2 = if (temp > 0) temp else 95
                 listOf(Segment(minOf(left, if (t2 <= Recipe.LONG_MAX_TEMP_C) Recipe.MAX_LONG_SECONDS else Recipe.MAX_SECONDS), 1, t2, true))
             }
@@ -355,6 +359,10 @@ object Moulinex {
         "\\s*(com |e )?(o )?acessório misturador" to "",
         "mini taça( da companion)?" to "taça",
         "taça do robot|taça da companion" to "taça",
+        // "o robot" is masculine, "a máquina" feminine
+        "\\bno (robot|companion)\\b" to "na máquina", "\\bdo (robot|companion)\\b" to "da máquina",
+        "\\bao (robot|companion)\\b" to "à máquina", "\\bpelo (robot|companion)\\b" to "pela máquina",
+        "\\bo (robot|companion)\\b" to "a máquina", "\\bseu (robot|companion)\\b" to "sua máquina",
         "\\brobot\\b|\\bcompanion\\b" to "máquina",
     ).map { (a, b) -> Regex("(?i)$a") to b }
     private val replaceEn = listOf(
