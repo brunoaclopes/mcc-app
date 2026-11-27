@@ -61,6 +61,8 @@ jobs:
           rm -f "$RUNNER_TEMP/release.jks"
           ver() { echo "$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' "$1/build.gradle.kts")$MCC_SUFFIX"; }
           MACHINE="mcc-machine-$(ver app).apk"; PHONE="mcc-phone-$(ver phone).apk"
+          # the title names each app's own version, so Obtainium can read the phone app's from it
+          echo "MCC_TITLE=$GITHUB_REF_NAME · phone $(ver phone) · machine $(ver app)" >> "$GITHUB_ENV"
           mkdir dist
           cp app/build/outputs/apk/release/app-release.apk "dist/$MACHINE"
           cp phone/build/outputs/apk/release/phone-release.apk "dist/$PHONE"
@@ -98,7 +100,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -n "$MCC_SUFFIX" ]; then
-            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME (test)" --notes-file notes.md --prerelease --latest=false --verify-tag
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$MCC_TITLE (test)" --notes-file notes.md --prerelease --latest=false --verify-tag
           else
-            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes --verify-tag
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$MCC_TITLE" --notes-file notes.md --generate-notes --verify-tag
           fi
