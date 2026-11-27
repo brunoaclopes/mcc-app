@@ -110,6 +110,15 @@ abstract class Strings {
     abstract val offlineCopy: String; abstract val serverUnreachable: String
     abstract val longRunsSetting: String; abstract val longRunsHelp: String
     abstract val onlineUnreachable: String; abstract val onlineSetting: String; abstract val onlineHelp: String; abstract val tagOnline: String
+    abstract val memberSetting: String; abstract val memberHelp: String; abstract val tagMember: String
+    // favourites, accessories, improving a recipe with the AI
+    abstract val tagFavourites: String; abstract val favAdded: String; abstract val favRemoved: String; abstract val favourite: String
+    abstract val accessories: String; abstract fun accPut(name: String): String; abstract fun accRemove(name: String): String
+    abstract val mixerIn: String; abstract val removeMixerTitle: String; abstract val removeMixerBody: String; abstract val removeMixerGo: String
+    abstract val aiTweak: String; abstract val aiTweakBody: String; abstract val aiTweakHint: String; abstract val aiTweakGo: String
+    abstract fun aiTweakDone(title: String): String; abstract val aiTweakMine: String
+    abstract fun stepsTab(n: Int): String
+    abstract val moulinexSetting: String; abstract val moulinexHelp: String; abstract val moulinexUnreachable: String
     abstract val searchHint: String; abstract val syncing: String; abstract val all: String
     abstract val noRecipes: String
     abstract fun nothingMatches(q: String): String
@@ -329,6 +338,27 @@ object En : Strings() {
     override val onlineSetting = "Monsieur Cuisine online recipes"
     override val onlineHelp = "Also lists the official recipes from the Monsieur Cuisine website. A recipe is downloaded when you open it, then works offline. Recipes your server already has are not shown twice."
     override val tagOnline = "Online"
+    override val memberSetting = "Include member recipes"
+    override val memberHelp = "With Monsieur Cuisine online recipes on, also lists the recipes members published on the website (tagged Community). Monsieur Cuisine does not check their settings: read each step before you start it."
+    override val tagMember = "Community"
+    override val tagFavourites = "Favourites"; override val favAdded = "Added to favourites"; override val favRemoved = "Removed from favourites"
+    override val favourite = "Favourite"
+    override val accessories = "Accessories"
+    override fun accPut(name: String) = "Put in: $name"; override fun accRemove(name: String) = "Take out: $name"
+    override val mixerIn = "mixer attachment in · speed 4 at most"
+    override val removeMixerTitle = "Mixer attachment out?"
+    override val removeMixerBody = "This step runs above speed 4 (or Turbo or kneading). The mixer attachment is only for speeds 1 to 4: take it out before you start."
+    override val removeMixerGo = "It's out"
+    override val aiTweak = "Improve with AI"
+    override val aiTweakBody = "Say what to change, for example: less salt, for 6 people, no lactose, brown the onion longer, clearer steps, use the mixer attachment."
+    override val aiTweakHint = "e.g. less salt and a bit more garlic"
+    override val aiTweakGo = "Improve"
+    override fun aiTweakDone(title: String) = "Improved: $title. It's in My recipes and shown instead of the original; delete it to get the original back."
+    override val aiTweakMine = "Saved over your recipe"
+    override fun stepsTab(n: Int) = "Steps · $n"
+    override val moulinexSetting = "Moulinex Companion recipes"
+    override val moulinexHelp = "Also lists the recipes of the Moulinex website for its Companion (about 1300, in Portuguese), converted for this machine when you open one: blades, accessories and programs become this machine's. Check each step before you start it."
+    override val moulinexUnreachable = "Moulinex unreachable, offline copy"
     override val searchHint = "Search recipes, tags or ingredients (chicken, rice)"; override val syncing = "Syncing recipes…"; override val all = "All"
     override val noRecipes = "No recipes yet.\nSet the recipe server in Settings."
     override fun nothingMatches(q: String) = "Nothing matches “$q”."
@@ -436,7 +466,7 @@ object En : Strings() {
         "Reverse: speed ≤ 3 · max 99 min, 15 min above speed 6",
         "Stops on lid open, board error or lost contact (1.5 s)",
         "Turbo: only while held, max 10 s, never with heat or above 60 °C",
-        "Knead, brown and Varoma: the stock presets, with the same limits",
+        "Knead, brown and steam: the stock presets, with the same limits",
     )
     override val fontCredit = "Font: Manrope (SIL Open Font License)"
     override val language = "Language"; override val about = "About this machine"
@@ -613,6 +643,27 @@ object Pt : Strings() {
     override val onlineSetting = "Receitas online do Monsieur Cuisine"
     override val onlineHelp = "Mostra também as receitas oficiais do site Monsieur Cuisine. Cada receita é transferida quando a abre e depois funciona sem internet. As receitas que o seu servidor já tem não aparecem duas vezes."
     override val tagOnline = "Online"
+    override val memberSetting = "Incluir receitas de membros"
+    override val memberHelp = "Com as receitas online do Monsieur Cuisine ligadas, mostra também as receitas publicadas por membros no site (marcadas Comunidade). O Monsieur Cuisine não verifica as suas definições: leia cada passo antes de o iniciar."
+    override val tagMember = "Comunidade"
+    override val tagFavourites = "Favoritos"; override val favAdded = "Adicionada aos favoritos"; override val favRemoved = "Removida dos favoritos"
+    override val favourite = "Favorito"
+    override val accessories = "Acessórios"
+    override fun accPut(name: String) = "Coloque: $name"; override fun accRemove(name: String) = "Retire: $name"
+    override val mixerIn = "acessório batedor colocado · velocidade 4 no máximo"
+    override val removeMixerTitle = "Retirou o acessório batedor?"
+    override val removeMixerBody = "Este passo roda acima da velocidade 4 (ou Turbo, ou amassar). O acessório batedor só pode ser usado nas velocidades 1 a 4: retire-o antes de começar."
+    override val removeMixerGo = "Já retirei"
+    override val aiTweak = "Melhorar com IA"
+    override val aiTweakBody = "Diga o que mudar, por exemplo: menos sal, para 6 pessoas, sem lactose, alourar mais a cebola, passos mais claros, usar o acessório batedor."
+    override val aiTweakHint = "ex.: menos sal e um pouco mais de alho"
+    override val aiTweakGo = "Melhorar"
+    override fun aiTweakDone(title: String) = "Melhorada: $title. Está em As minhas receitas e aparece em vez da original; apague-a para voltar à original."
+    override val aiTweakMine = "Guardada por cima da sua receita"
+    override fun stepsTab(n: Int) = "Passos · $n"
+    override val moulinexSetting = "Receitas Moulinex Companion"
+    override val moulinexHelp = "Mostra também as receitas do site Moulinex para a Companion (cerca de 1300), convertidas para esta máquina quando abre uma: lâminas, acessórios e programas passam a ser os desta máquina. Verifique cada passo antes de o iniciar."
+    override val moulinexUnreachable = "Moulinex indisponível, cópia local"
     override val searchHint = "Procurar receitas, etiquetas ou ingredientes (frango, arroz)"; override val syncing = "A sincronizar receitas…"; override val all = "Todas"
     override val noRecipes = "Ainda não há receitas.\nIndique o servidor de receitas nas Definições."
     override fun nothingMatches(q: String) = "Nada corresponde a “$q”."
@@ -720,7 +771,7 @@ object Pt : Strings() {
         "Inverso: velocidade ≤ 3 · máx. 99 min, 15 min acima da velocidade 6",
         "Para com a tampa aberta, erro da placa ou perda de ligação (1,5 s)",
         "Turbo: só enquanto premido, máx. 10 s, nunca com calor nem acima de 60 °C",
-        "Amassar, alourar e Varoma: as predefinições originais, com os mesmos limites",
+        "Amassar, alourar e vapor: as predefinições originais, com os mesmos limites",
     )
     override val fontCredit = "Tipo de letra: Manrope (SIL Open Font License)"
     override val language = "Idioma"; override val about = "Sobre a máquina"

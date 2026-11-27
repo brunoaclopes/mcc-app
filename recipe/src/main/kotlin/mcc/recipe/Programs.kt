@@ -38,6 +38,19 @@ object Programs {
     )
 
     private fun say(text: String) = Step.Instruction(text)
+
+    /**
+     * The Monsieur Cuisine steamer (manual 12.2): the deep basket locks onto the bowl in place of the lid, the shallow
+     * one only on top of it, and both go on even when only the shallow one holds food, so no steam escapes.
+     */
+    private fun steamerOn(x: Txt, food: String) = x.t(
+        "Put $food in the deep steamer basket (heavier food and meat or fish at the bottom; more on the shallow steamer basket on top). " +
+            "Take the lid off the bowl, lock the deep steamer basket onto the bowl in its place (it clicks) and put the steamer lid on.",
+        "Coloque $food no acessório para vapor fundo (o mais pesado, a carne e o peixe em baixo; o resto no acessório para vapor plano por cima). " +
+            "Tire a tampa do copo, encaixe o acessório para vapor fundo no copo no lugar dela (ouve-se um clique) e coloque a tampa do vapor.")
+    private fun steamerOff(x: Txt) = x.t(
+        "Open the steamer lid slowly, away from you: the steam is very hot. Then lift the steamer baskets off.",
+        "Abra a tampa do vapor devagar, para o lado oposto a si: o vapor queima. Depois retire o acessório para vapor.")
     private fun weigh(text: String, g: Int) = Step.Weigh(text, g)
     private fun run(text: String, vararg s: Segment) = Step.Machine(text, Mode.RUN, s.toList())
     private fun mode(m: Mode, text: String, minutes: Double, temp: Int = 0) = Step.Machine(text, m, listOf(seg(minutes, 0, temp)))
@@ -47,12 +60,12 @@ object Programs {
     private fun eggs(x: Txt, kind: String, en: String, pt: String, minutes: Int) = recipe(x, "eggs-$kind", x.t("Boiled eggs, $en", "Ovos cozidos, $pt"), minutes + 3,
         listOf(x.t("1 to 6 eggs", "1 a 6 ovos"), x.t("500 g water", "500 g de água")),
         weigh(x.t("Pour the water into the bowl.", "Deite a água no copo."), 500),
-        say(x.t("Put the eggs in the simmering basket, put the basket in the bowl and close the lid.",
-            "Coloque os ovos no cesto, ponha o cesto no copo e feche a tampa.")),
+        say(x.t("Put the eggs in the cooking pot, put it in the bowl and close the lid with the measuring beaker.",
+            "Coloque os ovos no acessório de cozer, coloque-o no copo e feche a tampa com o copo de medição.")),
         run(x.t("Cook the eggs (blade off). The time includes bringing the water to the boil.",
             "Cozer os ovos (lâmina parada). O tempo inclui levantar fervura."), seg(minutes.toDouble(), 0, 120)),
-        say(x.t("Lift the basket out with the spatula hook and cool the eggs in cold water.",
-            "Retire o cesto com o gancho da espátula e arrefeça os ovos em água fria.")),
+        say(x.t("Lift the cooking pot out with the spatula hook and cool the eggs in cold water.",
+            "Retire o acessório de cozer com o gancho da espátula e arrefeça os ovos em água fria.")),
         notes = listOf(x.t("Times are for medium eggs straight from the fridge. Add a minute for large eggs.",
             "Tempos para ovos médios tirados do frigorífico. Junte um minuto para ovos grandes.")))
 
@@ -63,19 +76,17 @@ object Programs {
         { x -> recipe(x, "rice", x.t("White rice", "Arroz branco"), 30,
             listOf(x.t("250 g long-grain rice", "250 g de arroz agulha"), x.t("1000 g water", "1000 g de água"), x.t("1 tsp salt", "1 c. chá de sal")),
             weigh(x.t("Pour the water into the bowl and add the salt.", "Deite a água no copo e junte o sal."), 1000),
-            say(x.t("Rinse the rice in the simmering basket under the tap, then put the basket in the bowl and close the lid.",
-                "Lave o arroz no cesto em água corrente, ponha o cesto no copo e feche a tampa.")),
+            say(x.t("Rinse the rice in the cooking pot under the tap, then put it in the bowl and close the lid with the measuring beaker.",
+                "Lave o arroz no acessório de cozer em água corrente, coloque-o no copo e feche a tampa com o copo de medição.")),
             run(x.t("Cook the rice.", "Cozer o arroz."), seg(22.0, 1, 120)),
-            say(x.t("Lift the basket out with the spatula hook, let it drain and fluff the rice with a fork.",
-                "Retire o cesto com o gancho da espátula, deixe escorrer e solte o arroz com um garfo."))) },
+            say(x.t("Lift the cooking pot out with the spatula hook, let it drain and fluff the rice with a fork.",
+                "Retire o acessório de cozer com o gancho da espátula, deixe escorrer e solte o arroz com um garfo."))) },
         { x -> recipe(x, "steam-veg", x.t("Steamed vegetables", "Legumes ao vapor"), 30,
-            listOf(x.t("500 to 800 g vegetables, in even pieces", "500 a 800 g de legumes em pedaços iguais"), x.t("750 g water", "750 g de água")),
-            weigh(x.t("Pour the water into the bowl.", "Deite a água no copo."), 750),
-            say(x.t("Put the vegetables in the steaming tray (Varoma), set it on the lid and cover it.",
-                "Coloque os legumes no recipiente de vapor (Varoma), encaixe-o na tampa e tape-o.")),
-            run(x.t("Steam. Firm vegetables (carrots, potatoes) may need 5 minutes more.", "Cozer a vapor. Legumes rijos (cenoura, batata) podem precisar de mais 5 minutos."),
-                seg(25.0, 1, 120)),
-            say(x.t("Open the steaming lid away from you: the steam is very hot.", "Abra a tampa do vapor para o lado oposto a si: o vapor queima."))) },
+            listOf(x.t("500 to 800 g vegetables, in even pieces", "500 a 800 g de legumes em pedaços iguais"), x.t("1000 g water", "1000 g de água")),
+            weigh(x.t("Pour the water into the bowl (up to the first mark, I).", "Deite a água no copo (até à primeira marca, I)."), 1000),
+            say(steamerOn(x, x.t("the vegetables", "os legumes"))),
+            mode(Mode.STEAM, x.t("Steam. Firm vegetables (carrots, potatoes) may need 5 minutes more.", "Cozer a vapor. Legumes rijos (cenoura, batata) podem precisar de mais 5 minutos."), 25.0, 120),
+            say(steamerOff(x))) },
         { x -> recipe(x, "melt-chocolate", x.t("Melt chocolate", "Derreter chocolate"), 6,
             listOf(x.t("100 to 400 g chocolate, in pieces", "100 a 400 g de chocolate em pedaços")),
             weigh(x.t("Put the chocolate in the bowl (at least 100 g).", "Coloque o chocolate no copo (pelo menos 100 g)."), 100),
@@ -157,13 +168,13 @@ object Programs {
                 "Alourar a 130 °C, mexendo de vez em quando (a lâmina roda 5 s a cada 35 s)."), 7.0, 130),
             say(x.t("Ready: carry on with your recipe, or take it out.", "Pronto: continue a receita ou retire.")),
             notes = listOf(x.t("Browning needs at least 50 g in the bowl.", "Alourar precisa de pelo menos 50 g no copo."))) },
-        { x -> recipe(x, "varoma", x.t("Varoma steaming", "Cozer a vapor (Varoma)"), 25,
-            listOf(x.t("500 g water", "500 g de água"), x.t("Food for the Varoma: vegetables, fish, chicken, dumplings…", "Alimentos para a Varoma: legumes, peixe, frango…")),
-            weigh(x.t("Pour the water into the bowl.", "Deite a água no copo."), 500),
-            say(x.t("Close the lid, put the Varoma on top with the food and its lid on.", "Feche a tampa, coloque a Varoma por cima com os alimentos e a tampa.")),
-            mode(Mode.STEAM, x.t("Steam (Varoma mode, 120 °C).", "Cozer a vapor (modo Varoma, 120 °C)."), 20.0, 120),
-            say(x.t("Lift the Varoma off carefully: the steam is very hot. Open its lid away from you.",
-                "Retire a Varoma com cuidado: o vapor queima. Abra a tampa para longe de si."))) },
+        // id "varoma" kept so the cooking history still finds it
+        { x -> recipe(x, "varoma", x.t("Steaming", "Cozer a vapor"), 25,
+            listOf(x.t("1000 g water", "1000 g de água"), x.t("Food to steam: vegetables, fish, chicken, dumplings…", "Alimentos para cozer a vapor: legumes, peixe, frango…")),
+            weigh(x.t("Pour the water into the bowl (up to the first mark, I).", "Deite a água no copo (até à primeira marca, I)."), 1000),
+            say(steamerOn(x, x.t("the food", "os alimentos"))),
+            mode(Mode.STEAM, x.t("Steam (steaming program, 120 °C).", "Cozer a vapor (programa de vapor, 120 °C)."), 20.0, 120),
+            say(steamerOff(x))) },
         { x -> recipe(x, "clean", x.t("Clean the bowl", "Limpeza do copo"), 8,
             listOf(x.t("1000 g warm water", "1000 g de água morna"), x.t("1 drop of washing-up liquid", "1 gota de detergente da loiça"), x.t("500 g clean water to rinse", "500 g de água limpa para enxaguar")),
             say(x.t("Empty the bowl and scrape off any big leftovers.", "Esvazie o copo e retire os restos maiores.")),

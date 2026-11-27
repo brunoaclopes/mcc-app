@@ -174,38 +174,70 @@ class HomeScreen(app: AppUi) : Screen(app) {
         val prog = tile()
         val pl = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(T.dp(16), T.dp(18), T.dp(12), T.dp(10)) }
         val lang = app.prefs.uiLanguage
-        pl.addView(label(if (lang == "pt") mcc.recipe.Programs.TAG_PT else mcc.recipe.Programs.TAG_EN))
         val list = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, T.dp(4), T.dp(8)) }
-        mcc.recipe.Programs.cooking().filter { it.language == lang }.forEach { r -> list.addView(programRow(r), LinearLayout.LayoutParams(-1, T.dp(46)).apply { topMargin = T.dp(6) }) }
+        quickList = list
+        fillQuick()
         pl.addView(android.widget.ScrollView(c).apply { isVerticalScrollBarEnabled = false; isVerticalFadingEdgeEnabled = true; setFadingEdgeLength(T.dp(18)); addView(list) },
-            LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = T.dp(4) })
+            LinearLayout.LayoutParams(-1, 0, 1f))
         prog.addView(pl)
         row2.addView(prog, lp(1f, false))
         page.addView(row2, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = gap })
         return page
     }
 
-    fun onIndex() {}
+    fun onIndex() { fillQuick() }
 
-    private fun programRow(r: mcc.recipe.Recipe) = LinearLayout(c).apply {
-        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-        background = T.pressable(T.glass(14)); setPadding(T.dp(6), 0, T.dp(10), 0)
-        setOnClickListener { app.cook(r) }
-        val img = RoundImage(c, 9f).apply { placeholder(T.withAlpha(T.EMBER, 0x40), T.withAlpha(T.AMBER, 0x20)) }
-        addView(img, LinearLayout.LayoutParams(T.dp(34), T.dp(34)))
-        ImageLoader.load(app.store, r.image, img, T.dp(68))
+    private lateinit var quickList: LinearLayout
+    private var quickKey = ""
+
+    /** Favourites (most recently added first, up to 8) above the automatic programs; a tap loads it on the Cook screen. */
+    private fun fillQuick() {
+        val lang = app.prefs.uiLanguage
+        val keys = app.prefs.favourites.keys
+        val favs = app.index?.visible(lang)?.filter { mcc.app.recipeKey(it.id) in keys }?.sortedBy { keys.indexOf(mcc.app.recipeKey(it.id)) }?.take(8).orEmpty()
+        val key = lang + "|" + favs.joinToString { it.id }
+        if (key == quickKey) return
+        quickKey = key
+        quickList.removeAllViews()
+        fun row(v: View) = quickList.addView(v, LinearLayout.LayoutParams(-1, T.dp(46)).apply { topMargin = T.dp(6) })
+        if (favs.isNotEmpty()) {
+            quickList.addView(label(S.tagFavourites, T.AMBER).apply { setPadding(0, 0, 0, T.dp(2)) })
+            favs.forEach { e -> row(quickRow(e.title, e.image, e.totalMinutes) { openFavourite(e) }) }
+        }
+        quickList.addView(label(if (lang == "pt") mcc.recipe.Programs.TAG_PT else mcc.recipe.Programs.TAG_EN).apply { setPadding(0, if (favs.isEmpty()) 0 else T.dp(14), 0, T.dp(2)) })
+        mcc.recipe.Programs.cooking().filter { it.language == lang }.forEach { r -> row(programRow(r)) }
+    }
+
+    private fun openFavourite(e: mcc.recipe.RecipeIndex.Entry) {
+        Thread {
+            val r = runCatching { app.store.loadRecipe(e) }
+            view.post { r.fold(onSuccess = { app.cook(it) }, onFailure = { app.notify(S.cannotOpen(it.message ?: ""), Notice.ERROR) }) }
+        }.start()
+    }
+
+    private fun programRow(r: mcc.recipe.Recipe): View {
         // "Ovos cozidos, moles" -> "Ovos moles", "Boiled eggs, soft" -> "Soft eggs": the variants stay distinct in a narrow row
         val label = if (", " !in r.title) r.title else {
             val (head, tail) = r.title.split(", ", limit = 2)
             if (r.language == "pt") head.substringBefore(" ") + " " + tail
             else tail.replaceFirstChar { it.uppercase() } + " " + head.substringAfterLast(" ")
         }
+        return quickRow(label, r.image, r.totalMinutes) { app.cook(r) }
+    }
+
+    private fun quickRow(label: String, image: String?, minutes: Int?, onClick: () -> Unit) = LinearLayout(c).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        background = T.pressable(T.glass(14)); setPadding(T.dp(6), 0, T.dp(10), 0)
+        setOnClickListener { onClick() }
+        val img = RoundImage(c, 9f).apply { placeholder(T.withAlpha(T.EMBER, 0x40), T.withAlpha(T.AMBER, 0x20)) }
+        addView(img, LinearLayout.LayoutParams(T.dp(34), T.dp(34)))
+        ImageLoader.load(app.store, image, img, T.dp(68))
         addView(T.text(c, label, 13.5f, T.TEXT, T.bold).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(T.dp(10), 0, 0, 0) }, LinearLayout.LayoutParams(0, -2, 1f))
-        r.totalMinutes?.let { addView(T.text(c, S.minutesShort(it), 12f, T.TEXT_3, T.semibold)) }
+        minutes?.let { addView(T.text(c, S.minutesShort(it), 12f, T.TEXT_3, T.semibold)) }
         T.press(this)
     }
 
-    override fun onShow() { Anim.stagger(tiles) }
+    override fun onShow() { fillQuick(); Anim.stagger(tiles) }
 
     private fun toggleRemote() {
         val s = app.service ?: return

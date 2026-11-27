@@ -2,9 +2,6 @@ package mcc.app
 
 import android.content.Context
 
-/** A recipe's key: its id without the language ("web-soup-pt" -> "web-soup"). */
-fun recipeKey(id: String) = id.replace(Regex("-(pt|en)$"), "")
-
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("mcc", Context.MODE_PRIVATE)
 
@@ -26,6 +23,17 @@ class Prefs(context: Context) {
     var onlineRecipes: Boolean
         get() = sp.getBoolean("onlineRecipes", false)
         set(v) = sp.edit().putBoolean("onlineRecipes", v).apply()
+    /** With [onlineRecipes], also list the recipes members published on the website. Off until the user turns it on. */
+    var onlineMembers: Boolean
+        get() = sp.getBoolean("onlineMembers", false)
+        set(v) = sp.edit().putBoolean("onlineMembers", v).apply()
+    /** Also list the Moulinex Companion recipes (converted for this machine when opened). Off until the user turns it on. */
+    var moulinexRecipes: Boolean
+        get() = sp.getBoolean("moulinexRecipes", false)
+        set(v) = sp.edit().putBoolean("moulinexRecipes", v).apply()
+
+    /** Favourite recipes (Home and the Favourites filter in Recipes). */
+    val favourites = Favourites(sp)
 
     /**
      * Cooking history: recipe keys (the id without its language) and when they were finished, newest first, at most

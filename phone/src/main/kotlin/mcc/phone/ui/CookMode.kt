@@ -111,6 +111,7 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
                     Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(c))
                 }
             }
+            val plan = remember(recipe) { mcc.recipe.AccessoryPlan.of(recipe) }
             HorizontalPager(pager, Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp), pageSpacing = 12.dp) { page ->
                 val step = recipe.steps[page]
                 val (icon, col, chip) = stepLook(step)
@@ -135,6 +136,7 @@ fun CookMode(recipeId: String, onClose: () -> Unit) {
                         Spacer(Modifier.height(18.dp))
                         Text(chip, style = MaterialTheme.typography.headlineSmall, color = col)
                     }
+                    AccessoryChips(plan.at(page), step, recipe.language, Modifier.padding(top = 16.dp), big = true)
                     Spacer(Modifier.height(16.dp))
                     Text(step.text, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold, lineHeight = 40.sp), color = Mc.text)
                     // weighing on the machine right now: show the scale live

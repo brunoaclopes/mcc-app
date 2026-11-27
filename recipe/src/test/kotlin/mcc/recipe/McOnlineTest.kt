@@ -105,6 +105,19 @@ class McOnlineTest {
         assertEquals("24407", McOnline.recipeNumber(e[0].image))
     }
 
+    @Test fun listEntriesWithMemberRecipes() {
+        val e = McOnline.entries(McOnline.parseList(list), "pt", members = true, memberTag = "Comunidade")
+        assertEquals(listOf("mco-1001-pt", "mco-1002-pt"), e.map { it.id })
+        assertEquals("Comunidade", e[1].tags.first())
+        assertTrue("Comunidade" !in e[0].tags)
+    }
+
+    @Test fun memberRecipeGetsANote() {
+        val d = McOnline.parseDetail(detail.replace("\"source\":\"official\"", "\"source\":\"member\""))
+        assertEquals(McOnline.memberNote("pt"), McOnline.convert(d, "pt").notes.first())
+        assertTrue(McOnline.memberNote("pt") !in McOnline.convert(McOnline.parseDetail(detail), "pt").notes)
+    }
+
     @Test fun recipeNumber() {
         assertEquals("24386", McOnline.recipeNumber("https://x/thumbnail24386rezeptfoto.jpg"))
         assertEquals("24392", McOnline.recipeNumber("https://x/24392_Rezeptfoto_1623849450.jpg"))
@@ -114,6 +127,9 @@ class McOnlineTest {
     @Test fun urls() {
         assertTrue(McOnline.listUrl(2).contains("/page/2/size/100?"))
         assertTrue(McOnline.listUrl(1).contains("MC2.0") && McOnline.listUrl(1).contains("MC3.0"))
+        assertTrue("source%5D%5B%5D=official&" in McOnline.listUrl(1))
+        assertTrue("source" !in McOnline.listUrl(1, members = true))
+        assertTrue(McOnline.listUrl(1, members = true).endsWith("?filters%5BdeviceTypes%5D%5B%5D=MC2.0&filters%5BdeviceTypes%5D%5B%5D=MC3.0"))
         assertEquals("en-US", McOnline.headers("en")["Accept-Language"])
         assertEquals("web", McOnline.headers("pt")["device-type"])
     }

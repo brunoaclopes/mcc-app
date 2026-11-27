@@ -68,6 +68,29 @@ The machine layer enforces its own limits whatever the recipe says: speed ≤ 3 
 speed ≤ 3 in reverse, 99 min max, 15 min max above speed 6, and heating only with
 ≥ 50 g in the bowl. `knead`, `roast` and `steam` use the stock presets with the same limits.
 
+## Accessories
+
+The apps work out which original accessories a recipe uses from its step text (`recipe/Accessories.kt`), so write
+them with the names Lidl's own recipes use, in a step of their own when one goes in or comes out:
+
+| accessory | English | Portuguese | rules the apps apply |
+|---|---|---|---|
+| mixer attachment (Rühraufsatz) | `mixer attachment` | `acessório batedor` | speed 1-4 only, never Turbo or kneading: before a faster step the machine asks whether it is out |
+| cooking pot (Kocheinsatz) | `cooking pot` | `acessório de cozer` | in the bowl over at least 500 g of water; "on the lid" means a splash guard, not in the bowl |
+| deep steamer basket | `deep steamer basket` | `acessório para vapor fundo` | locks onto the bowl in place of the lid, 1000 g of water in the bowl |
+| shallow steamer basket | `shallow steamer basket` | `acessório para vapor plano` | only on top of the deep one |
+| measuring beaker | `measuring beaker` | `copo de medição` | shown when a step puts it in or takes it out |
+
+Say "Put in the mixer attachment." / "Coloque o acessório batedor." and "Remove the mixer attachment." / "Retire o
+acessório batedor."; the recipe page lists the accessories, and the cook screen shows what to put in or take out at
+each step.
+
+## Improved copies
+
+A recipe improved with the AI ("Improve with AI" in the apps) has `"source": {"kind": "ai-tweak", "ref": "<key of the
+original>"}`. The apps show it instead of the original, and `tools/build_index.py` leaves the original out of
+`index.json` when the improved copy is in the same repository.
+
 ## Languages
 
 Every recipe exists in Portuguese (`pt`) and English (`en`). Each language version is its own file with the id

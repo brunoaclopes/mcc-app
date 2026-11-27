@@ -35,8 +35,8 @@ Each app has its own version in its build file; the release tag names the releas
 
 | What | Where | Example |
 |---|---|---|
-| Machine app | `app/build.gradle.kts`: `versionName`, `versionCode` | 1.6.0, 11 |
-| Phone app | `phone/build.gradle.kts`: `versionName`, `versionCode` | 0.9.0, 22 |
+| Machine app | `app/build.gradle.kts`: `versionName`, `versionCode` | 1.7.0, 12 |
+| Phone app | `phone/build.gradle.kts`: `versionName`, `versionCode` | 0.10.0, 23 |
 | Server | `server/app.py`: `VERSION` | 2.0.0 |
 | Release | the git tag | `v0.7.0` |
 

@@ -24,7 +24,7 @@ class PhoneApp : Application() {
         P.set(prefs.languageCode())
         T.init(this)
         mcc.phone.ui.Mc.dynamicOn.value = prefs.dynamicColor
-        store = RecipeStore(this, { prefs.onlineRecipes }) { prefs.repoUrl }
+        store = RecipeStore(this, { prefs.onlineRecipes }, { prefs.onlineMembers }, { prefs.moulinexRecipes }) { prefs.repoUrl }
         shopping = Shopping(prefs)
         notifier = Notifier(this)
         notifier.channels()

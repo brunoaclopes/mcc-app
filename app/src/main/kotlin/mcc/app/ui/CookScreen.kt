@@ -4,6 +4,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -35,6 +36,10 @@ class CookScreen(app: AppUi) : Screen(app) {
     private lateinit var kindPill: TextView
     private lateinit var stepNo: TextView
     private lateinit var stepText: TextView
+    /** What to put in or take out for this step, and the mixer attachment's limit while it is in. */
+    private lateinit var accRow: LinearLayout
+    private var plan: mcc.recipe.AccessoryPlan? = null
+    private var planFor: Recipe? = null
     private lateinit var upNext: TextView
     private lateinit var machinePanel: LinearLayout
     private lateinit var ring: DialView
@@ -76,6 +81,9 @@ class CookScreen(app: AppUi) : Screen(app) {
         kindPill = T.text(c, "", 13f, T.TEXT, T.heavy).apply { letterSpacing = 0.1f; setPadding(T.dp(12), T.dp(7), T.dp(12), T.dp(7)) }
         head.addView(kindPill, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = T.dp(14) })
         stepCard.addView(head)
+        accRow = LinearLayout(c).apply { orientation = LinearLayout.HORIZONTAL; visibility = View.GONE }
+        stepCard.addView(HorizontalScrollView(c).apply { isHorizontalScrollBarEnabled = false; addView(accRow) },
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = T.dp(12) })
         stepText = T.text(c, "", 28f, T.TEXT, T.bold).apply { setLineSpacing(0f, 1.18f) }
         stepCard.addView(ScrollView(c).apply { isVerticalScrollBarEnabled = false; isVerticalFadingEdgeEnabled = true; setFadingEdgeLength(T.dp(20)); addView(stepText) },
             LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = T.dp(12) })
@@ -227,7 +235,7 @@ class CookScreen(app: AppUi) : Screen(app) {
             else -> {
                 if (!MachineService.armed) { app.requestUnlock(); return }
                 if (needsEmptyBowl()) { app.askEmptyBowl(S.emptyBowlNeeded); return }
-                s.recipeStart()?.let { flash(it) }
+                mixerOut { s.recipeStart()?.let { flash(it) } }
             }
         }
     }
@@ -306,6 +314,7 @@ class CookScreen(app: AppUi) : Screen(app) {
             val dir = if (st.stepIndex >= shownStep) 1 else -1
             shownStep = st.stepIndex; shownRecipe = r
             stepNo.put("%02d".format(st.stepIndex + 1))
+            fillAccessories(r, st.stepIndex)
             val text = step?.text?.ifBlank { null } ?: (step as? Step.Machine)?.let { S.stepSentence(it) } ?: ""
             stepText.text = text
             stepText.textSize = when { text.length < 70 -> 32f; text.length < 140 -> 27f; text.length < 240 -> 23f; else -> 19.5f }
@@ -373,10 +382,44 @@ class CookScreen(app: AppUi) : Screen(app) {
         val st = MachineService.runnerState ?: return
         val step = st.step as? Step.Machine ?: return
         val what = (recipe?.title ?: "") + " · " + S.stepShort(step)
-        app.confirm(S.remoteTitle, S.remoteBody(what, app.prefs.remoteMinutes), S.remoteAllow) {
+        mixerOut { app.confirm(S.remoteTitle, S.remoteBody(what, app.prefs.remoteMinutes), S.remoteAllow) {
             val e = s.allowRemote(null, what)
             app.notify(e ?: S.remoteArmed(app.prefs.remoteMinutes), if (e == null) Notice.OK else Notice.WARN)
+        } }
+    }
+
+    private fun planOf(r: Recipe): mcc.recipe.AccessoryPlan =
+        plan?.takeIf { planFor === r } ?: mcc.recipe.AccessoryPlan.of(r).also { plan = it; planFor = r }
+
+    /**
+     * Before a step the mixer attachment can't do (above speed 4, Turbo, kneading) that follows one it was put in for,
+     * asks whether it is out: the recipe text doesn't always say so. A paused step that already ran is not asked again.
+     */
+    private fun mixerOut(go: () -> Unit) {
+        val r = recipe; val st = MachineService.runnerState
+        if (r == null || st == null || st.phase == RecipeRunner.Phase.PAUSED || !planOf(r).at(st.stepIndex).mustRemoveMixer) { go(); return }
+        app.confirm(S.removeMixerTitle, S.removeMixerBody, S.removeMixerGo) { go() }
+    }
+
+    /** Chips for the step: accessories to put in (teal) or take out (amber), and the mixer attachment's limit while it is in. */
+    private fun fillAccessories(r: Recipe, i: Int) {
+        accRow.removeAllViews()
+        val a = planOf(r).at(i)
+        fun chip(icon: Icon, text: String, col: Int) {
+            val v = LinearLayout(c).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                background = T.round(T.withAlpha(col, 0x22), 15, T.withAlpha(col, 0x66), 1); setPadding(T.dp(10), 0, T.dp(12), 0)
+                addView(IconView(c, icon, col, 1.8f), LinearLayout.LayoutParams(T.dp(18), T.dp(18)))
+                addView(T.text(c, text, 14f, col, T.bold).apply { setPadding(T.dp(7), 0, 0, 0); maxLines = 1 })
+            }
+            accRow.addView(v, LinearLayout.LayoutParams(-2, T.dp(32)).apply { rightMargin = T.dp(8) })
         }
+        for (ch in a.changes) {
+            val name = ch.accessory.label(r.language)
+            if (ch.put) chip(ch.accessory.icon(), S.accPut(name), T.TEAL) else chip(ch.accessory.icon(), S.accRemove(name), T.AMBER)
+        }
+        if (r.steps.getOrNull(i) is Step.Machine && mcc.recipe.Accessory.MIXER in a.fitted) chip(Icon.WHISK, S.mixerIn, T.TEAL)
+        accRow.visibility = if (accRow.childCount > 0) View.VISIBLE else View.GONE
     }
 
     private fun renderMachine(step: Step.Machine, st: RecipeRunner.State) {

@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as rowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -37,7 +39,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -81,6 +85,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import mcc.app.i18n.L
 import mcc.app.ui.Covers
 import mcc.app.ui.Icon
+import mcc.app.ui.icon
+import mcc.recipe.Accessory
+import mcc.recipe.AccessoryPlan
 import mcc.app.ui.visible
 import mcc.link.Command
 import mcc.phone.LinkClient
@@ -139,8 +146,11 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
     // each recipe once, in the app language (Settings → Language)
     val inLang = remember(rs.index) { rs.index.visible(L.s.code.takeIf { it == "en" } ?: "pt") }
     val tags = remember(inLang) { inLang.flatMap { it.tags }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(10).map { it.key } }
-    val shown = inLang.filter { e ->
-        (tag == null || tag in e.tags) && (q.isBlank() || e.title.contains(q.trim(), ignoreCase = true) || e.tags.any { it.contains(q.trim(), true) })
+    val favKeys by Recipes.favourites.collectAsState()
+    val favs = remember(inLang, favKeys) { inLang.filter { mcc.app.recipeKey(it.id) in favKeys }.sortedBy { favKeys.indexOf(mcc.app.recipeKey(it.id)) } }
+    val onlyFavs = tag == FAVOURITES
+    val shown = (if (onlyFavs) favs else inLang).filter { e ->
+        (tag == null || onlyFavs || tag in e.tags) && (q.isBlank() || e.title.contains(q.trim(), ignoreCase = true) || e.tags.any { it.contains(q.trim(), true) })
     }
     // a few photographed recipes, different every day
     val featured = remember(inLang) {
@@ -172,9 +182,28 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                         focusedContainerColor = Mc.surface, unfocusedContainerColor = Mc.surface.copy(alpha = 0.85f)),
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (favs.isNotEmpty()) FilterChip(selected = onlyFavs, onClick = { tag = if (onlyFavs) null else FAVOURITES },
+                        label = { Text(L.s.tagFavourites) }, leadingIcon = { McIcon(Icon.STAR_FULL, if (onlyFavs) Mc.onAccent else Mc.amber, 16.dp) },
+                        colors = chipColors(), shape = smooth(12.dp))
                     tags.forEach { t -> FilterChip(selected = tag == t, onClick = { tag = if (tag == t) null else t }, label = { Text(t) }, colors = chipColors(), shape = smooth(12.dp)) }
                 }
                 rs.warning?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Mc.amber) }
+            }
+        }
+        // favourites first, for quick access
+        if (favs.isNotEmpty() && q.isBlank() && tag == null) item(span = { GridItemSpan(maxLineSpan) }) {
+            Column {
+                Label(L.s.tagFavourites, Mc.amber, Icon.STAR_FULL)
+                Spacer(Modifier.height(10.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rowItems(favs, key = { "fav-" + it.id }) { e ->
+                        Column(Modifier.width(120.dp).clip(smooth(18.dp)).clickable { onOpen(e) }) {
+                            Cover(e.id, e.title, e.tags, e.image, 300, Modifier.fillMaxWidth().aspectRatio(1f).clip(smooth(18.dp)), e.blurhash)
+                            Text(e.title, style = MaterialTheme.typography.labelLarge, color = Mc.text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 6.dp, start = 2.dp, end = 2.dp))
+                        }
+                    }
+                }
             }
         }
         if (featured.size >= 3 && q.isBlank() && tag == null) item(span = { GridItemSpan(maxLineSpan) }) {
@@ -194,7 +223,7 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                 }
             }
         }
-        items(shown, key = { it.id }) { e -> RecipeCard(e, e.id == selected) { onOpen(e) } }
+        items(shown, key = { it.id }) { e -> RecipeCard(e, e.id == selected, mcc.app.recipeKey(e.id) in favKeys) { onOpen(e) } }
         // first start, nothing on the phone yet: card-shaped skeletons until the server answers
         if (shown.isEmpty() && rs.loading && rs.index.isEmpty()) items(6) { Skeleton(Modifier.fillMaxWidth().aspectRatio(0.8f), smooth(24.dp)) }
         if (shown.isEmpty() && !rs.loading) item(span = { GridItemSpan(maxLineSpan) }) {
@@ -203,9 +232,12 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
     }
 }
 
+/** The Favourites filter chip's value (never a real tag). */
+private const val FAVOURITES = "\u0000favourites"
+
 /** Photo card with the title on the photo, like the machine's recipe grid. */
 @Composable
-private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, onClick: () -> Unit) {
+private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, favourite: Boolean, onClick: () -> Unit) {
     val shape = smooth(24.dp)
     Box(
         Modifier.fillMaxWidth().aspectRatio(0.8f).sharedCover(e.id).clip(shape)
@@ -215,6 +247,8 @@ private fun RecipeCard(e: RecipeIndex.Entry, selected: Boolean, onClick: () -> U
         Cover(e.id, e.title, e.tags, e.image, 420, Modifier.fillMaxSize(), e.blurhash)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color(0xE0000000))))
         e.totalMinutes?.let { TimePill(it, Modifier.align(Alignment.TopEnd).padding(10.dp)) }
+        if (favourite) Box(Modifier.align(Alignment.TopStart).padding(10.dp).size(30.dp).clip(CircleShape).background(Color(0x8C000000)),
+            contentAlignment = Alignment.Center) { McIcon(Icon.STAR_FULL, Mc.amber, 16.dp, 1.6f) }
         Text(e.title, style = MaterialTheme.typography.titleSmall.copy(lineHeight = 19.sp), color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.BottomStart).padding(12.dp))
     }
@@ -254,9 +288,14 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
     val onMachine = r != null && st?.recipeId == r.id
     val current = if (onMachine) st?.step?.substringBefore("/")?.toIntOrNull()?.minus(1) else null
     val list = rememberLazyListState()
+    val plan = remember(r) { r?.let { AccessoryPlan.of(it) } }
+    val favKeys by Recipes.favourites.collectAsState()
+    val fav = mcc.app.recipeKey(e.id) in favKeys
+    var tweaking by remember { mutableStateOf(false) }
     // follow the machine when it moves to another step (not on opening: the photo and buttons come first)
     var seen by remember(e.id) { mutableStateOf(current) }
-    val stepsStart = 2 + if (r?.ingredients?.isNotEmpty() == true) 1 else 0 // hero, [ingredients], steps label
+    // hero, [ingredients], [accessories], steps label
+    val stepsStart = 2 + (if (r?.ingredients?.isNotEmpty() == true) 1 else 0) + (if (plan?.needs?.isNotEmpty() == true) 1 else 0)
     LaunchedEffect(current) { if (current != null && current != seen) list.animateScrollToItem(current + stepsStart); seen = current }
 
     Box(Modifier.fillMaxSize().graphicsLayer {
@@ -275,6 +314,19 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                         Modifier.padding(14.dp).size(46.dp).clip(CircleShape).background(Color(0x66000000)).clickable { onBack() },
                         contentAlignment = Alignment.Center,
                     ) { McIcon(Icon.BACK, Mc.onPhoto, 22.dp, 2.5f) }
+                    // improve with the AI, favourite
+                    Row(Modifier.align(Alignment.TopEnd).padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (raw != null && !e.file.startsWith(mcc.app.RecipeStore.PROGRAM)) Box(
+                            Modifier.size(46.dp).clip(CircleShape).background(Color(0x66000000)).clickable {
+                                if (mcc.phone.Importer.aiConfigured) tweaking = true else ui.say(L.s.aiNotSet)
+                            }, contentAlignment = Alignment.Center,
+                        ) { McIcon(Icon.SPARK, Mc.amber, 22.dp) }
+                        Box(
+                            Modifier.size(46.dp).clip(CircleShape).background(Color(0x66000000)).clickable {
+                                haptic(false); ui.say(if (Recipes.toggleFavourite(e.id)) L.s.favAdded else L.s.favRemoved)
+                            }, contentAlignment = Alignment.Center,
+                        ) { McIcon(if (fav) Icon.STAR_FULL else Icon.STAR, if (fav) Mc.amber else Mc.onPhoto, 22.dp) }
+                    }
                     Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
                         if (onMachine) Text(S.machineIsOn.uppercase(L.s.locale) + (st?.step?.let { " · $it" } ?: ""), style = MaterialTheme.typography.labelMedium,
                             color = Color.White, modifier = Modifier.clip(smooth(10.dp)).background(Mc.teal).padding(horizontal = 10.dp, vertical = 5.dp))
@@ -317,9 +369,24 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                     }
                 }
             }
+            if (r != null && plan != null && plan.needs.isNotEmpty()) item {
+                Glass(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Label(L.s.accessories, Mc.teal, Icon.WHISK)
+                        plan.needs.forEach { a ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                McIcon(a.icon(), Mc.teal, 20.dp, 1.8f); Spacer(Modifier.width(10.dp))
+                                Text(a.label(r.language).replaceFirstChar { it.titlecase(L.s.locale) } +
+                                    (if (a == Accessory.MIXER) " · " + L.s.mixerIn.substringAfter("· ") else ""),
+                                    style = MaterialTheme.typography.bodyLarge, color = Mc.text2)
+                            }
+                        }
+                    }
+                }
+            }
             if (r != null) {
                 item { Box(Modifier.padding(start = 20.dp, top = 12.dp, bottom = 6.dp)) { Label(S.steps, Mc.amber, Icon.CHEF) } }
-                itemsIndexed(r.steps) { i, step -> StepRow(i, step, current, last = i == r.steps.lastIndex) }
+                itemsIndexed(r.steps) { i, step -> StepRow(i, step, current, last = i == r.steps.lastIndex, acc = plan?.at(i), lang = r.language) }
                 if (r.notes.isNotEmpty()) item {
                     Column(Modifier.padding(20.dp)) {
                         Label(L.s.notesWord, Mc.text2)
@@ -327,6 +394,10 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
                     }
                 }
             }
+        }
+        if (tweaking && raw != null) TweakDialog(onDismiss = { tweaking = false }) { request ->
+            tweaking = false
+            mcc.phone.Importer.tweak(raw, request, mine = PhoneApp.app.store.isMine(e))
         }
         // pinned actions
         if (r != null) Row(
@@ -344,6 +415,26 @@ fun RecipeDetail(e: RecipeIndex.Entry, onBack: (() -> Unit)?, onCook: (String) -
             }
         }
     }
+}
+
+/** "Improve with AI": what to change, in the user's words. The result is reviewed in the import sheet. */
+@Composable
+private fun TweakDialog(onDismiss: () -> Unit, onGo: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { McIcon(Icon.SPARK, Mc.amber, 26.dp) },
+        title = { Text(L.s.aiTweak) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(L.s.aiTweakBody, style = MaterialTheme.typography.bodyMedium, color = Mc.text2)
+                OutlinedTextField(text, { text = it }, placeholder = { Text(L.s.aiTweakHint) }, minLines = 2, modifier = Modifier.fillMaxWidth(),
+                    shape = smooth(16.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Mc.amber))
+            }
+        },
+        confirmButton = { TextButton(onClick = { onGo(text) }, enabled = text.isNotBlank()) { Text(L.s.aiTweakGo) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(L.s.cancel) } },
+    )
 }
 
 /** − 6 pessoas +, and a word that amounts changed but times did not. Locked while the machine has the recipe open. */
@@ -382,7 +473,7 @@ fun stepLook(step: Step): Triple<Icon, Color, String?> = when (step) {
 
 /** One step on the timeline: numbered dot joined to the next one; the machine's current step glows. */
 @Composable
-fun StepRow(i: Int, step: Step, current: Int?, last: Boolean = false) {
+fun StepRow(i: Int, step: Step, current: Int?, last: Boolean = false, acc: AccessoryPlan.StepAccessories? = null, lang: String? = null) {
     val now = i == current
     val done = current != null && i < current
     val (icon, col, chip) = stepLook(step)
@@ -406,9 +497,28 @@ fun StepRow(i: Int, step: Step, current: Int?, last: Boolean = false) {
                 McIcon(icon, col, 16.dp); Spacer(Modifier.width(6.dp))
                 Text(chip, style = MaterialTheme.typography.labelLarge, color = col)
             }
+            if (acc != null) AccessoryChips(acc, step, lang, Modifier.padding(top = if (chip != null) 6.dp else 0.dp, bottom = 2.dp))
             if (step.text.isNotBlank()) Text(step.text, style = MaterialTheme.typography.bodyLarge, color = if (done) Mc.text3 else Mc.text,
                 modifier = Modifier.padding(top = if (chip != null) 4.dp else 0.dp))
             if (now) Text(P.s.stepNow.uppercase(L.s.locale), style = MaterialTheme.typography.labelSmall, color = Mc.amber, modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
+
+/** What to put in (teal) or take out (amber) for a step, and the mixer attachment's limit while it is in. */
+@Composable
+fun AccessoryChips(acc: AccessoryPlan.StepAccessories, step: Step, lang: String?, modifier: Modifier = Modifier, big: Boolean = false) {
+    val chips = acc.changes.map { ch ->
+        Triple(ch.accessory.icon(), if (ch.put) L.s.accPut(ch.accessory.label(lang)) else L.s.accRemove(ch.accessory.label(lang)), if (ch.put) Mc.teal else Mc.amber)
+    } + (if (step is Step.Machine && Accessory.MIXER in acc.fitted) listOf(Triple(Icon.WHISK, L.s.mixerIn, Mc.teal)) else emptyList())
+    if (chips.isEmpty()) return
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier) {
+        chips.forEach { (ic, t, col) ->
+            Row(Modifier.clip(smooth(if (big) 14.dp else 10.dp)).background(col.copy(alpha = 0.14f)).padding(horizontal = if (big) 12.dp else 8.dp, vertical = if (big) 7.dp else 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                McIcon(ic, col, if (big) 20.dp else 14.dp, 1.8f); Spacer(Modifier.width(if (big) 8.dp else 5.dp))
+                Text(t, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium, color = col)
+            }
         }
     }
 }
@@ -444,6 +554,7 @@ fun LoadedRecipePanel(modifier: Modifier, onOpen: (String) -> Unit) {
             }
         }
         CancelRecipeButton(onPhoto = false, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
-        LazyColumn(state = list, contentPadding = PaddingValues(bottom = 24.dp)) { itemsIndexed(r.steps) { i, s -> StepRow(i, s, current, i == r.steps.lastIndex) } }
+        val plan = remember(r) { AccessoryPlan.of(r) }
+        LazyColumn(state = list, contentPadding = PaddingValues(bottom = 24.dp)) { itemsIndexed(r.steps) { i, s -> StepRow(i, s, current, i == r.steps.lastIndex, plan.at(i), r.language) } }
     }
 }

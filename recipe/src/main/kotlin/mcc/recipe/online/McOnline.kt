@@ -14,7 +14,8 @@ import mcc.recipe.Step
 
 /**
  * The public recipe catalogue of the Monsieur Cuisine website (the same API its recipe pages use), read live:
- * the list of official recipes for this machine family, and one recipe at a time when it is opened. Nothing
+ * the list of recipes for this machine family (official ones, or also the ones members published), and one recipe
+ * at a time when it is opened. Nothing
  * from it is stored in this repository; the apps only cache what the user opens. See docs/ARCHITECTURE.md.
  *
  * This file only knows the JSON shapes and the conversion to mcc-recipe/1 (pure Kotlin, tested on the JVM);
@@ -29,9 +30,14 @@ object McOnline {
     fun headers(lang: String) = mapOf("Accept-Language" to apiLanguage(lang), "device-type" to "web")
     fun apiLanguage(lang: String) = if (lang == "en") "en-US" else "pt-PT"
 
-    fun listUrl(page: Int): String =
-        "$API/api/v1/recipes/page/$page/size/$PAGE_SIZE?filters%5Bsource%5D%5B%5D=official" +
-            DEVICES.joinToString("") { "&filters%5BdeviceTypes%5D%5B%5D=$it" }
+    /** Recipe sources of the API: the website's own recipes, and the ones members published from the Smart app. */
+    const val OFFICIAL = "official"
+    const val MEMBER = "member"
+
+    /** One list page: official recipes only, or with [members] every source (official and member). */
+    fun listUrl(page: Int, members: Boolean = false): String =
+        "$API/api/v1/recipes/page/$page/size/$PAGE_SIZE?" + (if (members) "" else "filters%5Bsource%5D%5B%5D=$OFFICIAL&") +
+            DEVICES.joinToString("&") { "filters%5BdeviceTypes%5D%5B%5D=$it" }
 
     fun detailUrl(id: Long) = "$API/api/v2/recipes/$id"
 
@@ -85,14 +91,21 @@ object McOnline {
 
     // ---- index entries ----
 
-    /** Index entries for one list page, official recipes only, in [lang]. */
-    fun entries(page: ListData, lang: String): List<RecipeIndex.Entry> = page.recipes.filter { it.source == null || it.source == "official" }.map { s ->
+    /**
+     * Index entries for one list page in [lang]: official recipes, and with [members] also member recipes, which
+     * get [memberTag] as their first tag. Other sources are left out.
+     */
+    fun entries(page: ListData, lang: String, members: Boolean = false, memberTag: String = "Member"): List<RecipeIndex.Entry> =
+        page.recipes.filter { isOfficial(it.source) || (members && it.source == MEMBER) }.map { s ->
+        val tags = s.categories.mapNotNull { it.name?.let(::clean) }.filter { it.isNotBlank() }.distinct()
         RecipeIndex.Entry(
             id = "$ID_PREFIX${s.id}-$lang", title = clean(s.name), language = lang,
-            tags = s.categories.mapNotNull { it.name?.let(::clean) }.filter { it.isNotBlank() }.distinct().take(4),
+            tags = (if (s.source == MEMBER) listOf(memberTag) + tags else tags).take(4),
             totalMinutes = s.duration?.takeIf { it > 0 }, image = imageUrl(s.thumbnail?.landscape), file = "$FILE_PREFIX${s.id}",
         )
     }
+
+    private fun isOfficial(source: String?) = source == null || source == OFFICIAL
 
     /**
      * The stock-app recipe number in a photo's file name ("24407rezeptfoto-6.jpg" -> "24407"). The same number
@@ -137,6 +150,7 @@ object McOnline {
      */
     fun convert(d: Detail, lang: String): Recipe {
         val notes = ArrayList<String>()
+        if (d.source == MEMBER) notes += memberNote(lang)
         val size = d.servingSizes.firstOrNull { it.id == d.defaultServingSizeId } ?: d.servingSizes.firstOrNull()
         var steps = size?.steps.orEmpty().sortedBy { it.order }.flatMap { convertStep(it, lang, notes) }
         if (steps.isEmpty() && !size?.instruction.isNullOrBlank()) {
@@ -172,6 +186,11 @@ object McOnline {
             nutritionPerServing = nutrition, ingredients = ingredients, steps = steps, notes = notes,
         )
     }
+
+    /** The first note of a member recipe, in the recipe's language. */
+    fun memberNote(lang: String) =
+        if (lang == "en") "Member recipe: written by a Monsieur Cuisine user; its settings are not checked by Monsieur Cuisine. Read each step before you start it."
+        else "Receita de membro: escrita por um utilizador do Monsieur Cuisine; as definições não são verificadas pelo Monsieur Cuisine. Leia cada passo antes de o iniciar."
 
     private val modeLabels = setOf("mode", "modo", "customized", "steaming", "kneading", "roasting", "turbo", "ramp", "scale",
         "cozedura ajustada", "cozer a vapor", "amassar", "dourar", "pesar", "rampa")

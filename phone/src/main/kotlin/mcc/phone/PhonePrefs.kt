@@ -5,6 +5,8 @@ import android.content.Context
 /** Phone settings. The broker password is typed by the user and stays in the app's private storage. */
 class PhonePrefs(c: Context) {
     private val sp = c.getSharedPreferences("mcc-phone", Context.MODE_PRIVATE)
+    /** Favourite recipes (the Favourites filter in Recipes). */
+    val favourites = mcc.app.Favourites(sp)
 
     var host: String get() = sp.getString("host", "") ?: ""; set(v) = sp.edit().putString("host", v.trim()).apply()
     var port: Int get() = sp.getInt("port", 1883); set(v) = sp.edit().putInt("port", v).apply()
@@ -14,6 +16,10 @@ class PhonePrefs(c: Context) {
     var repoUrl: String get() = sp.getString("repoUrl", "") ?: ""; set(v) = sp.edit().putString("repoUrl", v.trim()).apply()
     /** Also list the official recipes of the Monsieur Cuisine website (RecipeStore). Off until the user turns it on. */
     var onlineRecipes: Boolean get() = sp.getBoolean("onlineRecipes", false); set(v) = sp.edit().putBoolean("onlineRecipes", v).apply()
+    /** With [onlineRecipes], also list the recipes members published on the website. Off until the user turns it on. */
+    var onlineMembers: Boolean get() = sp.getBoolean("onlineMembers", false); set(v) = sp.edit().putBoolean("onlineMembers", v).apply()
+    /** Also list the Moulinex Companion recipes (converted for the machine when opened). */
+    var moulinexRecipes: Boolean get() = sp.getBoolean("moulinexRecipes", false); set(v) = sp.edit().putBoolean("moulinexRecipes", v).apply()
     // recipe import: the AI proxy (OpenAI-compatible) and the NAS upload service that adds recipes to the repository
     var aiUrl: String get() = sp.getString("aiUrl", "") ?: ""; set(v) = sp.edit().putString("aiUrl", v.trim()).apply()
     var aiModel: String get() = sp.getString("aiModel", "") ?: ""; set(v) = sp.edit().putString("aiModel", v.trim()).apply()
