@@ -143,6 +143,8 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
     var q by rememberSaveable { mutableStateOf("") }
     var tag by rememberSaveable { mutableStateOf<String?>(null) }
     val S = P.s
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     // each recipe once, in the app language (Settings → Language)
     val inLang = remember(rs.index) { rs.index.visible(L.s.code.takeIf { it == "en" } ?: "pt") }
     val tags = remember(inLang) { inLang.flatMap { it.tags }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(10).map { it.key } }
@@ -175,6 +177,9 @@ fun RecipeList(modifier: Modifier, selected: String?, onOpen: (RecipeIndex.Entry
                 }
                 OutlinedTextField(
                     value = q, onValueChange = { q = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    // the keyboard's search key closes it (the list already filters as you type)
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { keyboard?.hide(); focus.clearFocus() }),
                     placeholder = { Text(L.s.searchHint) }, leadingIcon = { McIcon(Icon.SEARCH, Mc.text2, 20.dp) },
                     trailingIcon = if (q.isNotEmpty()) ({ IconButton(onClick = { q = "" }) { McIcon(Icon.CLOSE, Mc.text2, 18.dp, 2.4f) } }) else null,
                     shape = smooth(28.dp),
