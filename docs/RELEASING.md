@@ -57,8 +57,9 @@ the release still carries its APK.
        git tag -a v0.7.0 -m "v0.7.0"
        git push origin v0.7.0
 
-3. Watch Actions → Release. When it is done, the release page has `mcc-machine-<version>.apk`,
-   `mcc-phone-<version>.apk` and `SHA256SUMS.txt`. Images → the same version tag appears on both images.
+3. Watch Actions → Release. When it is done, the release `v0.7.0 · phone <version> · machine <version>` has
+   `mcc-machine-<version>.apk`, `mcc-phone-<version>.apk` and `SHA256SUMS.txt` (the title is what Obtainium reads
+   the phone app's version from: [PHONE.md](PHONE.md#installing-and-updating)). Images → the same version tag appears on both images.
 4. Check the release notes and edit them if a pull request title says too little.
 
 A tag that is not on `master`, or a release without the release key set up, fails before anything is published.
