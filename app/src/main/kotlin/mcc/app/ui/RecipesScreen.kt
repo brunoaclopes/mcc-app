@@ -65,6 +65,18 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             hint = S.searchHint; setHintTextColor(T.TEXT_3); setTextColor(T.TEXT); textSize = 17f
             typeface = T.semibold; background = null; isSingleLine = true; imeOptions = EditorInfo.IME_ACTION_SEARCH
             setPadding(T.dp(10), 0, 0, 0)
+            // Enter (or the keyboard's search key) searches at once and closes the keyboard
+            setOnEditorActionListener { v, action, event ->
+                val enter = action == EditorInfo.IME_ACTION_SEARCH || action == EditorInfo.IME_ACTION_DONE ||
+                    (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER && event.action == android.view.KeyEvent.ACTION_DOWN)
+                if (enter) {
+                    removeCallbacks(typed); filter(animate = false)
+                    (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                        .hideSoftInputFromWindow(v.windowToken, 0)
+                    v.clearFocus()
+                }
+                enter
+            }
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     clear.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
