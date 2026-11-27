@@ -47,6 +47,7 @@ class RecipesScreen(app: AppUi) : Screen(app) {
     private lateinit var empty: TextView
     private lateinit var detail: FrameLayout
     private val adapter = Cards()
+    private val typed = Runnable { filter(animate = false) }
 
     override val view: View = build()
 
@@ -65,7 +66,11 @@ class RecipesScreen(app: AppUi) : Screen(app) {
             typeface = T.semibold; background = null; isSingleLine = true; imeOptions = EditorInfo.IME_ACTION_SEARCH
             setPadding(T.dp(10), 0, 0, 0)
             addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) { clear.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE; filter(animate = false) }
+                override fun afterTextChanged(s: Editable?) {
+                    clear.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+                    // filter once typing pauses, not on every key: the list holds well over a thousand recipes
+                    removeCallbacks(typed); postDelayed(typed, if (s.isNullOrEmpty()) 0L else 250L)
+                }
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             })
@@ -129,6 +134,25 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         indexIngredients()
     }
 
+    /** A recipe as the list filters it: its categories (one name each) and its title and categories folded. */
+    private class Row(val e: RecipeIndex.Entry, val tags: Set<String>, val hay: String)
+
+    private var rowsOf: Pair<RecipeIndex, String>? = null
+    private var rowsCache: List<Row> = emptyList()
+
+    /** The visible recipes, worked out once per index and language rather than on every key press. */
+    private fun rows(): List<Row> {
+        val idx = app.index ?: return emptyList()
+        val lang = app.prefs.uiLanguage
+        rowsOf?.let { (i, l) -> if (i === idx && l == lang) return rowsCache }
+        rowsCache = idx.visible(lang).map { e ->
+            val tags = e.tags.mapTo(LinkedHashSet()) { canonicalTag(it) }
+            Row(e, tags, fold(e.title) + " | " + tags.joinToString(" | ") { fold(it) })
+        }
+        rowsOf = idx to lang
+        return rowsCache
+    }
+
     // ---- "what can I make": the search also looks at the ingredients of every recipe
 
     /** Recipe id -> its ingredients, folded (lower case, no accents). Filled in the background. */
@@ -155,24 +179,25 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         }, "mcc-ingredients").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }.start()
     }
 
-    private fun fold(s: String) = java.text.Normalizer.normalize(s.lowercase(S.locale), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+    private val marks by lazy { Regex("\\p{M}+") }
+    private fun fold(s: String) = marks.replace(java.text.Normalizer.normalize(s.lowercase(S.locale), java.text.Normalizer.Form.NFD), "")
 
     /** Every comma-separated term must be in the title, a tag or an ingredient: "frango, arroz" = recipes with both. */
-    private fun matches(e: RecipeIndex.Entry, terms: List<String>): Boolean {
+    private fun matches(r: Row, terms: List<String>): Boolean {
         if (terms.isEmpty()) return true
-        val hay = fold(e.title) + " | " + e.tags.joinToString(" | ") { fold(it) } + " | " + (ingredientsById[e.id] ?: "")
-        return terms.all { it in hay }
+        val ingredients = ingredientsById[r.e.id]
+        return terms.all { it in r.hay || (ingredients != null && it in ingredients) }
     }
 
     private fun buildTags() {
         tagRow.removeAllViews()
         val idx = app.index ?: return
         val counts = HashMap<String, Int>()
-        idx.visible(app.prefs.uiLanguage).forEach { e -> e.tags.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
+        rows().forEach { r -> r.tags.forEach { counts[it] = (counts[it] ?: 0) + 1 } }
         // programs and the user's own recipes always come first
         if (app.prefs.cooked.isNotEmpty()) counts[S.tagCooked] = 1
         val pinned = listOf(S.tagCooked, S.tagMine, mcc.recipe.Programs.TAG_PT, mcc.recipe.Programs.TAG_EN).filter { it in counts }
-        val tags = listOf<String?>(null) + pinned + counts.entries.filter { it.key !in pinned }.sortedByDescending { it.value }.take(14 - pinned.size).map { it.key }
+        val tags = listOf<String?>(null) + pinned + counts.entries.filter { it.key !in pinned }.sortedByDescending { it.value }.map { it.key }
         for (t in tags) {
             val chip = T.text(c, t ?: S.all, 15f, T.TEXT, T.bold).apply {
                 gravity = Gravity.CENTER; setPadding(T.dp(18), 0, T.dp(18), 0)
@@ -200,10 +225,10 @@ class RecipesScreen(app: AppUi) : Screen(app) {
         shown.clear()
         // "Cooked lately": the recipes from the history, most recent first
         val cooked = if (selectedTag == S.tagCooked) app.prefs.cooked.map { it.first } else null
-        app.index?.visible(app.prefs.uiLanguage)?.filter { e ->
-            (selectedTag == null || cooked != null || selectedTag in e.tags) &&
-                (cooked == null || mcc.app.recipeKey(e.id) in cooked) && matches(e, terms)
-        }?.let { list -> shown.addAll(if (cooked != null) list.sortedBy { cooked.indexOf(mcc.app.recipeKey(it.id)) } else list) }
+        rows().filter { r ->
+            (selectedTag == null || cooked != null || selectedTag in r.tags) &&
+                (cooked == null || mcc.app.recipeKey(r.e.id) in cooked) && matches(r, terms)
+        }.map { it.e }.let { list -> shown.addAll(if (cooked != null) list.sortedBy { cooked.indexOf(mcc.app.recipeKey(it.id)) } else list) }
         adapter.notifyDataSetChanged()
         if (animate) { grid.setSelection(0); grid.scheduleLayoutAnimation() }
         empty.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE

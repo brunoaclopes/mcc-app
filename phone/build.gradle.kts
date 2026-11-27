@@ -34,8 +34,8 @@ android {
         applicationId = "io.github.brunoaclopes.mcc.phone"
         minSdk = 29
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.8.0"
+        versionCode = 22
+        versionName = "0.9.0"
         // test releases (tags vX.Y.Z-test.N) add "-test.N"; the versionCode stays, so the final release installs over it
         versionNameSuffix = providers.gradleProperty("mccVersionSuffix").orNull
     }

@@ -14,8 +14,8 @@ android {
         // The tablet runs API 23; a system-uid app targeting 23 avoids runtime-permission plumbing.
         @Suppress("ExpiredTargetSdkVersion")
         targetSdk = 23
-        versionCode = 10
-        versionName = "1.5.0"
+        versionCode = 11
+        versionName = "1.6.0"
         // test releases (tags vX.Y.Z-test.N) add "-test.N"; the versionCode stays, so the final release installs over it
         versionNameSuffix = providers.gradleProperty("mccVersionSuffix").orNull
         ndk { abiFilters += "armeabi-v7a" }
