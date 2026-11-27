@@ -38,7 +38,13 @@ without the stock cooking app.
   live gauge, and machine steps that run only after you hold Start.
 - **Monsieur Cuisine online recipes** (optional, off by default): also list the official recipes of the Monsieur
   Cuisine website, read live from its public recipe API. A recipe is downloaded when you open it and then works
-  offline; nothing from it is stored in this repository.
+  offline; nothing from it is stored in this repository. A second switch, **Include member recipes**, adds the
+  recipes members published on the website (tagged "Community"; their settings are not checked by Monsieur Cuisine).
+- **Moulinex Companion recipes** (optional, off by default): the Companion recipes of moulinex.pt (about 1300, in
+  Portuguese), read live from the recipe API the Moulinex website uses and converted for this machine when you open
+  one: blade speeds 1–12 scaled to 1–10, the stirring paddle as gentle reverse, the whisk as the mixer attachment,
+  steaming with the cooking pot or the steamer baskets, the Companion programs as machine steps, its alarms as
+  "add …" steps, weighed ingredients as weigh steps. Nothing from it is stored in this repository.
 - **Automatic programs**: an **any-vegetable soup**: put in as many vegetables as you like, the machine weighs them
   and works out the water, time and portions (firmness, chunky or blended at three levels, optional onion base), boiled eggs, rice, steamed vegetables, melting chocolate, smoothie, purée, proofing dough, slow cooking, sous-vide, yoghurt,
   reheating, and **cleaning** programs. They are ordinary guided recipes, so the same limits apply.
@@ -47,6 +53,12 @@ without the stock cooking app.
 - **Hands-free weighing** (weigh steps move on by themselves at the amount), **keep warm** after a heated
   recipe, **"what can I make?"** (the search matches ingredients: "chicken, rice"), a **cooking history** ("Cooked
   lately") and a **"ready about"** time for the whole recipe, also in Home Assistant. What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
+- **Accessories**: each recipe lists the original accessories it uses (mixer attachment, cooking pot, steamer
+  baskets), and the cook screen shows at every step what to put in or take out. The mixer attachment is only for
+  speeds 1 to 4, so before a faster step the machine asks whether it is out, even when the recipe forgets to say so.
+- **Favourites**: star a recipe; favourites come first on Home and in Recipes, on the machine and the phone.
+- **Improve with AI** (optional): ask for a change to any recipe ("less salt", "for 6", "brown the onion longer");
+  the improved copy is saved in My recipes and shown instead of the original (delete it to go back).
 - **AI recipe import** (optional): point it at any OpenAI-compatible server (OpenAI, or one on your own network)
   and turn a web page, pasted text or a cooking video into a guided recipe. Settings from other machines ("10 min/100°C/speed 1")
   are converted, and anything outside the machine limits is adjusted and listed. The AI only writes recipes.

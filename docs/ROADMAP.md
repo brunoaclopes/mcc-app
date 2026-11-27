@@ -10,6 +10,8 @@ worth doing next, roughly in order of value for the effort.
   run as machine steps; heating now needs 50 g in the bowl instead of 200 g (the stock app has no minimum).
 - **Monsieur Cuisine online recipes** (Settings, off by default): the official recipes of the Monsieur Cuisine
   website, listed live and downloaded when opened, without duplicating the recipe server's (`recipe/online/McOnline.kt`).
+  **Include member recipes** adds the recipes members published there (source `member`, tagged "Community", with a
+  note on the recipe that its settings are not checked by Monsieur Cuisine).
 - **Any-vegetable soup** (Programs): how firm, chunky or blended at three levels, optional onion base; put in as many
   vegetables as you like and the machine weighs them and works out water, time and portions (`recipe/Soup.kt`).
 - **Heated steps reach their temperature**: a step whose time runs out before the bowl is hot keeps heating, within
@@ -24,13 +26,22 @@ worth doing next, roughly in order of value for the effort.
   with both.
 - **Cooking history**: finished recipes are remembered; "Cooked lately" in Recipes.
 - **"Ready about" for the whole recipe**: on the Cook screen and as `recipe_finish` for Home Assistant.
+- **Accessories** (`recipe/Accessories.kt`): recipes list the original accessories they use, steps show what to put
+  in or take out, and the machine asks for the mixer attachment to be out before a step faster than speed 4. The
+  steaming programs follow the Monsieur Cuisine steamer (deep basket in place of the lid, 1 litre of water).
+- **Favourites** on Home, in Recipes and on the phone.
+- **Steps before cooking** on the machine: the recipe page has Ingredients and Steps tabs (tap or swipe), the
+  steps at a glance as on the phone.
+- **Moulinex Companion recipes** (Settings, off by default): about 1300 recipes from moulinex.pt, converted for this
+  machine when opened (`recipe/online/Moulinex.kt`).
+- **Improve with AI**: an improved copy of any recipe, shown instead of the original.
 
 ## Next
 
 1. **"Make something with these"**: with the AI server, write a recipe from a list of ingredients (the same import
    path, so the same limits apply), and ingredient chips for the most common ones. The same search on the phone.
 2. **Suggestions on Home**: three cards chosen for the moment: quick ones on weekdays (under 30 min), the season,
-   favourites not cooked for a while, never the same as yesterday, using the cooking history.
+   favourites not cooked for a while (favourites are in), never the same as yesterday, using the cooking history.
 3. **"Ready about" on the phone**, from `recipe_finish`.
 4. **More generators like the soup**, where the weight decides the rest: risotto by rice weight (stock, wine,
    stirring in reverse), béchamel and custards by milk weight, bread dough by flour weight (water, salt, yeast,

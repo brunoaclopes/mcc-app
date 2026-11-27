@@ -66,6 +66,8 @@ def photo_blurhash(repo: Path, image, cache: dict) -> str | None:
 def main() -> int:
     repo = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent)
     entries, bad = [], 0
+    # keys of recipes that an improved copy replaces (source kind "ai-tweak", ref = the original's key)
+    replaced = set()
     try:
         cache = json.loads((repo / BLURHASH_CACHE).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -88,6 +90,9 @@ def main() -> int:
                   f"-<language>", file=sys.stderr)
             bad += 1
             continue
+        src = r.get("source") or {}
+        if src.get("kind") == "ai-tweak" and src.get("ref"):
+            replaced.add(src["ref"])
         entries.append({
             "id": r["id"], "key": r["id"][:-len(lang) - 1], "title": r["title"], "language": lang,
             "tags": r.get("tags", []),
@@ -97,6 +102,10 @@ def main() -> int:
         bh = photo_blurhash(repo, r.get("image"), cache)
         if bh:
             entries[-1]["blurhash"] = bh
+    hidden = [e for e in entries if e["key"] in replaced]
+    entries = [e for e in entries if e["key"] not in replaced]
+    if hidden:
+        print(f"replaced by an improved copy: {', '.join(sorted({e['key'] for e in hidden}))}", file=sys.stderr)
     missing = missing_translations(entries)
     for m in missing:
         print(f"MISSING {m}", file=sys.stderr)

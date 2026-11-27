@@ -130,6 +130,46 @@ class AiClient(private val address: String, private val model: String, private v
         throw AiException("the AI's recipe was not valid: $last")
     }
 
+    /**
+     * Improves a recipe the user already has ("less salt", "for 6", "no lactose", "brown the onion longer", "make the steps
+     * clearer"). The AI gets the recipe as it is and the request, and returns the whole recipe in the same language; it goes
+     * through the same checks as an import, and [revise] works on the result. With [keepId] (one of my recipes) it keeps its
+     * id and replaces it when saved; otherwise it becomes a new recipe of mine whose source names the original
+     * ("ai-tweak", ref = the original's key), and the apps then show the improved copy instead of the original.
+     */
+    fun tweak(r: Recipe, request: String, keepId: Boolean): Import {
+        val lang = r.language ?: "pt"
+        val original = Recipe.json.encodeToJsonElement(Recipe.serializer(), r).jsonObject
+        val key = r.id.replace(Regex("-(pt|en)$"), "")
+        val user = "Recipe language: ${if (lang == "pt") "European Portuguese (pt-PT)" else "English"}.\n" +
+            "Here is a guided recipe for this machine, as JSON:\n$original\n\n" +
+            "Improve it as follows, keep everything else as it is, keep it in the same language and follow the machine limits:\n" +
+            request.take(2000) + "\nReply with the complete JSON object only."
+        val fields: (JsonObject) -> Map<String, kotlinx.serialization.json.JsonElement> = {
+            val base = key.removePrefix("my-").replace(Regex("-t\\d+$"), "").take(40)
+            mapOf(
+                "format" to JsonPrimitive(Recipe.FORMAT),
+                "id" to JsonPrimitive(if (keepId) r.id else "my-$base-t${System.currentTimeMillis() / 1000 % 100000}-$lang"),
+                "language" to JsonPrimitive(lang),
+                "image" to (original["image"] ?: JsonPrimitive(null as String?)),
+                "source" to if (keepId) (original["source"] ?: buildJsonObject { put("kind", "ai-import") }) else buildJsonObject {
+                    put("kind", TWEAK); put("ref", key); r.source?.url?.let { put("url", it) }
+                },
+            )
+        }
+        val messages = mutableListOf(msg("system", SYSTEM), msg("user", user))
+        var last: String? = null
+        repeat(2) { attempt ->
+            val reply = chat(messages)
+            val problem = try {
+                return finish(reply, fields).copy(prompt = user)
+            } catch (e: AiException) { throw e } catch (e: Exception) { e.message ?: "invalid" }
+            last = problem
+            if (attempt == 0) { messages += msg("assistant", reply); messages += msg("user", "That JSON was rejected: $problem\nReply with the corrected JSON object only.") }
+        }
+        throw AiException("the AI's recipe was not valid: $last")
+    }
+
     /** Whether [input] is a video link (YouTube and the other sites below) that the upload service can transcribe. */
     fun isVideo(input: String): Boolean = youtubeId(input) != null || isVideoLink(input)
 
@@ -334,6 +374,9 @@ class AiClient(private val address: String, private val model: String, private v
     }
 
     companion object {
+        /** Source kind of a recipe improved with [tweak]; its ref is the key of the recipe it replaces. */
+        const val TWEAK = "ai-tweak"
+
         /** Transcripts are noisy; the AI must not take song lyrics or caption fragments for a recipe. */
         private const val TRANSCRIPT_NOTE = "Transcripts are noisy: automatic captions break sentences into short lines and mishear words " +
             "(ingredient names, numbers), and a video with only background music can come back as song lyrics. Ignore anything " +
@@ -343,8 +386,17 @@ class AiClient(private val address: String, private val model: String, private v
 
         private val SYSTEM = """
 You turn recipes into guided recipes for the Monsieur Cuisine Connect, a Thermomix-like kitchen machine:
-a 2.2 litre bowl with a blade, heater 37-130 °C, speeds 1-10, reverse, a built-in scale, a simmering basket
-that sits inside the bowl and a Varoma steaming tray on top.
+a 3 litre bowl (2.5 litres of liquid at most at speed 10 or turbo) with a fixed blade, heater 37-130 °C, speeds 1-10,
+reverse, a built-in scale, and these original accessories (use exactly these names in the step texts):
+- "mixer attachment" / "acessório batedor": a whisk clipped onto the blade, for whipping cream (at least 200 g) and egg
+  whites (at least 4) or gentle stirring; speed 1-4 ONLY, never turbo, never knead, never the spatula while it is in;
+- "cooking pot" / "acessório de cozer": a basket that sits in the bowl over the blade, for rice, potatoes, eggs; at least
+  500 g of water under it; speed 0-1 while it is in; it also goes on the lid as a splash guard instead of the beaker;
+- "deep steamer basket" / "acessório para vapor fundo": locks onto the bowl IN PLACE OF THE LID, with 1000 g of water in
+  the bowl; "shallow steamer basket" / "acessório para vapor plano" only sits on top of the deep one (both always go on);
+  the steamer has its own lid; meat and fish go in the deep basket so juices don't drip onto the rest;
+- "measuring beaker" / "copo de medição": closes the hole in the lid; take it out only at speed 1-3;
+- "spatula" / "espátula": to scrape down; its hook lifts the cooking pot out.
 
 Reply with ONE JSON object and nothing else:
 {"format":"mcc-recipe/1","id":"x","title":"…","servings":"4 portions","activeMinutes":15,"totalMinutes":45,
@@ -361,24 +413,31 @@ Step types: "instruction" (text), "weigh" (text, grams 1-5000: the user adds tha
 "machine" (text, mode "run", segments run back to back; several segments make a speed ramp).
 Use "mode":"turbo" only for short full-speed bursts (each segment 1-10 s).
 Special modes (the machine runs its own pattern; give one segment with the total seconds): "knead" (dough, at most 600 g,
-speed and tempC 0), "roast" (browning/sautéing at tempC 100-130), "steam" (Varoma steaming, tempC 120).
+speed and tempC 0), "roast" (browning/sautéing at tempC 100-130), "steam" (steaming with the steamer baskets, tempC 120,
+at most 3600 s).
 
 Hard machine limits (never exceed them):
 - while heating (tempC > 0): speed 0-3;  reverse: speed 1-3;
-- tempC is 0 (no heat) or 37-130; 100 = boiling, 120 = steaming / browning ("Varoma");
+- tempC is 0 (no heat) or 37-130; 100 = boiling, 120 = steaming / browning (Thermomix "Varoma");
+- with the mixer attachment in: speed 1-4 and no turbo or knead; say "remove the mixer attachment" before any faster step;
 - one segment lasts at most 5940 s, and at most 900 s above speed 6;
 - heating needs at least 50 g in the bowl; speed 0 with a temperature heats without the blade turning.
 
 Converting other machines' settings (Thermomix / Bimby notation "time/temperature/speed"):
 - "5 sec/speed 5" -> {"seconds":5,"speed":5}; "10 min/100°C/speed 1" -> {"seconds":600,"speed":1,"tempC":100};
 - "Varoma" temperature -> 120; "speed spoon" / "soft" / "colher" -> speed 1; "reverse" / "inversa" -> "reverse":true;
+- Thermomix "butterfly whisk" / "borboleta" -> mixer attachment; "simmering basket" / "cesto" -> cooking pot;
+  "Varoma" dish/tray -> deep steamer basket (and its tray -> shallow steamer basket), set on the bowl in place of the lid;
+  Moulinex Companion "mixer" / "misturador" accessory -> mixer attachment at speed 1-3, or the blade in reverse at speed 1-2
+  for stews; Companion "chopping blade" / "lâmina picadora" -> the blade; Companion speeds 1-12 -> scale to 1-10;
 - "Turbo/1 sec" x3 -> a turbo step with three 1 s segments; "dough mode" / "amassar" N min -> run speed 4 for N min;
 - a speed above 3 while heating becomes speed 3.
 For ordinary recipes, decide sensible machine steps yourself: chop onion/garlic 5 s speed 5, sauté in oil
 5 min 120 °C speed 1, soups 20-25 min 100 °C speed 1 then blend 1 min rising from speed 5 to 9, etc.
 
 Write every text in the requested language, short and clear, one action per step. Weigh steps for what goes
-into the bowl by weight; mention the simmering basket, Varoma or measuring cup where the recipe needs them.
+into the bowl by weight. Say when an accessory goes in or comes out, in its own step ("Put in the mixer attachment.",
+"Remove the mixer attachment."), and where the measuring beaker goes; never leave the mixer attachment in for a faster step.
 Keep the ingredient list with quantities. 1-3 short tags in the recipe language. No image.
 If the input is not a recipe, reply {"error":"short reason"}.
 """.trimIndent()

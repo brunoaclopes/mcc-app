@@ -29,7 +29,9 @@ object Importer {
          */
         data class Ready(val imp: AiClient.Import, val other: Recipe?, val revisions: Int = 0, val error: String? = null,
                          /** Idempotency key for the upload: kept by copy(), so retrying this recipe never adds it twice. */
-                         val uploadKey: String = java.util.UUID.randomUUID().toString()) : State() {
+                         val uploadKey: String = java.util.UUID.randomUUID().toString(),
+                         /** For an improved recipe ([tweak]): the id of the recipe it improves. */
+                         val tweakOf: String? = null) : State() {
             val main get() = imp.recipe
             val changes get() = imp.changes
         }
@@ -108,7 +110,7 @@ object Importer {
                     val c = ai()
                     val imp = c.revise(ready.imp, feedback.trim())
                     _state.value = State.Working(Stage.TRANSLATING, System.currentTimeMillis())
-                    State.Ready(imp, translate(c, imp.recipe, if (imp.recipe.language == "pt") "en" else "pt"), ready.revisions + 1)
+                    State.Ready(imp, translate(c, imp.recipe, if (imp.recipe.language == "pt") "en" else "pt"), ready.revisions + 1, tweakOf = ready.tweakOf)
                 }
             }
             _state.value = res.getOrElse { e ->
@@ -117,6 +119,32 @@ object Importer {
                 ready.copy(error = why)   // keep the recipe as it was
             }
             if (!sheet.value && res.isSuccess) message.value = P.s.importReady(ready.main.title)
+        }
+    }
+
+    /**
+     * Improves a recipe the user already has ([AiClient.tweak]): the result shows in the sheet like an import, to review,
+     * ask for more changes, send to the repository or keep on this phone. An improved copy is shown instead of the
+     * original (on this phone when kept here; everywhere once in the repository); one of my recipes is improved in place.
+     */
+    fun tweak(r: Recipe, request: String, mine: Boolean) {
+        if (_state.value is State.Working || request.isBlank()) return
+        val other = if (r.language == "en") "pt" else "en"
+        _state.value = State.Working(Stage.REVISING, System.currentTimeMillis())
+        sheet.value = true
+        app.scope.launch {
+            val res = withContext(Dispatchers.IO) {
+                runCatching {
+                    val c = ai()
+                    val imp = c.tweak(r, request.trim(), keepId = mine)
+                    _state.value = State.Working(Stage.TRANSLATING, System.currentTimeMillis())
+                    State.Ready(imp, translate(c, imp.recipe, other), tweakOf = r.id)
+                }
+            }
+            _state.value = res.getOrElse { State.Failed(it.message ?: it.javaClass.simpleName) }
+            if (!sheet.value) message.value = when (val s = _state.value) {
+                is State.Ready -> P.s.importReady(s.main.title); is State.Failed -> mcc.app.i18n.L.s.aiFailed(s.message); else -> null
+            }
         }
     }
 
@@ -145,6 +173,7 @@ object Importer {
                 if (live) break
                 delay(10_000)
             }
+            ready.tweakOf?.let { if (app.prefs.favourites.has(it)) Recipes.addFavourite(id) }
             Recipes.refresh(force = false)
             if (live) LinkClient.send(Command.Refresh)
             _state.value = State.Idle
@@ -159,6 +188,7 @@ object Importer {
         val ready = _state.value as? State.Ready ?: return
         app.scope.launch {
             val saved = withContext(Dispatchers.IO) { app.store.saveMine(ready.main).also { r -> ready.other?.let { app.store.saveMine(it) } } }
+            ready.tweakOf?.let { if (app.prefs.favourites.has(it)) Recipes.addFavourite(saved.id) }
             Recipes.refresh(force = false)
             _state.value = State.Idle
             sheet.value = false

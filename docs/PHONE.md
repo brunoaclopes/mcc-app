@@ -17,9 +17,17 @@ as Home Assistant**, so it needs no server on the tablet and no Google services:
     Android 16 it asks to be shown as a live update.
 - **Recipes**: the same recipe repository as the machine (search, language and tag filters, photos cached for
   offline use), plus, with **Monsieur Cuisine online recipes** on (Settings → Recipe server), the official recipes
-  of the Monsieur Cuisine website. Turn it on on the machine too, so **Open on the machine** finds those recipes. The recipe page lists ingredients and steps. While the machine cooks that recipe, it highlights
+  of the Monsieur Cuisine website, and with **Include member recipes** also the ones members published (tagged
+  "Community"), and with **Moulinex Companion recipes** the Moulinex website's Companion recipes converted for the
+  machine. Turn them on on the machine too, so **Open on the machine** finds those recipes. The recipe page lists ingredients and steps. While the machine cooks that recipe, it highlights
   the current step and follows along. **Open on the machine** shows the recipe on the machine's Cook screen, ready
   to cook: it never starts anything.
+- **Favourites**: the star on a recipe page; favourites show first in Recipes and as a filter.
+- **Accessories**: the recipe page lists the original accessories it uses, and each step shows what to put in or take
+  out (also in cook along).
+- **Improve with AI**: the spark on a recipe page; say what to change and review the result like an import, then add
+  it to the recipe server (where it replaces the original for everyone) or keep it on this phone (shown instead of the
+  original here).
 - **Cook along**: one step per page in big type, with the screen kept on. While the recipe is open on the machine,
   the pages follow the machine's step.
 - **Recipe import**: share a recipe page or a cooking video (YouTube, TikTok, Instagram reels, Vimeo, Facebook) to
@@ -54,7 +62,7 @@ whatever asks. Opening recipes from the phone can be switched off on the machine
    (Android 10 or newer), or build it (below). Android asks to allow installs from your browser or file manager
    once. See [Installing and updating](#installing-and-updating).
 3. Settings → **Connection**: broker address, port, user and password. **Recipe server**: the same address as on
-   the machine, and **Monsieur Cuisine online recipes** if the machine has them on.
+   the machine, and **Monsieur Cuisine online recipes** (and **Include member recipes**) as on the machine.
 4. Optional, for recipe import: Settings → **Recipe import** → AI server address, model and key, and the upload
    service's address and token ([SERVER-SETUP.md](SERVER-SETUP.md)) → **Save and test**.
 5. Allow notifications when asked. For notifications with the app closed, keep **Stay connected in the
@@ -89,7 +97,7 @@ either, use the Home Assistant Companion app and the blueprint in [HOME-ASSISTAN
 - **Updates**: install the newer `mcc-phone-<version>.apk` over the old one; settings stay. To get updates
   automatically, add `https://github.com/brunoaclopes/mcc-app` to [Obtainium](https://github.com/ImranR98/Obtainium)
   (filter the APKs by `mcc-phone`). The release tag is the release as a whole (`v0.10.0`), not the phone app's
-  version, so let Obtainium read the version from the release title (`v0.10.0 · phone 0.9.0 · machine 1.6.0`). In
+  version, so let Obtainium read the version from the release title (`v0.11.0 · phone 0.10.0 · machine 1.7.0`). In
   the app's additional options:
 
   | Option | Value |

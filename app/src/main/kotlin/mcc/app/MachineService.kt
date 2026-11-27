@@ -361,7 +361,7 @@ class MachineService : Service() {
                     st.phase != RecipeRunner.Phase.DONE && (st.stepIndex > 0 || st.phase != RecipeRunner.Phase.READY))
             }
             if (busy) { Log.i(TAG, "remote load '$id' refused: busy"); lastEvent = "remote load refused (busy)"; return@Thread }
-            val store = RecipeStore(this, { prefs.onlineRecipes }) { prefs.repoUrl }
+            val store = RecipeStore(this, { prefs.onlineRecipes }, { prefs.onlineMembers }, { prefs.moulinexRecipes }) { prefs.repoUrl }
             // not in the cached index: it may have just been published, so ask the server once
             val entry = store.loadIndex(false).first?.recipes?.firstOrNull { it.id == id }
                 ?: store.loadIndex(true).first?.recipes?.firstOrNull { it.id == id }?.also { recipesRefreshed++ }
@@ -380,7 +380,7 @@ class MachineService : Service() {
     /** Downloads the recipe index again (the phone published a recipe); the UI picks it up through [recipesRefreshed]. */
     fun refreshRecipes() {
         Thread {
-            val (_, warning) = RecipeStore(this, { prefs.onlineRecipes }) { prefs.repoUrl }.loadIndex(true)
+            val (_, warning) = RecipeStore(this, { prefs.onlineRecipes }, { prefs.onlineMembers }, { prefs.moulinexRecipes }) { prefs.repoUrl }.loadIndex(true)
             Log.i(TAG, "recipe index refreshed from the phone${warning?.let { ": $it" } ?: ""}")
             recipesRefreshed++
         }.start()

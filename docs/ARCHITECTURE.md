@@ -43,6 +43,22 @@
   the machine does not have is not run, and a program the machine does not have (slow cooking, sous-vide, an
   accessory) becomes an instruction that names it and its settings. Photo URLs are moved from the photo CDN, whose
   incomplete certificate chain Android rejects, to the same files on Google Cloud Storage.
+- `Accessories.kt`: the original accessories (manual IAN 290976) and what a recipe asks for, worked out from the step
+  text with the names Lidl's recipes use (PT and EN): what goes in or comes out at each step, what is fitted while a
+  machine step runs, and what the recipe needs overall. A machine step the mixer attachment cannot do (above speed 4,
+  Turbo, kneading) means it comes out first: an implied removal, which the Cook screen asks about before Start or
+  Remote. No format change, so every source (server, online, imported) gets it.
+- `online/Moulinex.kt`: the optional "Moulinex Companion" source: the search and recipe calls of the Moulinex
+  website's recipe API (Groupe SEB's platform at `sebplatform.api.groupe-seb.com`, with the key the website sends to
+  every browser; recipes of the Companion domain `PRO_COM` on moulinex.pt) and the conversion to `mcc-recipe/1`.
+  Accessories go by kitchenware key: the chopping and kneading blades become the blade (speed table 1–12 → 1–10), the
+  stirring paddle reverse at speed 1–3, the whisk the mixer attachment (4 at most), the inner steam basket the cooking
+  pot and the steamer the deep steamer basket. Programs go by key (the Companion NEO's by name): Manual, Sauce and
+  Dessert run as set (speed 3 at most while heating), Slow cook P1 browns (roast), P2/P3 simmer in reverse, Soup P1
+  cooks then blends, Pastry P1/P2 knead and P3 mixes at speed 4, Steam P1/P2 use the steaming program, Timer becomes
+  "wait", and an alarm ("COUNTDOWN" = time left) splits the step around an "add …" instruction. Step ingredients
+  given in g/ml/cl/l become weigh steps. The Companion's words are replaced with this machine's (steam cap → measuring
+  beaker, "press Start" dropped, blade swaps removed). Old recipes without settings (all of moulinex.co.uk's) are skipped.
 - `RecipeFit.kt`: fits a recipe from outside (AI import, other machines) to the machine limits and lists each change.
 - `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
   time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above
@@ -64,8 +80,10 @@ Design tokens (`ui/Theme.kt`), line icons, cover illustrations, the custom Canva
 Portuguese), `RecipeStore.kt`, the Manrope font and the program photos. The packages are still `mcc.app.*`.
 
 - `AiClient.kt`: recipe import through any OpenAI-compatible chat API: web pages, pasted text, YouTube pages and
-  video transcripts; revisions from the user's feedback; translation. Every result goes through `Recipe.parse` and
-  `RecipeFit`.
+  video transcripts; revisions from the user's feedback; translation; `tweak` improves an existing recipe from the
+  user's request (an improved copy has source `ai-tweak` with the original's key as `ref`, and `RecipeStore` and
+  `tools/build_index.py` show it instead of the original). Every result goes through `Recipe.parse` and `RecipeFit`.
+- `Favourites.kt`: favourite recipe keys in the app's preferences (both apps; Home and the Favourites filter).
 - `RecipePublisher.kt`: the upload service's client: `POST /v1/recipes` ([RECIPE-UPLOAD.md](RECIPE-UPLOAD.md)) and
   `POST /v1/transcript`.
 
@@ -83,7 +101,7 @@ Compose and Material 3, minSdk 29, application id `io.github.brunoaclopes.mcc.ph
 | `SerialPort.kt` + `jni/mccserial.c` | opens `/dev/ttyMT0` at 4800 baud; refuses while the stock machine service runs (`PortGuard`) |
 | `Led.kt` | RGB LED patterns on their own thread |
 | `MqttBridge.kt` | Home Assistant discovery, state and commands ([HOME-ASSISTANT.md](HOME-ASSISTANT.md)) |
-| `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`). Both apps show the cached index first and refresh it in the background (stale-while-revalidate), again when it is older than 15 minutes. With **Monsieur Cuisine online recipes** on (Settings, off by default) it also lists the website's official MC2.0/MC3.0 recipes in the UI language (list cached, downloaded again at most once a day, about 12 requests; tagged "Online"), hides those whose stock recipe number (in the photo name) matches an `mc2-`/`mc3-` recipe of the server, and downloads and converts a recipe only when it is opened (`online/recipes/`). The ingredient search reads online recipes only once they have been opened |
+| `RecipeStore.kt` (in `common/`) | downloads `index.json` and recipes (sha256-checked) and caches them for offline use; adds the built-in programs and the recipes imported on the machine (`mine/`). Both apps show the cached index first and refresh it in the background (stale-while-revalidate), again when it is older than 15 minutes. With **Monsieur Cuisine online recipes** on (Settings, off by default) it also lists the website's official MC2.0/MC3.0 recipes in the UI language (list cached, downloaded again at most once a day, about 12 requests; tagged "Online"; with **Include member recipes** also the recipes members published, source `member`, tagged "Community", cached in a separate list so the switch takes effect at once, and converted with a note that their settings are not checked), hides those whose stock recipe number (in the photo name) matches an `mc2-`/`mc3-` recipe of the server, and downloads and converts a recipe only when it is opened (`online/recipes/`). The ingredient search reads online recipes only once they have been opened |
 | `AiClient.kt` (in `common/`) | OpenAI-compatible chat client for the recipe import; output goes through `Recipe.parse` and `RecipeFit` |
 | `Prefs.kt` | settings, and the cooking history (recipes finished, newest first; "Cooked lately" in Recipes) |
 | `Sounds.kt` | small synthesized sounds (start, stop, step, weighed, done, alerts, knob ticks), generated at start-up and played on the alarm stream |

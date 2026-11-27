@@ -18,6 +18,14 @@ object Recipes {
     /** How many people each recipe was last set to on this phone (while the app runs); cook along uses it too. */
     val people = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
+    /** Favourite recipe keys, most recently added first (kept in the phone's preferences). */
+    private val _favourites = MutableStateFlow(PhoneApp.app.prefs.favourites.keys)
+    val favourites: StateFlow<List<String>> = _favourites
+
+    /** Adds or removes a favourite; returns whether it is one now. */
+    fun toggleFavourite(id: String): Boolean = PhoneApp.app.prefs.favourites.toggle(id).also { _favourites.value = PhoneApp.app.prefs.favourites.keys }
+    fun addFavourite(id: String) { PhoneApp.app.prefs.favourites.add(id); _favourites.value = PhoneApp.app.prefs.favourites.keys }
+
     /** When the index was last asked from the server (elapsedRealtime). */
     @Volatile private var fetchedAt = 0L
 
@@ -36,7 +44,7 @@ object Recipes {
                 visible(cached).takeIf { it.isNotEmpty() }?.let { _state.value = State(it, loading = true) }
             }
             val (idx, warn) = withContext(Dispatchers.IO) { app.store.loadIndex(force) }
-            _state.value = State(visible(idx), false, warn ?: if (app.prefs.repoUrl.isBlank() && !app.prefs.onlineRecipes) P.s.noRepo else null)
+            _state.value = State(visible(idx), false, warn ?: if (app.prefs.repoUrl.isBlank() && !app.prefs.onlineRecipes && !app.prefs.moulinexRecipes) P.s.noRepo else null)
         }
     }
 

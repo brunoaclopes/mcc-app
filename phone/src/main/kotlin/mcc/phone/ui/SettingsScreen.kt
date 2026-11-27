@@ -95,6 +95,8 @@ fun SettingsScreen(modifier: Modifier) {
     var tls by remember { mutableStateOf(p.tls) }
     var repo by remember { mutableStateOf(p.repoUrl) }
     var online by remember { mutableStateOf(p.onlineRecipes) }
+    var members by remember { mutableStateOf(p.onlineMembers) }
+    var moulinex by remember { mutableStateOf(p.moulinexRecipes) }
     var aiUrl by remember { mutableStateOf(p.aiUrl) }
     var aiModel by remember { mutableStateOf(p.aiModel) }
     var aiKey by remember { mutableStateOf(p.aiKey) }
@@ -142,6 +144,8 @@ fun SettingsScreen(modifier: Modifier) {
                 FilledTonalButton(onClick = { p.repoUrl = repo; Recipes.refresh(force = true); ui.say(S.saved) },
                     modifier = Modifier.fillMaxWidth(), shape = smooth(16.dp)) { Text(L.s.saveSync) }
                 Toggle(L.s.onlineSetting, online, L.s.onlineHelp) { online = it; p.onlineRecipes = it; Recipes.refresh(force = true) }
+                if (online) Toggle(L.s.memberSetting, members, L.s.memberHelp) { members = it; p.onlineMembers = it; Recipes.refresh(force = true) }
+                Toggle(L.s.moulinexSetting, moulinex, L.s.moulinexHelp) { moulinex = it; p.moulinexRecipes = it; Recipes.refresh(force = true) }
             }
         }
 
