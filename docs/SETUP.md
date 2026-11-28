@@ -95,7 +95,7 @@ Without a server of your own, Settings → **Recipe server** → **Monsieur Cuis
 official recipes of the Monsieur Cuisine website (downloaded when opened, then cached); it can be combined with a
 server, which then wins for recipes both have. **Include member recipes** below it adds the recipes members
 published on the website, tagged "Community" (Monsieur Cuisine does not check their settings).
-**Moulinex Companion recipes** lists the Companion recipes of moulinex.pt (about 1300, in Portuguese), converted for
+**Moulinex Companion recipes** lists the Companion recipes of moulinex.pt (about 500, in Portuguese), converted for
 this machine when opened; check each step before you start it.
 
 On the machine: Settings → **Recipe server** → `http://<server-ip>:8088/` → **Save & sync**. Everything

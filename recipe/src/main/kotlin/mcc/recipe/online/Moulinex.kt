@@ -86,6 +86,8 @@ object Moulinex {
             val id = c["identifier"]["functionalId"].str ?: return@mapNotNull null
             // older recipes come with a path instead of a number; they would need another call to open, so skip them
             if (!id.all { it.isDigit() }) return@mapNotNull null
+            // "food cooking" guides (steam 100-500 g of one food, one per cut) have no web page; they would bury the recipes
+            if (c["seoUrl"].str.isNullOrBlank()) return@mapNotNull null
             val title = McOnline.clean(c["title"].str).ifBlank { return@mapNotNull null }
             val courses = c["courses"].list.mapNotNull { it.str?.let { k -> course(k, lang) } }
             RecipeIndex.Entry(

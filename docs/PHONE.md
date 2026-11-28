@@ -97,7 +97,7 @@ either, use the Home Assistant Companion app and the blueprint in [HOME-ASSISTAN
 - **Updates**: install the newer `mcc-phone-<version>.apk` over the old one; settings stay. To get updates
   automatically, add `https://github.com/brunoaclopes/mcc-app` to [Obtainium](https://github.com/ImranR98/Obtainium)
   (filter the APKs by `mcc-phone`). The release tag is the release as a whole (`v0.10.0`), not the phone app's
-  version, so let Obtainium read the version from the release title (`v0.11.1 · phone 0.10.1 · machine 1.7.1`). In
+  version, so let Obtainium read the version from the release title (`v0.11.2 · phone 0.10.2 · machine 1.7.2`). In
   the app's additional options:
 
   | Option | Value |
