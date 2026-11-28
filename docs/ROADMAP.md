@@ -32,7 +32,7 @@ worth doing next, roughly in order of value for the effort.
 - **Favourites** on Home, in Recipes and on the phone.
 - **Steps before cooking** on the machine: the recipe page has Ingredients and Steps tabs (tap or swipe), the
   steps at a glance as on the phone.
-- **Moulinex Companion recipes** (Settings, off by default): about 1300 recipes from moulinex.pt, converted for this
+- **Moulinex Companion recipes** (Settings, off by default): about 500 recipes from moulinex.pt, converted for this
   machine when opened (`recipe/online/Moulinex.kt`).
 - **Improve with AI**: an improved copy of any recipe, shown instead of the original.
 

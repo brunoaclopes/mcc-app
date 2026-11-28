@@ -92,8 +92,9 @@ class MoulinexTest {
 
     @Test fun listEntries() {
         val page = Moulinex.parseList("""{"page":{"totalElements":2,"totalPages":1},"content":[
-            {"identifier":{"functionalId":"488664"},"title":"Fondant de nozes","durations":{"totalTime":60},"courses":["DESSERT"],
+            {"identifier":{"functionalId":"488664"},"title":"Fondant de nozes","durations":{"totalTime":60},"courses":["DESSERT"],"seoUrl":"/PRO/fondant-de-nozes/488664",
              "resourceMedias":[{"isCover":true,"media":{"original":"https://x.org/f.jpg"}}]},
+            {"identifier":{"functionalId":"974083"},"title":"Pastinaga","durations":{"totalTime":21}},
             {"identifier":{"functionalId":"/v1/variants/1/"},"title":"Old"}]}""", "pt", "Moulinex")
         assertEquals(1, page.entries.size)
         val e = page.entries.single()

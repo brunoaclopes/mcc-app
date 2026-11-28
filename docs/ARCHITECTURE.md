@@ -58,7 +58,8 @@
   cooks then blends, Pastry P1/P2 knead and P3 mixes at speed 4, Steam P1/P2 use the steaming program, Timer becomes
   "wait", and an alarm ("COUNTDOWN" = time left) splits the step around an "add …" instruction. Step ingredients
   given in g/ml/cl/l become weigh steps. The Companion's words are replaced with this machine's (steam cap → measuring
-  beaker, "press Start" dropped, blade swaps removed). Old recipes without settings (all of moulinex.co.uk's) are skipped.
+  beaker, "press Start" dropped, blade swaps removed). Old recipes without settings (all of moulinex.co.uk's) are skipped, and so are
+  the "food cooking" guides (steam 100–500 g of one food, one per cut: about 800 of them, none with a web page).
 - `RecipeFit.kt`: fits a recipe from outside (AI import, other machines) to the machine limits and lists each change.
 - `RecipeRunner.kt`: the step-by-step state machine (instruction → weigh → machine step → …). A heated step whose
   time runs out before the bowl reaches its temperature keeps heating in 30 s extensions until it does (targets above

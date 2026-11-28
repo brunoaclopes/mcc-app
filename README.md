@@ -40,7 +40,7 @@ without the stock cooking app.
   Cuisine website, read live from its public recipe API. A recipe is downloaded when you open it and then works
   offline; nothing from it is stored in this repository. A second switch, **Include member recipes**, adds the
   recipes members published on the website (tagged "Community"; their settings are not checked by Monsieur Cuisine).
-- **Moulinex Companion recipes** (optional, off by default): the Companion recipes of moulinex.pt (about 1300, in
+- **Moulinex Companion recipes** (optional, off by default): the Companion recipes of moulinex.pt (about 500, in
   Portuguese), read live from the recipe API the Moulinex website uses and converted for this machine when you open
   one: blade speeds 1–12 scaled to 1–10, the stirring paddle as gentle reverse, the whisk as the mixer attachment,
   steaming with the cooking pot or the steamer baskets, the Companion programs as machine steps, its alarms as

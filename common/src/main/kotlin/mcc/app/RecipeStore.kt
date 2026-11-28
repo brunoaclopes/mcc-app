@@ -121,7 +121,9 @@ class RecipeStore(
      */
     private fun moulinexIndex(refresh: Boolean): Pair<List<RecipeIndex.Entry>, String?> {
         val lang = Moulinex.LANG
-        val f = File(onlineDir, "moulinex-$lang.json")
+        // "-2": lists cached before the food guides were left out are fetched again
+        File(onlineDir, "moulinex-$lang.json").delete()
+        val f = File(onlineDir, "moulinex-$lang-2.json")
         var warning: String? = null
         if (refresh && (!f.exists() || System.currentTimeMillis() - f.lastModified() > MOULINEX_MAX_AGE_MS)) {
             try {
